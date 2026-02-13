@@ -180,6 +180,7 @@ export class WorldScene extends Phaser.Scene {
   public tickerWorldStateVersion = -1;
   public worldStateVersion = 0;
   public skylineSprites: Phaser.GameObjects.Sprite[] = [];
+  public distantSkylineGfx: Phaser.GameObjects.Graphics[] = []; // Persistent background skyline (not animated in transitions)
   private academyBuildings: Phaser.GameObjects.Sprite[] = []; // Academy building sprites
   public billboardTimer: Phaser.Time.TimerEvent | null = null;
   public trafficTimers: Phaser.Time.TimerEvent[] = [];
@@ -454,7 +455,8 @@ export class WorldScene extends Phaser.Scene {
 
     // If a zone transition is in progress, queue the spawn for when it completes
     if (this.isTransitioning) {
-      this.pendingEnterWorld = () => this.enterWorldWithTexture(textureKey, memeName, walkTextureKey);
+      this.pendingEnterWorld = () =>
+        this.enterWorldWithTexture(textureKey, memeName, walkTextureKey);
       return;
     }
 
@@ -1316,16 +1318,16 @@ export class WorldScene extends Phaser.Scene {
       ascension: 6,
     };
     const isGoingRight = zoneOrder[newZone] > zoneOrder[this.currentZone];
-    const isDungeonTransition =
-      newZone === "dungeon" || this.currentZone === "dungeon" ||
-      newZone === "ascension" || this.currentZone === "ascension";
-    const duration = isDungeonTransition ? 800 : 600; // Slower, dramatic descent for dungeon
+    const isDungeonTransition = newZone === "dungeon" || this.currentZone === "dungeon";
+    const isAscensionTransition = newZone === "ascension" || this.currentZone === "ascension";
+    const isVerticalTransition = isDungeonTransition || isAscensionTransition;
+    const duration = isVerticalTransition ? 800 : 600; // Slower, dramatic for vertical transitions
     const slideDistance = Math.round(850 * SCALE); // Slightly more than screen width for full slide (scaled)
 
-    // For dungeon: vertical transition (descend down / ascend up)
+    // For dungeon/ascension: vertical transition (descend/ascend)
     // For all others: horizontal slide
-    const slideOutOffset = isDungeonTransition ? 0 : isGoingRight ? -slideDistance : slideDistance;
-    const slideInOffset = isDungeonTransition ? 0 : isGoingRight ? slideDistance : -slideDistance;
+    const slideOutOffset = isVerticalTransition ? 0 : isGoingRight ? -slideDistance : slideDistance;
+    const slideInOffset = isVerticalTransition ? 0 : isGoingRight ? slideDistance : -slideDistance;
 
     // Collect current zone elements to slide out
     const oldElements: (Phaser.GameObjects.GameObject & { x?: number })[] = [];
@@ -1388,7 +1390,98 @@ export class WorldScene extends Phaser.Scene {
     );
     transitionOverlay.setDepth(0);
 
-    if (isDungeonTransition) {
+    if (isAscensionTransition) {
+      const verticalDist = Math.round(600 * SCALE);
+      const isEnteringAscension = newZone === "ascension";
+
+      // Entering ascension (flying up): old elements slide DOWN (world drops away)
+      // Leaving ascension (descending): old elements slide UP (world rises away)
+      oldElementData.forEach(({ el }) => {
+        if ((el as any).y !== undefined) {
+          this.tweens.add({
+            targets: el,
+            y: (el as any).y + (isEnteringAscension ? verticalDist : -verticalDist),
+            alpha: 0,
+            duration,
+            ease: "Cubic.easeIn",
+          });
+        }
+      });
+
+      // Ground fades during transition
+      this.tweens.add({
+        targets: this.ground,
+        alpha: 0,
+        duration: duration * 0.4,
+        ease: "Cubic.easeIn",
+        onComplete: () => {
+          this.ground.setAlpha(1);
+        },
+      });
+
+      // Sky-colored overlay (celestial cream-white, matching ascension cloud floor)
+      transitionOverlay.setFillStyle(0xfff8e8, 1);
+      transitionOverlay.setPosition(GAME_WIDTH / 2, GAME_HEIGHT / 2);
+      transitionOverlay.setSize(GAME_WIDTH, GAME_HEIGHT);
+      transitionOverlay.setAlpha(0);
+      transitionOverlay.setDepth(50);
+
+      // Cloud wisps drifting during the sky transition
+      const cloudWisps: Phaser.GameObjects.Ellipse[] = [];
+      const cloudDirection = isEnteringAscension ? 1 : -1; // Down when flying up, up when descending
+
+      for (let i = 0; i < 7; i++) {
+        const w = Math.round((60 + Math.random() * 120) * SCALE);
+        const h = Math.round((15 + Math.random() * 25) * SCALE);
+        const startX = Math.random() * GAME_WIDTH;
+        const startY = Math.random() * GAME_HEIGHT;
+        const cloud = this.add.ellipse(
+          startX,
+          startY,
+          w,
+          h,
+          i % 3 === 0 ? 0xfff0c8 : 0xffffff, // Mix white + pale gold
+          0.4 + Math.random() * 0.3
+        );
+        cloud.setDepth(51);
+        cloud.setAlpha(0);
+        cloudWisps.push(cloud);
+
+        this.tweens.add({
+          targets: cloud,
+          alpha: 0.3 + Math.random() * 0.4,
+          y: startY + cloudDirection * Math.round((80 + Math.random() * 200) * SCALE),
+          x: startX + Math.round((Math.random() - 0.5) * 100 * SCALE),
+          duration: duration * 0.8,
+          ease: "Sine.easeInOut",
+          delay: Math.random() * 150,
+          onComplete: () => {
+            this.tweens.add({
+              targets: cloud,
+              alpha: 0,
+              duration: 200,
+              onComplete: () => cloud.destroy(),
+            });
+          },
+        });
+      }
+
+      // Main overlay fade
+      this.tweens.add({
+        targets: transitionOverlay,
+        alpha: 1,
+        duration: duration * 0.5,
+        ease: "Cubic.easeIn",
+        yoyo: true,
+        hold: duration * 0.15,
+        onComplete: () => {
+          transitionOverlay.destroy();
+          cloudWisps.forEach((c) => {
+            if (c.active) c.destroy();
+          });
+        },
+      });
+    } else if (isDungeonTransition) {
       const verticalDist = Math.round(600 * SCALE);
       const isEnteringDungeon = newZone === "dungeon";
 
@@ -2805,7 +2898,11 @@ export class WorldScene extends Phaser.Scene {
       this.skyGradient.setVisible(true);
     }
 
-    // Stars will be updated on next time update cycle
+    // Restore stars (may have been hidden by ascension zone)
+    this.stars.forEach((star) => star.setVisible(true));
+
+    // Restore distant skyline (may have been hidden by ascension zone)
+    this.distantSkylineGfx.forEach((g) => g.setVisible(true));
   }
 
   /**
@@ -2997,7 +3094,7 @@ export class WorldScene extends Phaser.Scene {
     // === LAYER 1: Atmospheric haze/glow at horizon ===
     const hazeLayer = this.add.graphics();
     hazeLayer.setDepth(-2.5);
-    this.skylineSprites.push(hazeLayer as any);
+    this.distantSkylineGfx.push(hazeLayer);
 
     // Gradient haze from horizon upward (gives depth)
     for (let i = 0; i < 8; i++) {
@@ -3010,7 +3107,7 @@ export class WorldScene extends Phaser.Scene {
     // === LAYER 2: Far distant buildings (very faded, smaller) ===
     const farSkyline = this.add.graphics();
     farSkyline.setDepth(-2);
-    this.skylineSprites.push(farSkyline as any);
+    this.distantSkylineGfx.push(farSkyline);
     farSkyline.fillStyle(0x2d3748, 0.25); // Very faded
 
     const drawFarBuilding = (x: number, topY: number, width: number) => {
@@ -3031,7 +3128,7 @@ export class WorldScene extends Phaser.Scene {
     // === LAYER 3: Main skyline buildings (medium opacity) ===
     const mainSkyline = this.add.graphics();
     mainSkyline.setDepth(-1.8);
-    this.skylineSprites.push(mainSkyline as any);
+    this.distantSkylineGfx.push(mainSkyline);
 
     const drawBuilding = (
       g: Phaser.GameObjects.Graphics,
@@ -3234,7 +3331,7 @@ export class WorldScene extends Phaser.Scene {
     // === LAYER 4: Building details (spires, antennas, rooftop features) ===
     const detailsLayer = this.add.graphics();
     detailsLayer.setDepth(-1.7);
-    this.skylineSprites.push(detailsLayer as any);
+    this.distantSkylineGfx.push(detailsLayer);
     detailsLayer.fillStyle(0x0f172a, 0.6);
 
     // Spire on tallest building
@@ -3280,7 +3377,7 @@ export class WorldScene extends Phaser.Scene {
     // === LAYER 5: Window lights (varied brightness, more of them) ===
     const windowsLayer = this.add.graphics();
     windowsLayer.setDepth(-1.6);
-    this.skylineSprites.push(windowsLayer as any);
+    this.distantSkylineGfx.push(windowsLayer);
 
     // Window definitions: x, y, brightness (0.15-0.4)
     const windows = [
@@ -3348,7 +3445,7 @@ export class WorldScene extends Phaser.Scene {
     // === LAYER 6: Subtle glow beneath some windows ===
     const glowLayer = this.add.graphics();
     glowLayer.setDepth(-1.65);
-    this.skylineSprites.push(glowLayer as any);
+    this.distantSkylineGfx.push(glowLayer);
 
     // Add small glow spots beneath brightest windows
     const brightWindows = windows.filter((w) => w.b >= 0.35);
@@ -5752,7 +5849,12 @@ export class WorldScene extends Phaser.Scene {
     // Buildings with no zone appear in most zones, but NOT in arena/dungeon (special zones)
     const zoneBuildings = buildings.filter((b) => {
       // Arena, Dungeon, and Ascension zones have no token buildings
-      if (this.currentZone === "arena" || this.currentZone === "dungeon" || this.currentZone === "ascension") return false;
+      if (
+        this.currentZone === "arena" ||
+        this.currentZone === "dungeon" ||
+        this.currentZone === "ascension"
+      )
+        return false;
       if (!b.zone) return true; // No zone = appears in all non-special zones
       return b.zone === this.currentZone;
     });
@@ -6049,14 +6151,14 @@ export class WorldScene extends Phaser.Scene {
             : isCasino
               ? "casino"
               : isOracle
-                  ? "oracle_tower"
-                  : isArcade
-                    ? "arcade_building"
-                    : isTreasury
-                      ? "treasury"
-                      : isBeachBuilding
-                        ? `beach_building_${beachBuildingLevel}`
-                        : `building_${building.level}_${styleIndex}`;
+                ? "oracle_tower"
+                : isArcade
+                  ? "arcade_building"
+                  : isTreasury
+                    ? "treasury"
+                    : isBeachBuilding
+                      ? `beach_building_${beachBuildingLevel}`
+                      : `building_${building.level}_${styleIndex}`;
     const sprite = this.add.sprite(0, 0, buildingTexture);
     sprite.setOrigin(0.5, 1);
     // HQ is larger and floating, mansions use rank-based scaling from building data
@@ -6075,12 +6177,12 @@ export class WorldScene extends Phaser.Scene {
               : isCasino
                 ? 1.0
                 : isOracle
+                  ? 1.0
+                  : isArcade
                     ? 1.0
-                    : isArcade
+                    : isTreasury
                       ? 1.0
-                      : isTreasury
-                        ? 1.0
-                        : buildingScale
+                      : buildingScale
     );
     container.add(sprite);
 
