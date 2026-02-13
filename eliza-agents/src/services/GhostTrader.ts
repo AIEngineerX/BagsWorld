@@ -34,6 +34,12 @@ import { getMemoryService } from "./MemoryService.js";
 const LAMPORTS_PER_SOL = 1_000_000_000;
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 
+// Buy & Burn configuration
+const BAGS_TOKEN_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
+const SOL_INCINERATOR_API_URL = "https://v1.api.sol-incinerator.com";
+const DEFAULT_BURN_PERCENT = 25; // 25% of profits
+const MIN_BURN_SOL = 0.005; // Minimum SOL worth burning (below this, tx fees aren't worth it)
+
 // Default trading configuration (BagBot-inspired, tuned for Bags.fm reality)
 // Reference: https://github.com/BagBotX/bagbot + DexScreener Bags runner analysis
 // Updated Jan 2025: Relaxed filters based on GAS token success patterns
@@ -75,6 +81,9 @@ const DEFAULT_CONFIG = {
   // Bundle/concentration detection
   maxTop5ConcentrationPct: 80, // Hard reject: top 5 wallets hold > 80%
   maxSingleHolderPct: 50, // Hard reject: single wallet holds > 50%
+  // Buy & Burn
+  burnEnabled: false, // Must be explicitly enabled via GHOST_BURN_ENABLED
+  burnPercent: DEFAULT_BURN_PERCENT,
 };
 
 // Top trader wallets to study (from Kolscan & GMGN leaderboards)
@@ -229,6 +238,9 @@ export interface GhostTraderConfig {
   // Bundle/concentration detection
   maxTop5ConcentrationPct: number; // Hard reject: top 5 wallets hold > X%
   maxSingleHolderPct: number; // Hard reject: single wallet holds > X%
+  // Buy & Burn
+  burnEnabled: boolean; // Enable BAGS buy & burn on profitable trades
+  burnPercent: number; // % of trade profit to allocate to buy & burn
 }
 
 export interface GhostTraderStats {
@@ -240,6 +252,10 @@ export interface GhostTraderStats {
   losingTrades: number;
   totalPnlSol: number;
   winRate: number;
+  // Buy & Burn stats
+  totalBagsBurned: number;
+  totalSolSpentOnBurns: number;
+  burnCount: number;
 }
 
 // ============================================================================
@@ -280,6 +296,9 @@ export class GhostTrader {
   // Telegram broadcaster for trade signals
   private telegramBroadcaster: TelegramBroadcaster;
 
+  // Cached burn stats (refreshed on burns and on init)
+  private cachedBurnStats = { totalBagsBurned: 0, totalSolSpent: 0, burnCount: 0 };
+
   // Store last evaluation for telegram broadcast (need metrics after position created)
   private lastEvaluation: TradeEvaluation | null = null;
 
@@ -308,6 +327,13 @@ export class GhostTrader {
     }
     if (process.env.GHOST_MAX_POSITIONS) {
       this.config.maxOpenPositions = parseInt(process.env.GHOST_MAX_POSITIONS);
+    }
+    // Buy & burn config
+    if (envBool("GHOST_BURN_ENABLED")) {
+      this.config.burnEnabled = true;
+    }
+    if (process.env.GHOST_BURN_PERCENT) {
+      this.config.burnPercent = parseInt(process.env.GHOST_BURN_PERCENT);
     }
   }
 
@@ -345,6 +371,9 @@ export class GhostTrader {
 
     // Load learning data
     await this.loadLearningData();
+
+    // Load burn stats cache
+    await this.refreshBurnStatsCache();
 
     const hasWallet = this.solanaService.isConfigured();
     console.log(`[GhostTrader] Wallet: ${hasWallet ? "configured" : "NOT configured"}`);
@@ -430,6 +459,26 @@ export class GhostTrader {
         total_pnl_sol DECIMAL(18, 9) DEFAULT 0,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       )
+    `;
+
+    // Buy & burn tracking table
+    await this.db`
+      CREATE TABLE IF NOT EXISTS ghost_burns (
+        id UUID PRIMARY KEY,
+        sol_spent DECIMAL(18, 9) NOT NULL,
+        bags_bought DECIMAL(30, 0) NOT NULL,
+        bags_burned DECIMAL(30, 0) NOT NULL,
+        buy_tx_signature VARCHAR(128),
+        burn_tx_signature VARCHAR(128),
+        trigger_trade_id VARCHAR(64),
+        cumulative_pnl_at_burn DECIMAL(18, 9),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
+
+    await this.db`
+      CREATE INDEX IF NOT EXISTS idx_ghost_burns_created
+      ON ghost_burns(created_at)
     `;
 
     // Telegram broadcasts table for logging sent signals
@@ -1754,6 +1803,16 @@ export class GhostTrader {
     // Announce trade
     await this.announceTrade("sell", position);
 
+    // Buy & burn: allocate portion of profit if Ghost is cumulatively profitable
+    if (pnlSol > 0 && this.config.burnEnabled) {
+      const currentStats = this.getStats();
+      if (currentStats.totalPnlSol > 0) {
+        this.executeBuyAndBurn(pnlSol, position.id).catch((err) =>
+          console.error("[GhostTrader] Buy & burn failed:", err)
+        );
+      }
+    }
+
     console.log(
       `[GhostTrader] Position closed: ${position.tokenSymbol}, PnL: ${pnlSol.toFixed(4)} SOL`
     );
@@ -1924,9 +1983,261 @@ export class GhostTrader {
       );
     }
 
+    // Buy & burn: allocate portion of partial profit if Ghost is cumulatively profitable
+    if (partialPnl > 0 && this.config.burnEnabled) {
+      const currentStats = this.getStats();
+      if (currentStats.totalPnlSol > 0) {
+        this.executeBuyAndBurn(partialPnl, position.id).catch((err) =>
+          console.error("[GhostTrader] Buy & burn (partial) failed:", err)
+        );
+      }
+    }
+
     console.log(
       `[GhostTrader] Partial close complete: ${position.tokenSymbol} tier ${tierIndex + 1}, sold ${tokensSold} tokens for ${solReceived.toFixed(4)} SOL (PnL: ${partialPnl >= 0 ? "+" : ""}${partialPnl.toFixed(4)} SOL)`
     );
+  }
+
+  // ==========================================================================
+  // Buy & Burn - Deflationary BAGS mechanism
+  // ==========================================================================
+
+  /**
+   * Buy BAGS with a portion of trade profit and burn the tokens.
+   * Called after profitable position closes when Ghost is cumulatively profitable.
+   * Fire-and-forget — never blocks the close flow.
+   */
+  private async executeBuyAndBurn(profitSol: number, triggerTradeId: string): Promise<void> {
+    const burnAllocation = profitSol * (this.config.burnPercent / 100);
+
+    // Skip if allocation too small (not worth tx fees)
+    if (burnAllocation < MIN_BURN_SOL) {
+      console.log(`[GhostTrader] Buy & burn skipped: ${burnAllocation.toFixed(4)} SOL < ${MIN_BURN_SOL} minimum`);
+      return;
+    }
+
+    if (!this.ghostWalletPublicKey || !this.solanaService) {
+      console.warn("[GhostTrader] Buy & burn skipped: wallet or SolanaService not configured");
+      return;
+    }
+
+    // Check SOL balance — need enough for buy + burn tx fees (~0.01 SOL buffer)
+    const balance = await this.solanaService.getBalance();
+    if (balance < burnAllocation + 0.01) {
+      console.warn(`[GhostTrader] Buy & burn skipped: insufficient balance (${balance.toFixed(4)} SOL, need ${(burnAllocation + 0.01).toFixed(4)})`);
+      return;
+    }
+
+    const stats = this.getStats();
+    console.log(`[GhostTrader] Buy & burn: allocating ${burnAllocation.toFixed(4)} SOL (${this.config.burnPercent}% of ${profitSol.toFixed(4)} profit)`);
+
+    // Step 1: Buy BAGS with allocated SOL
+    const amountLamports = Math.floor(burnAllocation * LAMPORTS_PER_SOL);
+    let buyQuote;
+    try {
+      buyQuote = await this.bagsApi.getTradeQuote(
+        SOL_MINT,
+        BAGS_TOKEN_MINT,
+        amountLamports,
+        this.config.slippageBps
+      );
+    } catch (error) {
+      console.error("[GhostTrader] Buy & burn: failed to get BAGS quote:", error);
+      return;
+    }
+
+    let buySwapResult;
+    try {
+      buySwapResult = await this.bagsApi.createSwapTransaction(buyQuote, this.ghostWalletPublicKey);
+    } catch (error) {
+      console.error("[GhostTrader] Buy & burn: failed to create buy tx:", error);
+      return;
+    }
+
+    const buyTxSignature = await this.signAndSubmitTransaction(buySwapResult.swapTransaction);
+    if (!buyTxSignature) {
+      console.error("[GhostTrader] Buy & burn: buy transaction failed");
+      return;
+    }
+
+    const bagsBought = parseFloat(buyQuote.outAmount);
+    console.log(`[GhostTrader] Buy & burn: bought ${bagsBought} BAGS tokens (tx: ${buyTxSignature.slice(0, 16)}...)`);
+
+    // Step 2: Wait briefly for buy to settle
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    // Step 3: Get actual BAGS balance to burn
+    const bagsBalance = await this.solanaService.getTokenBalance(BAGS_TOKEN_MINT);
+    if (bagsBalance <= 0) {
+      console.error("[GhostTrader] Buy & burn: no BAGS balance found after buy");
+      return;
+    }
+
+    const bagsToBurn = bagsBalance; // Burn entire BAGS balance
+
+    // Step 4: Burn via Sol Incinerator API (if API key available)
+    let burnTxSignature: string | null = null;
+    const solIncineratorApiKey = process.env.SOL_INCINERATOR_API_KEY;
+
+    if (solIncineratorApiKey) {
+      try {
+        const burnResponse = await fetch(`${SOL_INCINERATOR_API_URL}/burn`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": solIncineratorApiKey,
+          },
+          body: JSON.stringify({
+            userPublicKey: this.ghostWalletPublicKey,
+            assetId: BAGS_TOKEN_MINT,
+            burnAmount: bagsToBurn,
+          }),
+        });
+
+        if (!burnResponse.ok) {
+          const errText = await burnResponse.text();
+          throw new Error(`Sol Incinerator API error ${burnResponse.status}: ${errText}`);
+        }
+
+        const burnData = await burnResponse.json();
+        const serializedTx = burnData.transaction || burnData.serializedTransaction;
+
+        if (serializedTx) {
+          const result = await this.solanaService.signAndSendTransaction(serializedTx, {
+            skipPreflight: false,
+            preflightCommitment: "confirmed",
+          });
+
+          if (result.confirmed && !result.error) {
+            burnTxSignature = result.signature;
+            console.log(`[GhostTrader] Buy & burn: burned ${bagsToBurn} BAGS (tx: ${burnTxSignature.slice(0, 16)}...)`);
+          } else {
+            console.error("[GhostTrader] Buy & burn: burn tx failed:", result.error);
+          }
+        } else {
+          console.error("[GhostTrader] Buy & burn: no transaction in Sol Incinerator response");
+        }
+      } catch (error) {
+        console.error("[GhostTrader] Buy & burn: Sol Incinerator burn failed:", error);
+      }
+    } else {
+      console.warn("[GhostTrader] Buy & burn: SOL_INCINERATOR_API_KEY not set — burn step skipped, BAGS held in wallet");
+    }
+
+    // Step 5: Log burn to database
+    if (this.db) {
+      try {
+        const burnId = crypto.randomUUID();
+        await this.db`
+          INSERT INTO ghost_burns (id, sol_spent, bags_bought, bags_burned, buy_tx_signature, burn_tx_signature, trigger_trade_id, cumulative_pnl_at_burn)
+          VALUES (${burnId}, ${burnAllocation}, ${bagsBought}, ${burnTxSignature ? bagsToBurn : 0}, ${buyTxSignature}, ${burnTxSignature}, ${triggerTradeId}, ${stats.totalPnlSol})
+        `;
+      } catch (error) {
+        console.error("[GhostTrader] Buy & burn: failed to log to database:", error);
+      }
+    }
+
+    // Step 6: Announce
+    const burnMessages = [
+      `burning $BAGS... deflationary vibes`,
+      `${this.config.burnPercent}% of profits → burn. this is the way`,
+      `just burned ${bagsToBurn} BAGS tokens. supply going down`,
+      `profitable trade → buy & burn $BAGS. less supply, more value`,
+      `${burnAllocation.toFixed(4)} SOL of profit → bought & burned BAGS`,
+    ];
+    const announceMsg = burnMessages[Math.floor(Math.random() * burnMessages.length)];
+    this.chatter(announceMsg, "happy");
+
+    if (this.coordinator) {
+      await this.coordinator.broadcast("ghost", "update", `Buy & Burn: spent ${burnAllocation.toFixed(4)} SOL, burned ${bagsToBurn} BAGS`, {
+        type: "burn",
+        solSpent: burnAllocation,
+        bagsBurned: bagsToBurn,
+        buyTx: buyTxSignature,
+        burnTx: burnTxSignature,
+      });
+    }
+
+    // Telegram announcement via exit signal (reusing existing infrastructure)
+    if (this.telegramBroadcaster && this.telegramBroadcaster.isEnabled()) {
+      const burnExitSignal: ExitSignal = {
+        type: "exit",
+        tokenSymbol: "BAGS",
+        tokenName: "BagsWorld (Buy & Burn)",
+        tokenMint: BAGS_TOKEN_MINT,
+        amountSol: burnAllocation,
+        pnlSol: 0, // Not a PnL event — it's a burn
+        exitReason: `buy_and_burn (${bagsToBurn} BAGS burned)`,
+        holdTimeMinutes: 0,
+      };
+      this.telegramBroadcaster.broadcastExit(burnExitSignal);
+    }
+
+    // Refresh cached burn stats
+    await this.refreshBurnStatsCache();
+
+    console.log(`[GhostTrader] Buy & burn complete: ${burnAllocation.toFixed(4)} SOL → ${bagsToBurn} BAGS ${burnTxSignature ? "burned" : "held (no API key)"}`);
+  }
+
+  /**
+   * Get buy & burn statistics from the database
+   */
+  async getBurnStats(): Promise<{ totalBagsBurned: number; totalSolSpent: number; burnCount: number; burns: Array<{ id: string; solSpent: number; bagsBought: number; bagsBurned: number; buyTx: string | null; burnTx: string | null; createdAt: string }> }> {
+    if (!this.db) {
+      return { totalBagsBurned: 0, totalSolSpent: 0, burnCount: 0, burns: [] };
+    }
+
+    try {
+      const rows = await this.db`
+        SELECT id, sol_spent, bags_bought, bags_burned, buy_tx_signature, burn_tx_signature, created_at
+        FROM ghost_burns
+        ORDER BY created_at DESC
+        LIMIT 50
+      ` as Array<{ id: string; sol_spent: string; bags_bought: string; bags_burned: string; buy_tx_signature: string | null; burn_tx_signature: string | null; created_at: Date }>;
+
+      const totals = await this.db`
+        SELECT COALESCE(SUM(bags_burned), 0) as total_burned, COALESCE(SUM(sol_spent), 0) as total_sol, COUNT(*) as burn_count
+        FROM ghost_burns
+      ` as Array<{ total_burned: string; total_sol: string; burn_count: string }>;
+
+      return {
+        totalBagsBurned: parseFloat(totals[0]?.total_burned || "0"),
+        totalSolSpent: parseFloat(totals[0]?.total_sol || "0"),
+        burnCount: parseInt(totals[0]?.burn_count || "0"),
+        burns: rows.map((r) => ({
+          id: r.id,
+          solSpent: parseFloat(r.sol_spent),
+          bagsBought: parseFloat(r.bags_bought),
+          bagsBurned: parseFloat(r.bags_burned),
+          buyTx: r.buy_tx_signature,
+          burnTx: r.burn_tx_signature,
+          createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+        })),
+      };
+    } catch (error) {
+      console.error("[GhostTrader] Failed to fetch burn stats:", error);
+      return { totalBagsBurned: 0, totalSolSpent: 0, burnCount: 0, burns: [] };
+    }
+  }
+
+  /**
+   * Refresh the cached burn stats from the database
+   */
+  private async refreshBurnStatsCache(): Promise<void> {
+    if (!this.db) return;
+    try {
+      const totals = await this.db`
+        SELECT COALESCE(SUM(bags_burned), 0) as total_burned, COALESCE(SUM(sol_spent), 0) as total_sol, COUNT(*) as burn_count
+        FROM ghost_burns
+      ` as Array<{ total_burned: string; total_sol: string; burn_count: string }>;
+      this.cachedBurnStats = {
+        totalBagsBurned: parseFloat(totals[0]?.total_burned || "0"),
+        totalSolSpent: parseFloat(totals[0]?.total_sol || "0"),
+        burnCount: parseInt(totals[0]?.burn_count || "0"),
+      };
+    } catch {
+      // Non-critical — keep existing cached values
+    }
   }
 
   /**
@@ -2214,6 +2525,7 @@ export class GhostTrader {
     const losingTrades = closedPositions.filter((p) => (p.pnlSol || 0) < 0).length;
     const totalPnlSol = closedPositions.reduce((sum, p) => sum + (p.pnlSol || 0), 0);
 
+    // Burn stats are loaded synchronously from cached values (async fetch happens on init/burn)
     return {
       enabled: this.config.enabled,
       openPositions: openPositions.length,
@@ -2223,6 +2535,9 @@ export class GhostTrader {
       losingTrades,
       totalPnlSol,
       winRate: closedPositions.length > 0 ? winningTrades / closedPositions.length : 0,
+      totalBagsBurned: this.cachedBurnStats.totalBagsBurned,
+      totalSolSpentOnBurns: this.cachedBurnStats.totalSolSpent,
+      burnCount: this.cachedBurnStats.burnCount,
     };
   }
 

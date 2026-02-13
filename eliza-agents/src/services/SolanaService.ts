@@ -389,6 +389,46 @@ export class SolanaService extends Service {
   }
 
   /**
+   * Get the associated token account address for a specific mint.
+   * Returns the account pubkey or null if no account exists.
+   */
+  async getTokenAccountAddress(tokenMint: string): Promise<string | null> {
+    if (!this.publicKeyBytes) return null;
+
+    const publicKey = base58Encode(this.publicKeyBytes);
+
+    const response = await fetch(this.rpcUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getTokenAccountsByOwner",
+        params: [
+          publicKey,
+          { mint: tokenMint },
+          { encoding: "jsonParsed", commitment: "confirmed" },
+        ],
+      }),
+    });
+
+    const result = await response.json();
+
+    if (result.error) {
+      throw new Error(result.error.message || JSON.stringify(result.error));
+    }
+
+    const accounts = result.result?.value;
+
+    if (!accounts || accounts.length === 0) {
+      return null;
+    }
+
+    // Return the first (primary) token account address
+    return accounts[0].pubkey || null;
+  }
+
+  /**
    * Get top holder concentration for a token mint.
    * Uses getTokenLargestAccounts + getTokenSupply to detect bundled tokens.
    * Returns null on any error (graceful degradation - never blocks trading).
