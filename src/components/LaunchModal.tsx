@@ -2,23 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { Connection, VersionedTransaction, Transaction } from "@solana/web3.js";
 import { useMobileWallet } from "@/hooks/useMobileWallet";
 import { useSwipeToDismiss } from "@/hooks/useSwipeToDismiss";
 import { useActionGuard } from "@/hooks/useActionGuard";
-import {
-  deserializeTransaction,
-  hasExistingSignatures as checkExistingSignatures,
-  preSimulateTransaction,
-  sendSignedTransaction,
-} from "@/lib/transaction-utils";
-import {
-  saveLaunchedToken,
-  saveTokenGlobally,
-  getAllWorldTokens,
-  type LaunchedToken,
-} from "@/lib/token-registry";
+import { getAllWorldTokens } from "@/lib/token-registry";
 import { ECOSYSTEM_CONFIG, getEcosystemFeeShare } from "@/lib/config";
+import { executeLaunchFlow } from "@/lib/launch-flow";
 
 interface FeeShareEntry {
   provider: string;
@@ -413,540 +402,54 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         return;
       }
 
-      // 1. Create token info via API
-      setLaunchStatus("Uploading token metadata to IPFS...");
-      const tokenInfoResponse = await fetch("/api/launch-token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "create-info",
-          data: {
-            name: formData.name,
-            symbol: formData.symbol,
-            description: formData.description,
-            image: imageDataUrl || "",
-            twitter: formData.twitter || undefined,
-            telegram: formData.telegram || undefined,
-            website: formData.website || undefined,
-          },
-        }),
-      });
-
-      if (!tokenInfoResponse.ok) {
-        const err = await tokenInfoResponse.json();
-        throw new Error(err.error || "Failed to create token info");
-      }
-
-      const { tokenMint, tokenMetadata } = await tokenInfoResponse.json();
-
-      // 2. Configure fee sharing (always includes ecosystem fee)
-      // IMPORTANT: Bags.fm API requires BPS to sum to exactly 10000 (100%)
+      // Build fee claimers from the UI fee share entries
       const validFeeShares = feeShares.filter((f) => f.username.trim());
-
-      // Calculate total user-defined BPS
-      const userDefinedBps = validFeeShares.reduce((sum, f) => sum + f.bps, 0);
-      const allocatedBps = ecosystemFee.bps + userDefinedBps;
-      const remainingBps = 10000 - allocatedBps;
-
-      // Build fee claimers array
-      // IMPORTANT: All usernames should be lowercase (Bags API is case-insensitive but normalized)
-      // Note: The Bags API requires wallet addresses, so usernames must have linked wallets at bags.fm/settings
-
-      // Start with user-defined fee shares
-      const userFeeClaimers = validFeeShares.map((f) => ({
+      const feeClaimers = validFeeShares.map((f) => ({
         provider: f.provider,
-        providerUsername: f.username.replace(/@/g, "").toLowerCase().trim(),
+        providerUsername: f.username.replace(/@/g, "").trim(),
         bps: f.bps,
       }));
 
-      // Try to include ecosystem fee if configured
-      let allFeeClaimers = [...userFeeClaimers];
-      let ecosystemFeeIncluded = false;
-
-      if (ecosystemFee.bps > 0) {
-        // Ecosystem fee is configured - add it to the list
-        // If wallet lookup fails later, the error will be shown to user
-        allFeeClaimers = [
-          {
-            provider: ecosystemFee.provider,
-            providerUsername: ecosystemFee.providerUsername.toLowerCase().trim(),
-            bps: ecosystemFee.bps,
-          },
-          ...userFeeClaimers,
-        ];
-        ecosystemFeeIncluded = true;
-      }
-
-      // Bags.fm API requires total BPS to equal exactly 10000 (100%)
-      // All fee claimers must use social providers (twitter, kick, github) - no raw wallet addresses
-      const totalAllocatedBps = ecosystemFee.bps + userDefinedBps;
-      if (totalAllocatedBps !== 10000) {
-        throw new Error(
-          `Fee shares must total exactly 100%. Currently ${(totalAllocatedBps / 100).toFixed(1)}%. Add fee claimers to allocate the remaining ${((10000 - totalAllocatedBps) / 100).toFixed(1)}% to Twitter/GitHub/Kick accounts.`
-        );
-      }
-
-      setLaunchStatus("Configuring fee sharing...");
-
-      let configKey: string | undefined;
-      const feeConfigResponse = await fetch("/api/launch-token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "configure-fees",
-          data: {
-            mint: tokenMint,
-            payer: publicKey?.toBase58(),
-            feeClaimers: allFeeClaimers,
-          },
-        }),
+      const result = await executeLaunchFlow({
+        tokenData: {
+          name: formData.name,
+          symbol: formData.symbol,
+          description: formData.description,
+          image: imageDataUrl,
+          twitter: formData.twitter || undefined,
+          telegram: formData.telegram || undefined,
+          website: formData.website || undefined,
+        },
+        feeShares: feeClaimers,
+        initialBuySOL,
+        walletPublicKey: publicKey,
+        signTransaction: mobileSignTransaction,
+        signAndSendTransaction: mobileSignAndSend,
+        onStatus: setLaunchStatus,
       });
 
-      if (feeConfigResponse.ok) {
-        const feeResult = await feeConfigResponse.json();
-        configKey = feeResult.configId;
-
-        // If the fee share config needs to be created on-chain, sign and submit the transactions
-        if (feeResult.needsCreation && feeResult.transactions?.length > 0) {
-          setLaunchStatus("Creating fee share config on-chain...");
-
-          const connection = new Connection(
-            process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana"
+      if (result.success) {
+        if (result.globalSaveSuccess) {
+          setSuccess(
+            `🎉 Token ${formData.symbol} launched on Bags.fm! Your building is now visible to ALL BagsWorld players!`
           );
-
-          for (let i = 0; i < feeResult.transactions.length; i++) {
-            const txData = feeResult.transactions[i];
-            setLaunchStatus(
-              `Signing fee config transaction ${i + 1}/${feeResult.transactions.length}...`
-            );
-
-            // Decode and sign the transaction (handles both versioned and legacy formats)
-            const transaction = deserializeTransaction(
-              txData.transaction,
-              `fee-config-tx-${i + 1}`
-            );
-
-            const preSigned = checkExistingSignatures(transaction);
-
-            // Only refresh blockhash if no existing signatures
-            let blockhash: string;
-            let lastValidBlockHeight: number;
-
-            if (!preSigned) {
-              const latestBlockhash = await connection.getLatestBlockhash("confirmed");
-              blockhash = latestBlockhash.blockhash;
-              lastValidBlockHeight = latestBlockhash.lastValidBlockHeight;
-
-              if (transaction instanceof VersionedTransaction) {
-                transaction.message.recentBlockhash = blockhash;
-              } else {
-                transaction.recentBlockhash = blockhash;
-              }
-            } else {
-              // Preserve the API's blockhash — changing it would invalidate existing signatures
-              if (transaction instanceof VersionedTransaction) {
-                blockhash = transaction.message.recentBlockhash;
-              } else {
-                blockhash = transaction.recentBlockhash!;
-              }
-              const latestBlockhash = await connection.getLatestBlockhash("confirmed");
-              lastValidBlockHeight = latestBlockhash.lastValidBlockHeight;
-            }
-
-            // Pre-simulate with sigVerify:false to catch errors before wallet popup
-            try {
-              await preSimulateTransaction(connection, transaction);
-            } catch (simError) {
-              console.warn(`Fee config tx ${i + 1} simulation warning:`, simError);
-              // Non-fatal: partially-signed txs may fail simulation — continue to wallet
-            }
-
-            let txid: string;
-            try {
-              if (preSigned) {
-                // Multi-signer (API pre-signed): must use signTransaction per
-                // Phantom docs to avoid "Signature verification failed" error.
-                const signedTx = await mobileSignTransaction(transaction);
-                setLaunchStatus(
-                  `Broadcasting fee config transaction ${i + 1}/${feeResult.transactions.length}...`
-                );
-                txid = await sendSignedTransaction(connection, signedTx, {
-                  maxRetries: 5,
-                });
-              } else {
-                // Single-signer: use signAndSendTransaction (Phantom recommended)
-                txid = await mobileSignAndSend(transaction, { maxRetries: 5 });
-              }
-            } catch (signError: unknown) {
-              const signErrorMsg =
-                signError instanceof Error ? signError.message : String(signError);
-              if (
-                signErrorMsg.includes("User rejected") ||
-                signErrorMsg.includes("rejected") ||
-                signErrorMsg.includes("closed")
-              ) {
-                throw new Error(
-                  "Transaction cancelled. Please try again and approve all transactions in your wallet."
-                );
-              }
-              throw new Error(`Transaction failed: ${signErrorMsg}`);
-            }
-
-            setLaunchStatus(
-              `Confirming fee config transaction ${i + 1}/${feeResult.transactions.length}...`
-            );
-
-            await connection.confirmTransaction(
-              {
-                signature: txid,
-                blockhash,
-                lastValidBlockHeight,
-              },
-              "confirmed"
-            );
-          }
-        }
-      } else {
-        const feeError = await feeConfigResponse.json();
-        const errorMsg = feeError.error || "Failed to configure fee sharing";
-        // Show the actual error from the API - it will include which username failed
-        // Common errors:
-        // - "Could not find wallet for twitter user: xyz" = user hasn't linked at bags.fm/settings
-        // - "Failed to lookup wallets for fee claimers" = bulk lookup failed
-        console.error("Fee config error:", errorMsg);
-        console.error("Fee claimers sent:", JSON.stringify(allFeeClaimers, null, 2));
-
-        // Add helpful context to the error
-        if (errorMsg.toLowerCase().includes("could not find wallet")) {
-          throw new Error(
-            `${errorMsg}. The user needs to link their wallet at bags.fm/settings first.`
-          );
-        }
-        throw new Error(errorMsg);
-      }
-
-      if (!configKey) {
-        throw new Error("Fee configuration failed - no config key received");
-      }
-
-      // 3. Create launch transaction, sign it, and send to blockchain
-      {
-        setLaunchStatus("Creating launch transaction...");
-
-        // Convert SOL to lamports (1 SOL = 1,000,000,000 lamports)
-        const initialBuyLamports = Math.floor(parseFloat(initialBuySOL || "0") * 1_000_000_000);
-
-        const launchTxResponse = await fetch("/api/launch-token", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "create-launch-tx",
-            data: {
-              ipfs: tokenMetadata,
-              tokenMint: tokenMint,
-              wallet: publicKey?.toBase58(),
-              initialBuyLamports,
-              configKey: configKey,
-            },
-          }),
-        });
-
-        if (!launchTxResponse.ok) {
-          const err = await launchTxResponse.json();
-          throw new Error(err.error || "Failed to create launch transaction");
-        }
-
-        const launchResult = await launchTxResponse.json();
-
-        // Handle various response formats - extract the base64 transaction string
-        let txBase64 = launchResult.transaction;
-
-        // If transaction is nested (some API versions return { transaction: { transaction: "..." } })
-        if (txBase64 && typeof txBase64 === "object" && "transaction" in txBase64) {
-          txBase64 = txBase64.transaction;
-        }
-
-        if (!txBase64 || typeof txBase64 !== "string") {
-          console.error("Invalid transaction response:", launchResult);
-          throw new Error(
-            "No valid transaction received from API. The token may already exist or there was a server error."
-          );
-        }
-
-        // Decode transaction (handles both versioned and legacy formats)
-        const transaction = deserializeTransaction(txBase64, "launch-transaction");
-
-        // Get connection
-        const connection = new Connection(
-          process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana"
-        );
-
-        const preSigned = checkExistingSignatures(transaction);
-
-        // Only refresh blockhash if there are no existing signatures
-        // Otherwise we'd invalidate the API's signatures
-        let blockhash: string;
-        let lastValidBlockHeight: number;
-
-        if (!preSigned) {
-          const latestBlockhash = await connection.getLatestBlockhash("confirmed");
-          blockhash = latestBlockhash.blockhash;
-          lastValidBlockHeight = latestBlockhash.lastValidBlockHeight;
-
-          if (transaction instanceof VersionedTransaction) {
-            transaction.message.recentBlockhash = blockhash;
-          } else {
-            transaction.recentBlockhash = blockhash;
-          }
         } else {
-          // Preserve the API's blockhash — changing it would invalidate existing signatures
-          if (transaction instanceof VersionedTransaction) {
-            blockhash = transaction.message.recentBlockhash;
-          } else {
-            blockhash = transaction.recentBlockhash!;
-          }
-          const latestBlockhash = await connection.getLatestBlockhash("confirmed");
-          lastValidBlockHeight = latestBlockhash.lastValidBlockHeight;
+          setSuccess(
+            `🎉 Token ${formData.symbol} launched on Bags.fm! Building visible locally. (Global database not configured)`
+          );
         }
 
-        // Pre-simulate with sigVerify:false to catch errors before wallet popup
-        setLaunchStatus("Validating transaction...");
-        try {
-          await preSimulateTransaction(connection, transaction);
-        } catch (simError) {
-          console.warn("Launch tx simulation warning:", simError);
-          // Non-fatal for pre-signed txs — Phantom will run its own simulation
+        // Call the success callback to refresh the world state
+        if (onLaunchSuccess) {
+          onLaunchSuccess();
         }
 
-        setLaunchStatus("Please sign the transaction in your wallet...");
-
-        // Launch transactions are pre-signed by the Bags API (multi-signer:
-        // API signs with token mint keypair, user signs second).
-        // Per Phantom docs, multi-signer txs MUST use signTransaction — not
-        // signAndSendTransaction — to avoid "Signature verification failed".
-        // Pre-simulation with sigVerify:false mitigates the Phantom warning.
-        let signedTx;
-        try {
-          signedTx = await mobileSignTransaction(transaction);
-        } catch (signError: unknown) {
-          const signErrorMsg = signError instanceof Error ? signError.message : String(signError);
-          console.error("Transaction signing failed:", signErrorMsg);
-
-          if (signErrorMsg.includes("User rejected") || signErrorMsg.includes("rejected")) {
-            throw new Error(
-              "Transaction cancelled. Please try again and approve the transaction in your wallet."
-            );
-          }
-          if (signErrorMsg.includes("Popup closed") || signErrorMsg.includes("closed")) {
-            throw new Error("Wallet popup was closed. Please try again and complete the approval.");
-          }
-          if (signErrorMsg.includes("simulation") || signErrorMsg.includes("Simulation")) {
-            throw new Error(
-              `Transaction simulation failed: ${signErrorMsg}. This may be a temporary network issue - please try again.`
-            );
-          }
-          throw new Error(`Wallet signing failed: ${signErrorMsg}`);
-        }
-
-        setLaunchStatus("Broadcasting to Solana...");
-
-        // Send signed transaction with retry logic for blockhash issues
-        let txid: string | undefined;
-        let sendAttempts = 0;
-        const maxSendAttempts = 3;
-        let currentSignedTx = signedTx;
-
-        while (sendAttempts < maxSendAttempts) {
-          sendAttempts++;
-          try {
-            txid = await sendSignedTransaction(connection, currentSignedTx, {
-              maxRetries: 5,
-            });
-            break; // Success, exit loop
-          } catch (sendError: unknown) {
-            const errorMessage = sendError instanceof Error ? sendError.message : String(sendError);
-            console.error(`Send attempt ${sendAttempts} failed:`, errorMessage);
-
-            // If blockhash error and we haven't hit max attempts, request fresh transaction from API
-            if (
-              sendAttempts < maxSendAttempts &&
-              (errorMessage.includes("Blockhash not found") ||
-                errorMessage.includes("block height exceeded"))
-            ) {
-              setLaunchStatus(`Retrying (${sendAttempts}/${maxSendAttempts})...`);
-
-              // Request a completely new transaction from the API with fresh blockhash
-              const retryResponse = await fetch("/api/launch-token", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  action: "create-launch-tx",
-                  data: {
-                    ipfs: tokenMetadata,
-                    tokenMint: tokenMint,
-                    wallet: publicKey?.toBase58(),
-                    initialBuyLamports: Math.floor(
-                      parseFloat(initialBuySOL || "0") * 1_000_000_000
-                    ),
-                    configKey: configKey,
-                  },
-                }),
-              });
-
-              if (!retryResponse.ok) {
-                const retryErr = await retryResponse.json();
-                throw new Error(retryErr.error || "Failed to create retry transaction");
-              }
-
-              const retryResult = await retryResponse.json();
-              let retryTxBase64 = retryResult.transaction;
-              if (
-                retryTxBase64 &&
-                typeof retryTxBase64 === "object" &&
-                "transaction" in retryTxBase64
-              ) {
-                retryTxBase64 = retryTxBase64.transaction;
-              }
-
-              const retryTransaction = deserializeTransaction(
-                retryTxBase64,
-                "retry-launch-transaction"
-              );
-
-              // Get fresh blockhash for confirmation tracking
-              const freshBlockhash = await connection.getLatestBlockhash("confirmed");
-              blockhash = freshBlockhash.blockhash;
-              lastValidBlockHeight = freshBlockhash.lastValidBlockHeight;
-
-              // Pre-simulate retry transaction
-              try {
-                await preSimulateTransaction(connection, retryTransaction);
-              } catch (simError) {
-                console.warn("Retry tx simulation warning:", simError);
-              }
-
-              // Sign the fresh transaction (multi-signer: must use signTransaction)
-              setLaunchStatus("Please sign the transaction...");
-              try {
-                currentSignedTx = await mobileSignTransaction(retryTransaction);
-              } catch (retrySignError: unknown) {
-                const retrySignMsg =
-                  retrySignError instanceof Error ? retrySignError.message : String(retrySignError);
-                if (
-                  retrySignMsg.includes("User rejected") ||
-                  retrySignMsg.includes("rejected") ||
-                  retrySignMsg.includes("closed")
-                ) {
-                  throw new Error("Transaction cancelled. Please try again.");
-                }
-                throw new Error(`Wallet signing failed: ${retrySignMsg}`);
-              }
-              setLaunchStatus("Broadcasting to Solana...");
-            } else {
-              throw sendError;
-            }
-          }
-        }
-
-        if (!txid) {
-          throw new Error("Failed to send transaction after multiple attempts");
-        }
-
-        setLaunchStatus("Confirming transaction...");
-
-        // Wait for confirmation
-        const confirmation = await connection.confirmTransaction(
-          {
-            signature: txid,
-            blockhash,
-            lastValidBlockHeight,
-          },
-          "confirmed"
-        );
-      }
-
-      // 4. Save token to registry for the world to display
-      const launchedToken: LaunchedToken = {
-        mint: tokenMint,
-        name: formData.name,
-        symbol: formData.symbol,
-        description: formData.description,
-        imageUrl: imagePreview || undefined,
-        creator: publicKey?.toBase58() || "Unknown",
-        createdAt: Date.now(),
-        feeShares: [
-          // Include ecosystem fee in saved data
-          {
-            provider: "ecosystem",
-            username: ecosystemFee.displayName,
-            bps: ecosystemFee.bps,
-          },
-          ...validFeeShares.map((f) => ({
-            provider: f.provider,
-            username: f.username.replace(/@/g, "").toLowerCase().trim(),
-            bps: f.bps,
-          })),
-        ],
-      };
-
-      // Save to local storage (fast, offline-capable)
-      saveLaunchedToken(launchedToken);
-
-      // Save to global database (so everyone sees it)
-      setLaunchStatus("Saving to global database...");
-      const globalSaveSuccess = await saveTokenGlobally(launchedToken);
-
-      // Dispatch custom event to notify useWorldState hook
-      window.dispatchEvent(new CustomEvent("bagsworld-token-update"));
-
-      setLaunchStatus("");
-      if (globalSaveSuccess) {
-        setSuccess(
-          `🎉 Token ${formData.symbol} launched on Bags.fm! Your building is now visible to ALL BagsWorld players!`
-        );
+        // Auto-close after a short delay
+        setTimeout(() => {
+          onClose();
+        }, 3000);
       } else {
-        setSuccess(
-          `🎉 Token ${formData.symbol} launched on Bags.fm! Building visible locally. (Global database not configured)`
-        );
-      }
-
-      // Call the success callback to refresh the world state
-      if (onLaunchSuccess) {
-        onLaunchSuccess();
-      }
-
-      // Auto-close after a short delay
-      setTimeout(() => {
-        onClose();
-      }, 3000);
-    } catch (err) {
-      setLaunchStatus("");
-      const errorMessage = err instanceof Error ? err.message : "Failed to launch token";
-
-      // Provide user-friendly error messages for common issues
-      if (errorMessage.toLowerCase().includes("internal server error")) {
-        setError(
-          "Bags.fm API is temporarily unavailable. Please try again in a few minutes. If this persists, check bags.fm status."
-        );
-      } else if (errorMessage.toLowerCase().includes("rate limit")) {
-        setError("Too many requests. Please wait a minute before trying again.");
-      } else if (
-        errorMessage.toLowerCase().includes("api key") ||
-        errorMessage.toLowerCase().includes("unauthorized")
-      ) {
-        setError("API configuration issue. Please contact support.");
-      } else if (
-        errorMessage.toLowerCase().includes("insufficient") ||
-        errorMessage.toLowerCase().includes("balance")
-      ) {
-        setError("Insufficient SOL balance in your wallet. Please add more SOL and try again.");
-      } else if (
-        errorMessage.toLowerCase().includes("user rejected") ||
-        errorMessage.toLowerCase().includes("cancelled")
-      ) {
-        setError("Transaction was cancelled. Click Launch to try again.");
-      } else {
-        setError(errorMessage);
+        setError(result.error || "Failed to launch token");
       }
     } finally {
       setIsLoading(false);
