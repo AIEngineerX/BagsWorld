@@ -67,7 +67,7 @@ const learningState: LearningState = {
   insights: {
     bestPostTypes: ["new_launch", "volume_spike", "top_earner"],
     bestHoursToPost: [9, 12, 15, 18, 21], // Default: spread through day
-    bestSubmolts: ["general", "crypto", "bagsworld-alpha"],
+    bestSubmolts: ["general", "crypto", "crustafarianism"],
     bestReplyStyles: ["supportive", "addValue"],
     avgUpvotesPerPost: 0,
     avgCommentsPerPost: 0,
@@ -84,7 +84,7 @@ const learningState: LearningState = {
     preferredSubmolts: {
       general: 1.2, // Higher visibility
       crypto: 1.0,
-      "bagsworld-alpha": 0.9,
+      crustafarianism: 0.9,
     },
   },
   lastAnalysis: 0,

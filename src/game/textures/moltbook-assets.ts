@@ -1797,313 +1797,205 @@ function generateBeachHut(scene: Phaser.Scene): void {
   g.destroy();
 }
 
+// Crustafarian Shrine — slim Zelda-style shrine with glowing lobster emblem and torches
 function generateMoltBar(scene: Phaser.Scene): void {
   const s = SCALE;
-  const w = Math.round(140 * s);
-  const h = Math.round(100 * s);
+  const w = Math.round(80 * s);
+  const h = Math.round(110 * s);
   const g = scene.make.graphics({ x: 0, y: 0 });
 
-  const bambooLight = 0xc4a35d;
-  const bambooDark = 0x8b7355;
-  const bambooMid = 0xa08040;
-  const thatchLight = 0xd4a574;
-  const thatchDark = 0x8b6914;
-  const thatchMid = 0xb8860b;
-  const woodBase = 0xa0522d;
-  const woodDark = 0x8b4513;
-  const woodLight = 0xcd853f;
-  const barTop = 0x654321;
-  const barTopLight = 0x8b7355;
-  const stoolSeat = 0xdeb887;
-  const stoolLeg = 0x654321;
-  const neonPink = 0xff69b4;
-  const neonCyan = 0x00ced1;
-  const bottleGreen = 0x228b22;
-  const bottleAmber = 0xffbf00;
-  const bottleClear = 0xe0ffff;
-  const glassBlue = 0x87ceeb;
+  // Colors — dark weathered stone with mystical accents
+  const stoneBase = 0x4a4a52; // Dark blue-gray stone
+  const stoneDark = 0x33333a;
+  const stoneLight = 0x62626a;
+  const stoneEdge = 0x58585f;
+  const mossGreen = 0x3a5a3a; // Subtle moss on stone
+  const glowCyan = 0x44dddd; // Mystical glow (Moltbook teal)
+  const glowCyanDim = 0x226666;
+  const lobsterRed = 0xcc2222;
+  const lobsterLight = 0xff4444;
+  const lobsterDark = 0x881111;
+  const flameOrange = 0xf97316;
+  const flameGold = 0xfbbf24;
+  const flameWhite = 0xfff7ed;
+  const doorVoid = 0x0a0a12;
+  const coralAccent = 0xcc4444;
 
-  const roofTop = Math.round(5 * s);
-  const roofBottom = Math.round(45 * s);
-  const roofWidth = Math.round(135 * s);
-  const roofCenterX = w / 2;
+  const cx = w / 2;
 
-  for (let layer = 0; layer < 8; layer++) {
-    const layerY = roofTop + layer * Math.round(5 * s);
-    const layerWidth = roofWidth - layer * Math.round(6 * s);
-    const layerX = roofCenterX - layerWidth / 2;
+  // === STONE PEDESTAL BASE (2 steps) ===
+  const baseY = h - Math.round(8 * s);
 
-    const thatchColor = layer % 3 === 0 ? thatchLight : layer % 3 === 1 ? thatchMid : thatchDark;
-    g.fillStyle(thatchColor);
-    g.fillRect(layerX, layerY, layerWidth, Math.round(7 * s));
+  // Bottom step (wider)
+  g.fillStyle(stoneDark);
+  g.fillRect(cx - Math.round(36 * s), baseY, Math.round(72 * s), Math.round(8 * s));
+  g.fillStyle(stoneEdge);
+  g.fillRect(cx - Math.round(36 * s), baseY, Math.round(72 * s), Math.round(1 * s));
 
-    g.fillStyle(darken(thatchColor, 0.2));
-    for (let tx = layerX; tx < layerX + layerWidth; tx += Math.round(5 * s)) {
-      g.fillRect(tx, layerY + Math.round(1 * s), Math.round(1 * s), Math.round(5 * s));
-    }
+  // Top step
+  g.fillStyle(stoneBase);
+  g.fillRect(cx - Math.round(30 * s), baseY - Math.round(5 * s), Math.round(60 * s), Math.round(6 * s));
+  g.fillStyle(stoneLight, 0.5);
+  g.fillRect(cx - Math.round(30 * s), baseY - Math.round(5 * s), Math.round(60 * s), Math.round(1 * s));
 
-    g.fillStyle(lighten(thatchColor, 0.15));
-    for (let tx = layerX + Math.round(3 * s); tx < layerX + layerWidth; tx += Math.round(10 * s)) {
-      g.fillRect(tx, layerY + Math.round(2 * s), Math.round(1 * s), Math.round(3 * s));
-    }
+  // === MAIN SHRINE BODY — tall narrow slab ===
+  const bodyLeft = cx - Math.round(22 * s);
+  const bodyW = Math.round(44 * s);
+  const bodyTop = Math.round(18 * s);
+  const bodyBottom = baseY - Math.round(5 * s);
+
+  // Stone body
+  g.fillStyle(stoneBase);
+  g.fillRect(bodyLeft, bodyTop, bodyW, bodyBottom - bodyTop);
+
+  // Subtle block texture
+  for (let by = bodyTop; by < bodyBottom; by += Math.round(8 * s)) {
+    g.fillStyle(stoneDark, 0.3);
+    g.fillRect(bodyLeft, by, bodyW, Math.round(1 * s));
   }
 
-  g.fillStyle(thatchDark);
-  g.fillRect(
-    roofCenterX - Math.round(20 * s),
-    roofTop - Math.round(4 * s),
-    Math.round(40 * s),
-    Math.round(6 * s)
-  );
+  // Light edge (left)
+  g.fillStyle(stoneLight, 0.3);
+  g.fillRect(bodyLeft, bodyTop, Math.round(2 * s), bodyBottom - bodyTop);
+  // Dark edge (right)
+  g.fillStyle(stoneDark, 0.4);
+  g.fillRect(bodyLeft + bodyW - Math.round(2 * s), bodyTop, Math.round(2 * s), bodyBottom - bodyTop);
 
-  g.fillStyle(woodDark);
-  g.fillRect(
-    roofCenterX - Math.round(6 * s),
-    roofTop - Math.round(2 * s),
-    Math.round(12 * s),
-    Math.round(8 * s)
-  );
-  g.fillStyle(0xffffff);
-  g.fillRect(roofCenterX - Math.round(4 * s), roofTop, Math.round(3 * s), Math.round(2 * s));
-  g.fillRect(roofCenterX + Math.round(1 * s), roofTop, Math.round(3 * s), Math.round(2 * s));
-  g.fillStyle(0xff0000);
-  g.fillRect(
-    roofCenterX - Math.round(3 * s),
-    roofTop + Math.round(4 * s),
-    Math.round(6 * s),
-    Math.round(2 * s)
-  );
+  // Moss patches
+  g.fillStyle(mossGreen, 0.3);
+  g.fillRect(bodyLeft + Math.round(2 * s), bodyBottom - Math.round(12 * s), Math.round(6 * s), Math.round(4 * s));
+  g.fillRect(bodyLeft + bodyW - Math.round(10 * s), bodyBottom - Math.round(18 * s), Math.round(5 * s), Math.round(3 * s));
 
-  const polePositions = [
-    Math.round(15 * s),
-    Math.round(45 * s),
-    Math.round(95 * s),
-    Math.round(125 * s),
-  ];
+  // === DOORWAY (dark void entrance) ===
+  const doorW = Math.round(18 * s);
+  const doorH = Math.round(30 * s);
+  const doorX = cx - doorW / 2;
+  const doorY = bodyBottom - doorH;
 
-  polePositions.forEach((px) => {
-    g.fillStyle(bambooMid);
-    g.fillRect(
-      px - Math.round(3 * s),
-      roofBottom - Math.round(5 * s),
-      Math.round(6 * s),
-      h - roofBottom + Math.round(5 * s)
-    );
+  g.fillStyle(doorVoid);
+  g.fillRect(doorX, doorY, doorW, doorH);
+  // Inner depth gradient
+  g.fillStyle(0x050508);
+  g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(2 * s), doorW - Math.round(4 * s), doorH - Math.round(2 * s));
 
-    g.fillStyle(bambooDark);
-    for (let jointY = roofBottom; jointY < h; jointY += Math.round(15 * s)) {
-      g.fillRect(px - Math.round(4 * s), jointY, Math.round(8 * s), Math.round(3 * s));
-    }
+  // Door frame — stone lintel
+  g.fillStyle(stoneEdge);
+  g.fillRect(doorX - Math.round(3 * s), doorY - Math.round(3 * s), doorW + Math.round(6 * s), Math.round(4 * s));
+  g.fillStyle(stoneLight, 0.4);
+  g.fillRect(doorX - Math.round(2 * s), doorY - Math.round(3 * s), doorW + Math.round(4 * s), Math.round(1 * s));
 
-    g.fillStyle(bambooLight);
-    g.fillRect(
-      px - Math.round(3 * s),
-      roofBottom - Math.round(5 * s),
-      Math.round(2 * s),
-      h - roofBottom + Math.round(5 * s)
-    );
-  });
+  // Door side pillars (thin)
+  g.fillStyle(stoneEdge);
+  g.fillRect(doorX - Math.round(3 * s), doorY, Math.round(3 * s), doorH);
+  g.fillRect(doorX + doorW, doorY, Math.round(3 * s), doorH);
 
-  const barTop_y = Math.round(60 * s);
-  const barHeight = Math.round(12 * s);
-  const barX = Math.round(25 * s);
-  const barWidth = Math.round(90 * s);
+  // === GLOWING LOBSTER EMBLEM (carved into stone above door) ===
+  const emblemY = Math.round(30 * s);
 
-  g.fillStyle(barTop);
-  g.fillRect(barX, barTop_y, barWidth, barHeight);
+  // Emblem background recess
+  g.fillStyle(stoneDark);
+  g.fillRect(cx - Math.round(14 * s), emblemY - Math.round(2 * s), Math.round(28 * s), Math.round(20 * s));
 
-  g.fillStyle(barTopLight);
-  g.fillRect(barX, barTop_y, barWidth, Math.round(3 * s));
+  // Lobster body
+  g.fillStyle(lobsterRed);
+  g.fillRect(cx - Math.round(6 * s), emblemY + Math.round(4 * s), Math.round(12 * s), Math.round(8 * s));
+  g.fillStyle(lobsterLight);
+  g.fillRect(cx - Math.round(4 * s), emblemY + Math.round(5 * s), Math.round(8 * s), Math.round(3 * s));
 
-  g.fillStyle(woodBase);
-  g.fillRect(barX, barTop_y + barHeight, barWidth, Math.round(25 * s));
+  // Claws
+  g.fillStyle(lobsterRed);
+  g.fillRect(cx - Math.round(12 * s), emblemY + Math.round(5 * s), Math.round(7 * s), Math.round(4 * s));
+  g.fillRect(cx + Math.round(5 * s), emblemY + Math.round(5 * s), Math.round(7 * s), Math.round(4 * s));
+  g.fillStyle(lobsterDark);
+  g.fillRect(cx - Math.round(12 * s), emblemY + Math.round(8 * s), Math.round(2 * s), Math.round(1 * s));
+  g.fillRect(cx + Math.round(10 * s), emblemY + Math.round(8 * s), Math.round(2 * s), Math.round(1 * s));
 
-  g.fillStyle(bambooDark);
-  for (let bx = barX + Math.round(8 * s); bx < barX + barWidth; bx += Math.round(12 * s)) {
-    g.fillRect(bx, barTop_y + barHeight + Math.round(3 * s), Math.round(4 * s), Math.round(19 * s));
+  // Antennae
+  g.fillStyle(lobsterRed);
+  g.fillRect(cx - Math.round(3 * s), emblemY, Math.round(2 * s), Math.round(5 * s));
+  g.fillRect(cx + Math.round(1 * s), emblemY, Math.round(2 * s), Math.round(5 * s));
+
+  // Tail
+  g.fillStyle(lobsterDark);
+  g.fillRect(cx - Math.round(4 * s), emblemY + Math.round(12 * s), Math.round(8 * s), Math.round(3 * s));
+
+  // Glowing eyes
+  g.fillStyle(glowCyan);
+  g.fillRect(cx - Math.round(3 * s), emblemY + Math.round(6 * s), Math.round(2 * s), Math.round(2 * s));
+  g.fillRect(cx + Math.round(1 * s), emblemY + Math.round(6 * s), Math.round(2 * s), Math.round(2 * s));
+
+  // Cyan glow aura around emblem
+  g.fillStyle(glowCyan, 0.1);
+  g.fillRect(cx - Math.round(16 * s), emblemY - Math.round(4 * s), Math.round(32 * s), Math.round(24 * s));
+  g.fillStyle(glowCyan, 0.06);
+  g.fillRect(cx - Math.round(18 * s), emblemY - Math.round(6 * s), Math.round(36 * s), Math.round(28 * s));
+
+  // === POINTED CROWN / SPIRE TOP ===
+  const crownBase = bodyTop;
+  const spireW = Math.round(44 * s);
+  const spireH = Math.round(14 * s);
+
+  // Angled top (drawn as narrowing rows)
+  for (let row = 0; row < spireH; row++) {
+    const progress = row / spireH;
+    const rowW = spireW * (1 - progress * 0.6); // Narrows to 40%
+    const rowX = cx - rowW / 2;
+    const rowY = crownBase - spireH + row;
+    g.fillStyle(row < 3 ? stoneLight : stoneBase);
+    g.fillRect(rowX, rowY, rowW, 1);
   }
 
-  const stoolPositions = [
-    Math.round(35 * s),
-    Math.round(55 * s),
-    Math.round(75 * s),
-    Math.round(95 * s),
-  ];
+  // Spire peak cap
+  g.fillStyle(stoneLight);
+  g.fillRect(cx - Math.round(9 * s), crownBase - spireH - Math.round(3 * s), Math.round(18 * s), Math.round(4 * s));
+  g.fillStyle(coralAccent);
+  g.fillRect(cx - Math.round(3 * s), crownBase - spireH - Math.round(5 * s), Math.round(6 * s), Math.round(3 * s));
 
-  stoolPositions.forEach((sx) => {
-    g.fillStyle(stoolLeg);
-    g.fillRect(
-      sx - Math.round(5 * s),
-      h - Math.round(22 * s),
-      Math.round(3 * s),
-      Math.round(22 * s)
-    );
-    g.fillRect(
-      sx + Math.round(2 * s),
-      h - Math.round(22 * s),
-      Math.round(3 * s),
-      Math.round(22 * s)
-    );
+  // === GLOWING RUNE LINES (vertical channels in stone) ===
+  // Left channel
+  g.fillStyle(glowCyanDim, 0.35);
+  g.fillRect(bodyLeft + Math.round(5 * s), bodyTop + Math.round(4 * s), Math.round(2 * s), bodyBottom - bodyTop - Math.round(8 * s));
+  g.fillStyle(glowCyan, 0.15);
+  g.fillRect(bodyLeft + Math.round(4 * s), bodyTop + Math.round(4 * s), Math.round(4 * s), bodyBottom - bodyTop - Math.round(8 * s));
 
-    g.fillStyle(stoolSeat);
-    g.fillRect(
-      sx - Math.round(7 * s),
-      h - Math.round(25 * s),
-      Math.round(14 * s),
-      Math.round(5 * s)
-    );
+  // Right channel
+  g.fillStyle(glowCyanDim, 0.35);
+  g.fillRect(bodyLeft + bodyW - Math.round(7 * s), bodyTop + Math.round(4 * s), Math.round(2 * s), bodyBottom - bodyTop - Math.round(8 * s));
+  g.fillStyle(glowCyan, 0.15);
+  g.fillRect(bodyLeft + bodyW - Math.round(8 * s), bodyTop + Math.round(4 * s), Math.round(4 * s), bodyBottom - bodyTop - Math.round(8 * s));
 
-    g.fillStyle(lighten(stoolSeat, 0.2));
-    g.fillRect(
-      sx - Math.round(6 * s),
-      h - Math.round(25 * s),
-      Math.round(12 * s),
-      Math.round(2 * s)
-    );
+  // Horizontal glow line above door
+  g.fillStyle(glowCyan, 0.25);
+  g.fillRect(doorX - Math.round(6 * s), doorY - Math.round(6 * s), doorW + Math.round(12 * s), Math.round(2 * s));
+
+  // === TORCHES (flanking shrine, on poles) ===
+  const torchOffsetX = Math.round(32 * s);
+
+  [-1, 1].forEach((side) => {
+    const tx = cx + side * torchOffsetX;
+
+    // Torch pole
+    g.fillStyle(stoneDark);
+    g.fillRect(tx - Math.round(2 * s), Math.round(35 * s), Math.round(4 * s), bodyBottom - Math.round(35 * s));
+    g.fillStyle(stoneLight, 0.3);
+    g.fillRect(tx - Math.round(2 * s), Math.round(35 * s), Math.round(1 * s), bodyBottom - Math.round(35 * s));
+
+    // Torch bowl
+    g.fillStyle(stoneEdge);
+    g.fillRect(tx - Math.round(4 * s), Math.round(33 * s), Math.round(8 * s), Math.round(4 * s));
+
+    // Fire
+    g.fillStyle(flameOrange);
+    g.fillRect(tx - Math.round(3 * s), Math.round(25 * s), Math.round(6 * s), Math.round(9 * s));
+    g.fillStyle(flameGold);
+    g.fillRect(tx - Math.round(2 * s), Math.round(26 * s), Math.round(4 * s), Math.round(6 * s));
+    g.fillStyle(flameWhite);
+    g.fillRect(tx - Math.round(1 * s), Math.round(28 * s), Math.round(2 * s), Math.round(3 * s));
+
+    // Fire glow
+    g.fillStyle(flameOrange, 0.1);
+    g.fillRect(tx - Math.round(7 * s), Math.round(22 * s), Math.round(14 * s), Math.round(16 * s));
   });
-
-  const shelfY = Math.round(48 * s);
-  const bottlePositions = [
-    { x: Math.round(30 * s), color: bottleGreen, h: Math.round(10 * s) },
-    { x: Math.round(38 * s), color: bottleAmber, h: Math.round(12 * s) },
-    { x: Math.round(46 * s), color: bottleClear, h: Math.round(9 * s) },
-    { x: Math.round(54 * s), color: bottleGreen, h: Math.round(11 * s) },
-    { x: Math.round(62 * s), color: 0x8b0000, h: Math.round(10 * s) },
-    { x: Math.round(70 * s), color: bottleAmber, h: Math.round(12 * s) },
-    { x: Math.round(78 * s), color: bottleClear, h: Math.round(9 * s) },
-    { x: Math.round(86 * s), color: 0x4169e1, h: Math.round(11 * s) },
-    { x: Math.round(94 * s), color: bottleGreen, h: Math.round(10 * s) },
-    { x: Math.round(102 * s), color: bottleAmber, h: Math.round(8 * s) },
-  ];
-
-  bottlePositions.forEach((bottle) => {
-    g.fillStyle(bottle.color);
-    g.fillRect(bottle.x, shelfY - bottle.h, Math.round(5 * s), bottle.h);
-    g.fillRect(
-      bottle.x + Math.round(1 * s),
-      shelfY - bottle.h - Math.round(3 * s),
-      Math.round(3 * s),
-      Math.round(4 * s)
-    );
-    g.fillStyle(lighten(bottle.color, 0.4), 0.5);
-    g.fillRect(
-      bottle.x + Math.round(1 * s),
-      shelfY - bottle.h + Math.round(2 * s),
-      Math.round(1 * s),
-      bottle.h - Math.round(4 * s)
-    );
-  });
-
-  g.fillStyle(woodDark);
-  g.fillRect(Math.round(25 * s), shelfY, Math.round(90 * s), Math.round(3 * s));
-
-  g.fillStyle(glassBlue, 0.7);
-  g.fillRect(
-    Math.round(40 * s),
-    barTop_y - Math.round(8 * s),
-    Math.round(6 * s),
-    Math.round(7 * s)
-  );
-  g.fillStyle(0xff6347);
-  g.fillRect(
-    Math.round(41 * s),
-    barTop_y - Math.round(7 * s),
-    Math.round(4 * s),
-    Math.round(4 * s)
-  );
-  g.fillStyle(neonPink);
-  g.fillRect(
-    Math.round(44 * s),
-    barTop_y - Math.round(12 * s),
-    Math.round(1 * s),
-    Math.round(8 * s)
-  );
-
-  g.fillStyle(glassBlue, 0.7);
-  g.fillRect(
-    Math.round(80 * s),
-    barTop_y - Math.round(8 * s),
-    Math.round(6 * s),
-    Math.round(7 * s)
-  );
-  g.fillStyle(0x32cd32);
-  g.fillRect(
-    Math.round(81 * s),
-    barTop_y - Math.round(7 * s),
-    Math.round(4 * s),
-    Math.round(4 * s)
-  );
-  g.fillStyle(0xff1493);
-  g.fillRect(
-    Math.round(82 * s),
-    barTop_y - Math.round(14 * s),
-    Math.round(6 * s),
-    Math.round(3 * s)
-  );
-  g.fillStyle(woodDark);
-  g.fillRect(
-    Math.round(84 * s),
-    barTop_y - Math.round(14 * s),
-    Math.round(1 * s),
-    Math.round(10 * s)
-  );
-
-  g.fillStyle(0x1a1a2e);
-  g.fillRect(Math.round(35 * s), Math.round(15 * s), Math.round(70 * s), Math.round(18 * s));
-  g.fillStyle(0x2d2d44);
-  g.fillRect(Math.round(36 * s), Math.round(16 * s), Math.round(68 * s), Math.round(16 * s));
-
-  g.fillStyle(neonPink, 0.3);
-  g.fillRect(Math.round(33 * s), Math.round(13 * s), Math.round(76 * s), Math.round(22 * s));
-
-  g.fillStyle(neonPink);
-  g.fillRect(Math.round(40 * s), Math.round(19 * s), Math.round(4 * s), Math.round(10 * s));
-  g.fillRect(Math.round(44 * s), Math.round(19 * s), Math.round(1 * s), Math.round(2 * s));
-  g.fillRect(Math.round(40 * s), Math.round(24 * s), Math.round(5 * s), Math.round(2 * s));
-
-  g.fillRect(Math.round(48 * s), Math.round(19 * s), Math.round(4 * s), Math.round(10 * s));
-  g.fillRect(Math.round(52 * s), Math.round(19 * s), Math.round(1 * s), Math.round(4 * s));
-  g.fillRect(Math.round(52 * s), Math.round(25 * s), Math.round(1 * s), Math.round(4 * s));
-
-  g.fillRect(Math.round(56 * s), Math.round(19 * s), Math.round(4 * s), Math.round(10 * s));
-  g.fillRect(Math.round(60 * s), Math.round(19 * s), Math.round(1 * s), Math.round(2 * s));
-  g.fillRect(Math.round(56 * s), Math.round(24 * s), Math.round(5 * s), Math.round(2 * s));
-
-  g.fillRect(Math.round(64 * s), Math.round(19 * s), Math.round(4 * s), Math.round(10 * s));
-  g.fillRect(Math.round(68 * s), Math.round(19 * s), Math.round(1 * s), Math.round(5 * s));
-  g.fillRect(Math.round(68 * s), Math.round(25 * s), Math.round(2 * s), Math.round(4 * s));
-
-  g.fillStyle(neonCyan);
-  g.fillRect(Math.round(38 * s), Math.round(31 * s), Math.round(64 * s), Math.round(2 * s));
-
-  g.fillStyle(bambooDark);
-  g.fillRect(Math.round(5 * s), Math.round(40 * s), Math.round(4 * s), Math.round(55 * s));
-  g.fillStyle(0xff6600);
-  g.fillRect(Math.round(4 * s), Math.round(32 * s), Math.round(6 * s), Math.round(10 * s));
-  g.fillStyle(0xffcc00);
-  g.fillRect(Math.round(5 * s), Math.round(34 * s), Math.round(4 * s), Math.round(6 * s));
-  g.fillStyle(0xffff00);
-  g.fillRect(Math.round(6 * s), Math.round(36 * s), Math.round(2 * s), Math.round(3 * s));
-
-  g.fillStyle(bambooDark);
-  g.fillRect(w - Math.round(9 * s), Math.round(40 * s), Math.round(4 * s), Math.round(55 * s));
-  g.fillStyle(0xff6600);
-  g.fillRect(w - Math.round(10 * s), Math.round(32 * s), Math.round(6 * s), Math.round(10 * s));
-  g.fillStyle(0xffcc00);
-  g.fillRect(w - Math.round(9 * s), Math.round(34 * s), Math.round(4 * s), Math.round(6 * s));
-  g.fillStyle(0xffff00);
-  g.fillRect(w - Math.round(8 * s), Math.round(36 * s), Math.round(2 * s), Math.round(3 * s));
-
-  const lightColors = [neonPink, neonCyan, 0xffff00, 0x00ff00, 0xff6600];
-  for (let lx = Math.round(20 * s); lx < w - Math.round(15 * s); lx += Math.round(12 * s)) {
-    const lightColor = lightColors[Math.floor((lx / Math.round(12 * s)) % lightColors.length)];
-    g.fillStyle(0x333333);
-    g.fillRect(lx, Math.round(42 * s), Math.round(12 * s), Math.round(1 * s));
-    g.fillStyle(lightColor);
-    g.fillRect(lx + Math.round(5 * s), Math.round(43 * s), Math.round(3 * s), Math.round(4 * s));
-    g.fillStyle(lightColor, 0.3);
-    g.fillRect(lx + Math.round(4 * s), Math.round(42 * s), Math.round(5 * s), Math.round(6 * s));
-  }
 
   g.generateTexture("molt_bar", w, h);
   g.destroy();

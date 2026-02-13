@@ -31,6 +31,7 @@ const ZONE_INFO: Record<ZoneType, { name: string; color: string; description: st
   founders: { name: "Founder's Corner", color: "#EC4899", description: "Token launch hub" },
   arena: { name: "MoltBook Arena", color: "#EF4444", description: "AI agent brawl zone" },
   dungeon: { name: "BagsDungeon", color: "#A855F7", description: "MMORPG dungeon adventure" },
+  ascension: { name: "Ascension Spire", color: "#06B6D4", description: "Celestial agent tower" },
 };
 
 interface GlobalToken {

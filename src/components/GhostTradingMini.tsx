@@ -81,7 +81,7 @@ function useLivePrices(mints: string[]) {
     );
 
     setPrices(newPrices);
-  }, [mints.join(",")]);
+  }, [mints]);
 
   useEffect(() => {
     fetchPrices();

@@ -246,8 +246,195 @@ function createCityStreetElements(scene: WorldScene): void {
   trashCan.setDepth(3);
   scene.trendingElements.push(trashCan);
 
-  // Construction signs - BagsCity is under construction
-  createConstructionSigns(scene);
+  // === ARCADE BUILDING (upgraded retro 80s/90s landmark) ===
+  const arcadeX = Math.round(520 * SCALE);
+  const arcadeY = Math.round(540 * SCALE);
+
+  const arcadeBuilding = scene.add.sprite(arcadeX, arcadeY, "arcade_building");
+  arcadeBuilding.setOrigin(0.5, 1);
+  arcadeBuilding.setDepth(5);
+  arcadeBuilding.setInteractive({ useHandCursor: true });
+  scene.trendingElements.push(arcadeBuilding);
+
+  // --- Marquee chase lights (cycling neon bulbs around the sign) ---
+  // Create 8 small circles that cycle colors in a chase pattern
+  const chaseLights: Phaser.GameObjects.Arc[] = [];
+  const chaseColors = [0x4ade80, 0xa855f7, 0xfbbf24, 0x4ade80, 0xa855f7, 0xfbbf24, 0x4ade80, 0xa855f7];
+  const marqueeCenterY = arcadeY - Math.round(185 * SCALE); // top of marquee area
+  const marqueeSpread = Math.round(36 * SCALE);
+
+  for (let i = 0; i < 8; i++) {
+    const lx = arcadeX - marqueeSpread + i * Math.round(10 * SCALE);
+    const light = scene.add.circle(lx, marqueeCenterY, Math.round(2.5 * SCALE), chaseColors[i], 0.7);
+    light.setDepth(6);
+    scene.trendingElements.push(light);
+    chaseLights.push(light);
+  }
+
+  // Chase light animation: shift colors every 200ms
+  let chaseIndex = 0;
+  scene.time.addEvent({
+    delay: 200,
+    callback: () => {
+      if (scene.currentZone !== "trending") return;
+      chaseIndex = (chaseIndex + 1) % chaseColors.length;
+      chaseLights.forEach((light, i) => {
+        const colorIdx = (i + chaseIndex) % chaseColors.length;
+        light.setFillStyle(chaseColors[colorIdx], 0.8);
+      });
+    },
+    loop: true,
+  });
+
+  // --- Neon glow behind building (green/purple pulsing) ---
+  const arcadeGlow = scene.add.circle(
+    arcadeX,
+    arcadeY - Math.round(80 * SCALE),
+    Math.round(55 * SCALE),
+    0x22c55e,
+    0.06
+  );
+  arcadeGlow.setDepth(4);
+  scene.trendingElements.push(arcadeGlow);
+
+  scene.tweens.add({
+    targets: arcadeGlow,
+    alpha: { from: 0.04, to: 0.14 },
+    scale: { from: 1.0, to: 1.15 },
+    duration: 1400,
+    yoyo: true,
+    repeat: -1,
+  });
+
+  // Secondary purple glow
+  const arcadeGlow2 = scene.add.circle(
+    arcadeX + Math.round(5 * SCALE),
+    arcadeY - Math.round(60 * SCALE),
+    Math.round(40 * SCALE),
+    0xa855f7,
+    0.05
+  );
+  arcadeGlow2.setDepth(4);
+  scene.trendingElements.push(arcadeGlow2);
+
+  scene.tweens.add({
+    targets: arcadeGlow2,
+    alpha: { from: 0.03, to: 0.1 },
+    scale: { from: 1.05, to: 1.2 },
+    duration: 1800,
+    yoyo: true,
+    repeat: -1,
+  });
+
+  // --- Light spill on sidewalk from entrance ---
+  const lightSpill = scene.add.ellipse(
+    arcadeX,
+    arcadeY + Math.round(2 * SCALE),
+    Math.round(40 * SCALE),
+    Math.round(8 * SCALE),
+    0xfbbf24,
+    0.1
+  );
+  lightSpill.setDepth(2);
+  scene.trendingElements.push(lightSpill);
+
+  scene.tweens.add({
+    targets: lightSpill,
+    alpha: { from: 0.06, to: 0.12 },
+    scaleX: { from: 0.95, to: 1.05 },
+    duration: 2000,
+    yoyo: true,
+    repeat: -1,
+  });
+
+  // --- Neon sidewalk reflection ---
+  const neonReflect = scene.add.ellipse(
+    arcadeX,
+    arcadeY + Math.round(4 * SCALE),
+    Math.round(50 * SCALE),
+    Math.round(6 * SCALE),
+    0x4ade80,
+    0.06
+  );
+  neonReflect.setDepth(2);
+  scene.trendingElements.push(neonReflect);
+
+  scene.tweens.add({
+    targets: neonReflect,
+    alpha: { from: 0.03, to: 0.08 },
+    duration: 1600,
+    yoyo: true,
+    repeat: -1,
+  });
+
+  // --- Flickering neon sign effect (simulates one letter flickering) ---
+  const flickerDot = scene.add.rectangle(
+    arcadeX + Math.round(12 * SCALE),
+    arcadeY - Math.round(175 * SCALE),
+    Math.round(6 * SCALE),
+    Math.round(8 * SCALE),
+    0x4ade80,
+    0.4
+  );
+  flickerDot.setDepth(7);
+  scene.trendingElements.push(flickerDot);
+
+  // Irregular flicker pattern
+  scene.time.addEvent({
+    delay: 150,
+    callback: () => {
+      if (scene.currentZone !== "trending") return;
+      const r = Math.random();
+      flickerDot.setAlpha(r < 0.15 ? 0.05 : r < 0.3 ? 0.2 : 0.4);
+    },
+    loop: true,
+  });
+
+  // --- Interior CRT glow shift (visible through windows) ---
+  const interiorGlow = scene.add.rectangle(
+    arcadeX,
+    arcadeY - Math.round(120 * SCALE),
+    Math.round(60 * SCALE),
+    Math.round(25 * SCALE),
+    0x22c55e,
+    0.04
+  );
+  interiorGlow.setDepth(4);
+  scene.trendingElements.push(interiorGlow);
+
+  // Slow color-shift simulation via alpha pulse
+  scene.tweens.add({
+    targets: interiorGlow,
+    alpha: { from: 0.02, to: 0.08 },
+    duration: 3000,
+    yoyo: true,
+    repeat: -1,
+  });
+
+  // --- Label ---
+  const arcadeLabel = scene.add.text(arcadeX, arcadeY + Math.round(8 * SCALE), "ARCADE", {
+    fontFamily: '"Press Start 2P", monospace',
+    fontSize: `${Math.round(7 * SCALE)}px`,
+    color: "#4ade80",
+    stroke: "#0a0a0f",
+    strokeThickness: Math.round(2 * SCALE),
+    align: "center",
+  });
+  arcadeLabel.setOrigin(0.5, 0);
+  arcadeLabel.setDepth(11);
+  scene.trendingElements.push(arcadeLabel);
+
+  scene.tweens.add({
+    targets: arcadeLabel,
+    alpha: { from: 0.6, to: 1.0 },
+    duration: 800,
+    yoyo: true,
+    repeat: -1,
+  });
+
+  arcadeBuilding.on("pointerdown", () => {
+    window.dispatchEvent(new CustomEvent("bagsworld-arcade-click"));
+  });
 
   // Add moving traffic
   createMovingTraffic(scene);
@@ -267,82 +454,6 @@ function createCrosswalk(scene: WorldScene, x: number, y: number): void {
     stripe.setDepth(2);
     scene.trendingElements.push(stripe);
   }
-}
-
-function createConstructionSigns(scene: WorldScene): void {
-  // Use actual game width so signs stay on-screen on mobile (960px)
-  const effectiveWidth = scene.isMobile ? (scene.sys.game.config.width as number) : GAME_WIDTH;
-  const isMobile = scene.isMobile;
-  // Scale sign dimensions based on screen width for mobile (30% smaller on mobile)
-  const signW = Math.round(Math.min(100, effectiveWidth * 0.1) * SCALE * (isMobile ? 0.7 : 1));
-  const signH = Math.round(Math.min(40, effectiveWidth * 0.04) * SCALE * (isMobile ? 0.75 : 1));
-  const isSmall = effectiveWidth < 1000;
-  const fontSize1 = Math.round((isSmall ? 8 : 10) * SCALE * (isMobile ? 0.8 : 1));
-  const fontSize2 = Math.round((isSmall ? 7 : 8) * SCALE * (isMobile ? 0.8 : 1));
-
-  // Two construction sign positions - inward on mobile to avoid edge hugging
-  const edgeOffset = isMobile ? 0.2 : 0.15;
-  const signPositions = [
-    { x: Math.round(effectiveWidth * edgeOffset), y: Math.round(380 * SCALE) },
-    { x: Math.round(effectiveWidth * (1 - edgeOffset)), y: Math.round(380 * SCALE) },
-  ];
-
-  signPositions.forEach((pos) => {
-    // Sign post (wooden pole)
-    const post = scene.add.rectangle(
-      pos.x,
-      pos.y + Math.round(40 * SCALE),
-      Math.round(6 * SCALE),
-      Math.round(80 * SCALE),
-      0x8b4513
-    );
-    post.setDepth(5);
-    scene.trendingElements.push(post);
-
-    // Sign background (orange/yellow construction color)
-    const signBg = scene.add.rectangle(pos.x, pos.y, signW, signH, 0xf59e0b);
-    signBg.setDepth(6);
-    signBg.setStrokeStyle(Math.round(2 * SCALE), 0x000000);
-    scene.trendingElements.push(signBg);
-
-    // Sign text
-    const signText = scene.add.text(pos.x, pos.y - Math.round(5 * SCALE), "UNDER", {
-      fontFamily: "monospace",
-      fontSize: `${fontSize1}px`,
-      color: "#000000",
-      fontStyle: "bold",
-    });
-    signText.setOrigin(0.5, 0.5);
-    signText.setDepth(7);
-    scene.trendingElements.push(signText);
-
-    const signText2 = scene.add.text(pos.x, pos.y + Math.round(8 * SCALE), "CONSTRUCTION", {
-      fontFamily: "monospace",
-      fontSize: `${fontSize2}px`,
-      color: "#000000",
-      fontStyle: "bold",
-    });
-    signText2.setOrigin(0.5, 0.5);
-    signText2.setDepth(7);
-    scene.trendingElements.push(signText2);
-
-    // Construction barriers (orange/white striped) - fewer on mobile
-    const barrierSpacing = Math.round((isSmall ? 22 : 30) * SCALE);
-    const barrierW = Math.round((isSmall ? 18 : 25) * SCALE);
-    const barrierY = pos.y + Math.round(70 * SCALE);
-    const barrierRange = isMobile ? [-1, 1] : [-1, 0, 1];
-    for (const i of barrierRange) {
-      const barrier = scene.add.rectangle(
-        pos.x + i * barrierSpacing,
-        barrierY,
-        barrierW,
-        Math.round(12 * SCALE),
-        i % 2 === 0 ? 0xf97316 : 0xffffff
-      );
-      barrier.setDepth(5);
-      scene.trendingElements.push(barrier);
-    }
-  });
 }
 
 function createMovingTraffic(scene: WorldScene): void {

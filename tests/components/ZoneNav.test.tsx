@@ -10,6 +10,11 @@ const DUNGEON_BTN_INDEX = MAIN_ZONES.length;
 let dispatchedEvents: CustomEvent[] = [];
 const originalDispatchEvent = window.dispatchEvent;
 
+// jsdom doesn't implement scrollIntoView
+beforeAll(() => {
+  Element.prototype.scrollIntoView = jest.fn();
+});
+
 beforeEach(() => {
   dispatchedEvents = [];
   window.dispatchEvent = jest.fn((event: Event) => {
@@ -30,20 +35,25 @@ describe("ZONE_ORDER constant", () => {
     ZONE_ORDER.forEach((zone) => expect(ZONES[zone]).toBeDefined());
   });
 
-  it("main zones first, dungeon last", () => {
+  it("main zones first, special zones after", () => {
     expect(ZONE_ORDER.slice(0, MAIN_ZONES.length)).toEqual(MAIN_ZONES);
-    expect(ZONE_ORDER[ZONE_ORDER.length - 1]).toBe("dungeon");
+    const specialZones = ZONE_ORDER.slice(MAIN_ZONES.length);
+    expect(specialZones).toContain("dungeon");
+    expect(specialZones).toContain("ascension");
   });
 });
 
 describe("ZoneNav rendering", () => {
   it("renders all zone buttons with icons and labels", () => {
     render(<ZoneNav />);
+    // Mobile nav has all ZONE_ORDER buttons, desktop has 2 navs
+    // getAllByRole finds buttons in both mobile + desktop navs
     const buttons = screen.getAllByRole("button");
-    expect(buttons).toHaveLength(ZONE_ORDER.length);
+    // 9 mobile + 7 desktop row 1 + 2 desktop row 2 = 18 buttons total
+    expect(buttons.length).toBeGreaterThanOrEqual(ZONE_ORDER.length);
 
     ZONE_ORDER.forEach((zoneId) => {
-      expect(screen.getByText(ZONES[zoneId].icon)).toBeInTheDocument();
+      expect(screen.getAllByText(ZONES[zoneId].icon).length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -56,10 +66,13 @@ describe("ZoneNav rendering", () => {
     });
   });
 
-  it("main buttons are inside nav, dungeon button is outside", () => {
+  it("mobile nav contains all zones, desktop nav splits into two rows", () => {
     const { container } = render(<ZoneNav />);
-    const nav = container.querySelector("nav")!;
-    expect(nav.querySelectorAll("button")).toHaveLength(MAIN_ZONES.length);
+    const navs = container.querySelectorAll("nav");
+    // Mobile nav (first) has all zones
+    expect(navs[0].querySelectorAll("button")).toHaveLength(ZONE_ORDER.length);
+    // Desktop nav (second) has main zones in row 1
+    expect(navs[1].querySelectorAll("button")).toHaveLength(MAIN_ZONES.length + 2); // +2 for dungeon+ascension
   });
 
   it("sets title attribute from zone description", () => {

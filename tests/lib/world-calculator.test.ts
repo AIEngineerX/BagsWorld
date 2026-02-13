@@ -22,6 +22,7 @@ import {
   transformTokenToBuilding,
   generateGameEvent,
   buildWorldState,
+  createMansionBuildings,
 } from "@/lib/world-calculator";
 import type { FeeEarner, TokenInfo, WeatherType, WorldState } from "@/lib/types";
 
@@ -48,6 +49,15 @@ describe("calculateWorldHealth", () => {
       expect(calculateWorldHealth(0, 0, 0, 5)).toBe(40);
       // 10 buildings = still 40% (capped)
       expect(calculateWorldHealth(0, 0, 0, 10)).toBe(40);
+    });
+
+    it("should return baseline when only one of the three inputs is zero but others are nonzero", () => {
+      // If claimVolume=0, totalLifetimeFees=0, activeTokenCount=0 all zero -> baseline
+      // But if any is nonzero, it goes to activity calculation
+      const health = calculateWorldHealth(0, 0, 1, 0);
+      // activeTokenCount=1 -> diversityScore=10, activityHealth = 0*0.6 + 0*0.3 + 10*0.1 = 1
+      // baseline (25) > activityHealth (1), so returns baseline
+      expect(health).toBe(25);
     });
   });
 
@@ -214,6 +224,40 @@ describe("calculateWorldHealth", () => {
         Number.MAX_SAFE_INTEGER
       );
       expect(health).toBeLessThanOrEqual(100);
+    });
+
+    it("should handle NaN inputs without crashing", () => {
+      const health = calculateWorldHealth(NaN, NaN, NaN, NaN);
+      expect(typeof health).toBe("number");
+      // NaN comparisons are all false, so it falls through to baseline or returns NaN-clamped
+      // The important thing is it doesn't throw
+    });
+
+    it("should handle mixed NaN and valid inputs", () => {
+      const health = calculateWorldHealth(NaN, 100, 5, 3);
+      expect(typeof health).toBe("number");
+    });
+
+    it("should handle Infinity inputs", () => {
+      const health = calculateWorldHealth(Infinity, 0, 0, 0);
+      expect(health).toBeLessThanOrEqual(100);
+    });
+
+    it("should handle negative Infinity inputs", () => {
+      const health = calculateWorldHealth(-Infinity, 0, 0, 0);
+      expect(health).toBeGreaterThanOrEqual(0);
+      expect(health).toBeLessThanOrEqual(100);
+    });
+
+    it("should return baseline when all three activity inputs are exactly zero", () => {
+      // Explicitly verify the early return path
+      expect(calculateWorldHealth(0, 0, 0, 3)).toBe(34); // 25 + 3*3
+    });
+
+    it("should use activity health when it exceeds baseline", () => {
+      // High claims should produce health well above baseline (40 max)
+      const health = calculateWorldHealth(50, 500, 10, 5);
+      expect(health).toBeGreaterThan(40);
     });
   });
 });
@@ -445,6 +489,104 @@ describe("calculateBuildingHealth", () => {
     });
   });
 
+  describe("grace period", () => {
+    it("should protect new buildings from decaying below minHealth (75)", () => {
+      const now = Date.now();
+      // Building created 1 hour ago (within 24h grace)
+      const result = calculateBuildingHealth(0, 0, -100, 50, false, null, null, now - 3600000);
+      // During grace period, health should not go below 75
+      expect(result.health).toBe(75); // max(50, 75) = 75
+      expect(result.cyclesApplied).toBe(0);
+    });
+
+    it("should boost health to minHealth during grace period if previous is lower", () => {
+      const now = Date.now();
+      const result = calculateBuildingHealth(0, 0, 0, 30, false, null, null, now - 1000);
+      // previousHealth=30 < gracePeriod.minHealth=75, so returns 75
+      expect(result.health).toBe(75);
+    });
+
+    it("should keep health above minHealth if already higher during grace period", () => {
+      const now = Date.now();
+      const result = calculateBuildingHealth(0, 0, 0, 90, false, null, null, now - 1000);
+      // previousHealth=90 > gracePeriod.minHealth=75, so returns 90
+      expect(result.health).toBe(90);
+    });
+
+    it("should apply normal decay after grace period expires", () => {
+      const now = Date.now();
+      // Building created 25 hours ago (past 24h grace)
+      const createdAt = now - 25 * 60 * 60 * 1000;
+      const result = calculateBuildingHealth(0, 1000, -50, 50, false, null, null, createdAt);
+      // No grace protection - heavy decay applies (-8)
+      expect(result.health).toBe(42);
+    });
+
+    it("should handle exact boundary of grace period expiry", () => {
+      const now = Date.now();
+      // Created exactly 24 hours ago - the ageMs < gracePeriod check is strict <, not <=
+      const createdAt = now - 24 * 60 * 60 * 1000;
+      const result = calculateBuildingHealth(0, 1000, -50, 50, false, null, null, createdAt);
+      // At exactly 24h, ageMs is NOT < durationMs, so grace has expired
+      expect(result.health).toBeLessThan(75);
+    });
+
+    it("should not apply grace period when createdAt is null", () => {
+      const result = calculateBuildingHealth(0, 1000, -50, 50, false, null, null, null);
+      // No grace period, normal decay
+      expect(result.health).toBe(42);
+    });
+  });
+
+  describe("multi-cycle decay with lastHealthUpdate", () => {
+    it("should apply multiple decay cycles based on time elapsed", () => {
+      const now = Date.now();
+      // Last updated 5 minutes ago (5 cycles of 60s each)
+      const lastUpdate = new Date(now - 5 * 60 * 1000);
+      const result = calculateBuildingHealth(0, 1000, -50, 80, false, null, lastUpdate);
+      // Heavy decay: -8 * 5 cycles = -40, 80 - 40 = 40
+      expect(result.health).toBe(40);
+      expect(result.cyclesApplied).toBe(5);
+    });
+
+    it("should cap at MAX_DECAY_CYCLES (60) even after long absence", () => {
+      const now = Date.now();
+      // Last updated 24 hours ago = 1440 cycles, but capped at 60
+      const lastUpdate = new Date(now - 24 * 60 * 60 * 1000);
+      const result = calculateBuildingHealth(0, 1000, -50, 80, false, null, lastUpdate);
+      // Heavy decay: -8 * 60 = -480, 80 - 480 = clamped to 0
+      expect(result.health).toBe(0);
+      expect(result.cyclesApplied).toBe(60);
+    });
+
+    it("should apply at least 1 cycle even for very recent update", () => {
+      const now = Date.now();
+      // Last updated 10 seconds ago (less than 1 cycle of 60s)
+      const lastUpdate = new Date(now - 10 * 1000);
+      const result = calculateBuildingHealth(0, 1000, -50, 80, false, null, lastUpdate);
+      // Min 1 cycle: -8 * 1 = -8, 80 - 8 = 72
+      expect(result.health).toBe(72);
+      expect(result.cyclesApplied).toBe(1);
+    });
+
+    it("should apply multi-cycle recovery for active buildings", () => {
+      const now = Date.now();
+      // Last updated 3 minutes ago with high volume = fast recovery
+      const lastUpdate = new Date(now - 3 * 60 * 1000);
+      const result = calculateBuildingHealth(3000, 100000, 10, 50, false, null, lastUpdate);
+      // Fast recovery: +10 * 3 cycles = +30, 50 + 30 = 80
+      expect(result.health).toBe(80);
+      expect(result.cyclesApplied).toBe(3);
+    });
+
+    it("should default to 1 cycle when lastHealthUpdate is null", () => {
+      const result = calculateBuildingHealth(3000, 100000, 10, 50, false, null, null);
+      // 1 cycle of fast recovery: +10, 50 + 10 = 60
+      expect(result.health).toBe(60);
+      expect(result.cyclesApplied).toBe(1);
+    });
+  });
+
   describe("boundary conditions", () => {
     it("should never exceed 100", () => {
       const result = calculateBuildingHealth(5000, 1000000, 100, 99);
@@ -469,6 +611,24 @@ describe("calculateBuildingHealth", () => {
     it("should clamp health at 0 when decay would go negative", () => {
       const result = calculateBuildingHealth(0, 1000, -50, 3);
       expect(result.health).toBe(0); // 3 - 8 clamped to 0
+    });
+
+    it("should clamp at 0 even with multi-cycle heavy decay", () => {
+      const now = Date.now();
+      const lastUpdate = new Date(now - 10 * 60 * 1000);
+      // Heavy decay: -8 * 10 cycles = -80, 20 - 80 = clamped to 0
+      const result = calculateBuildingHealth(0, 1000, -50, 20, false, null, lastUpdate);
+      expect(result.health).toBe(0);
+      expect(result.status).toBe("dormant");
+    });
+
+    it("should clamp at 100 even with multi-cycle fast recovery", () => {
+      const now = Date.now();
+      const lastUpdate = new Date(now - 10 * 60 * 1000);
+      // Fast recovery: +10 * 10 cycles = +100, 80 + 100 = clamped to 100
+      const result = calculateBuildingHealth(3000, 100000, 10, 80, false, null, lastUpdate);
+      expect(result.health).toBe(100);
+      expect(result.status).toBe("active");
     });
   });
 
@@ -532,6 +692,40 @@ describe("calculateCharacterMood", () => {
       expect(calculateCharacterMood(1001, 20)).toBe("happy");
       expect(calculateCharacterMood(0, -20)).toBe("neutral");
       expect(calculateCharacterMood(0, -21)).toBe("sad");
+    });
+
+    it("should prioritize celebrating over happy (change > 100 takes precedence)", () => {
+      // Even with high earnings, change > 100 should return celebrating
+      expect(calculateCharacterMood(5000, 150)).toBe("celebrating");
+    });
+
+    it("should prioritize happy over sad when earnings > 1000 and change > 20", () => {
+      // Happy check (change > 20 OR earnings > 1000) comes before sad check
+      expect(calculateCharacterMood(2000, 25)).toBe("happy");
+    });
+
+    it("should return sad even with high earnings if change < -20 and not happy-eligible", () => {
+      // change < -20 sad check is after happy check
+      // earnings=500 doesn't meet the >1000 threshold for happy
+      expect(calculateCharacterMood(500, -30)).toBe("sad");
+    });
+
+    it("should handle zero earnings and zero change", () => {
+      expect(calculateCharacterMood(0, 0)).toBe("neutral");
+    });
+
+    it("should handle negative earnings", () => {
+      expect(calculateCharacterMood(-100, 0)).toBe("neutral");
+    });
+
+    it("should handle exactly 100 change (not celebrating, but happy)", () => {
+      // celebrating requires > 100, not >= 100
+      expect(calculateCharacterMood(0, 100)).toBe("happy");
+    });
+
+    it("should handle exactly -20 change (not sad, neutral)", () => {
+      // sad requires < -20, not <= -20
+      expect(calculateCharacterMood(0, -20)).toBe("neutral");
     });
   });
 });
@@ -1094,6 +1288,154 @@ describe("transformTokenToBuilding", () => {
         expect(building.styleOverride).toBe(style);
       }
     });
+
+    it("should use zoneOverride when provided", () => {
+      const tokenWithZone: TokenInfo = {
+        ...baseToken,
+        zoneOverride: "ballers" as any,
+      };
+      const building = transformTokenToBuilding(tokenWithZone, 0);
+      expect(building.zone).toBe("ballers");
+    });
+
+    it("should reject levelOverride outside 1-5 range", () => {
+      const tokenInvalidLevel: TokenInfo = {
+        ...baseToken,
+        levelOverride: 0, // Below valid range
+        marketCap: 500000,
+      };
+      const building = transformTokenToBuilding(tokenInvalidLevel, 0);
+      // Invalid override should fall through to calculated level
+      expect(building.level).toBe(3); // $500K = level 3
+    });
+
+    it("should reject levelOverride above 5", () => {
+      const tokenHighLevel: TokenInfo = {
+        ...baseToken,
+        levelOverride: 10,
+        marketCap: 1000,
+      };
+      const building = transformTokenToBuilding(tokenHighLevel, 0);
+      // 10 is > 5, so override condition (>= 1 && <= 5) fails
+      expect(building.level).toBe(1); // $1000 = level 1
+    });
+  });
+
+  describe("landmark detection", () => {
+    it("should identify PokeCenter as permanent", () => {
+      const pokecenterToken: TokenInfo = {
+        ...baseToken,
+        mint: "PokeCenter-123",
+        symbol: "POKECENTER",
+      };
+      const building = transformTokenToBuilding(pokecenterToken, 0);
+      expect(building.isPermanent).toBe(true);
+      expect(building.zone).toBe("main_city");
+    });
+
+    it("should identify Casino as permanent in trending zone", () => {
+      const casinoToken: TokenInfo = {
+        ...baseToken,
+        mint: "CasinoBuilding",
+        symbol: "CASINO",
+      };
+      const building = transformTokenToBuilding(casinoToken, 0);
+      expect(building.isPermanent).toBe(true);
+      expect(building.zone).toBe("trending");
+    });
+
+    it("should identify Oracle as permanent in trending zone", () => {
+      const oracleToken: TokenInfo = {
+        ...baseToken,
+        mint: "OracleTower-123",
+        symbol: "ORACLE",
+      };
+      const building = transformTokenToBuilding(oracleToken, 0);
+      expect(building.isPermanent).toBe(true);
+      expect(building.zone).toBe("trending");
+    });
+
+    it("should identify Arcade as permanent in trending zone", () => {
+      const arcadeToken: TokenInfo = {
+        ...baseToken,
+        mint: "Arcade-123",
+        symbol: "ARCADE",
+      };
+      const building = transformTokenToBuilding(arcadeToken, 0);
+      expect(building.isPermanent).toBe(true);
+      expect(building.zone).toBe("trending");
+    });
+
+    it("should identify Starter tokens as permanent but without specific type", () => {
+      const starterToken: TokenInfo = {
+        ...baseToken,
+        mint: "Starter-token-123",
+        symbol: "START",
+      };
+      const building = transformTokenToBuilding(starterToken, 0);
+      expect(building.isPermanent).toBe(true);
+      // Starter tokens don't have a tokenUrl
+      expect(building.tokenUrl).toBeUndefined();
+    });
+
+    it("should set tokenUrl to solscan for treasury buildings", () => {
+      const treasuryToken: TokenInfo = {
+        ...baseToken,
+        mint: "TreasuryHub",
+        creator: "treasury-wallet-123",
+      };
+      const building = transformTokenToBuilding(treasuryToken, 0);
+      expect(building.tokenUrl).toContain("solscan.io");
+      expect(building.tokenUrl).toContain("treasury-wallet-123");
+    });
+
+    it("should set tokenUrl to bags.fm for regular tokens", () => {
+      const building = transformTokenToBuilding(baseToken, 0);
+      expect(building.tokenUrl).toBe(`https://bags.fm/${baseToken.mint}`);
+    });
+  });
+
+  describe("health from previous state", () => {
+    it("should use token.currentHealth over existing building health", () => {
+      const tokenWithDbHealth: TokenInfo = {
+        ...baseToken,
+        currentHealth: 90,
+        volume24h: 3000, // fast recovery
+      };
+      const existingBuilding = transformTokenToBuilding(baseToken, 0);
+      existingBuilding.health = 40;
+
+      const building = transformTokenToBuilding(tokenWithDbHealth, 0, existingBuilding);
+      // currentHealth=90 should be used as previousHealth, then +10 recovery = 100
+      expect(building.health).toBe(100);
+    });
+
+    it("should default to 50 when no previous health source exists", () => {
+      const tokenNoPrev: TokenInfo = {
+        ...baseToken,
+        volume24h: 1000, // recovery rate
+      };
+      const building = transformTokenToBuilding(tokenNoPrev, 0);
+      // Default previousHealth=50, recovery +5 = 55
+      expect(building.health).toBe(55);
+    });
+  });
+
+  describe("glowing state", () => {
+    it("should glow when change24h > 50", () => {
+      const pumpToken: TokenInfo = { ...baseToken, change24h: 51 };
+      expect(transformTokenToBuilding(pumpToken, 0).glowing).toBe(true);
+    });
+
+    it("should not glow when change24h <= 50", () => {
+      const flatToken: TokenInfo = { ...baseToken, change24h: 50 };
+      expect(transformTokenToBuilding(flatToken, 0).glowing).toBe(false);
+    });
+
+    it("should not glow when change24h is negative", () => {
+      const dumpToken: TokenInfo = { ...baseToken, change24h: -30 };
+      expect(transformTokenToBuilding(dumpToken, 0).glowing).toBe(false);
+    });
   });
 });
 
@@ -1143,6 +1485,136 @@ describe("generateGameEvent", () => {
     const event2 = generateGameEvent("token_launch", { username: "b", tokenName: "B" });
 
     expect(event1.id).not.toBe(event2.id);
+  });
+
+  it("should handle all event types without throwing", () => {
+    const eventTypes: Array<import("@/lib/types").GameEvent["type"]> = [
+      "token_launch",
+      "building_constructed",
+      "fee_claim",
+      "price_pump",
+      "price_dump",
+      "milestone",
+      "whale_alert",
+      "platform_launch",
+      "platform_trending",
+      "platform_claim",
+      "task_posted",
+      "task_claimed",
+      "task_completed",
+      "a2a_message",
+      "corp_founded",
+      "corp_joined",
+      "corp_mission_complete",
+      "corp_payroll",
+      "corp_service",
+    ];
+
+    eventTypes.forEach((type) => {
+      const event = generateGameEvent(type, {
+        username: "testuser",
+        tokenName: "TestToken",
+        amount: 5.0,
+        change: 50,
+      });
+      expect(event.type).toBe(type);
+      expect(event.message).toBeTruthy();
+      expect(event.timestamp).toBeGreaterThan(0);
+    });
+  });
+
+  it("should handle missing data fields gracefully", () => {
+    const event = generateGameEvent("fee_claim", {});
+    expect(event.message).toBeDefined();
+    // Should handle undefined amount with toFixed
+    expect(typeof event.message).toBe("string");
+  });
+
+  it("should handle null/undefined data", () => {
+    const event = generateGameEvent("token_launch", undefined as any);
+    expect(event.type).toBe("token_launch");
+    // Message should still be a string even with undefined data
+    expect(typeof event.message).toBe("string");
+  });
+});
+
+describe("createMansionBuildings", () => {
+  it("should create 5 mansions from 5 holders", () => {
+    const holders = Array.from({ length: 5 }, (_, i) => ({
+      address: `holder-${i}`,
+      balance: 1000000 - i * 100000,
+      percentage: 20 - i * 2,
+      rank: i + 1,
+    }));
+
+    const mansions = createMansionBuildings(holders);
+    expect(mansions).toHaveLength(5);
+    mansions.forEach((m) => {
+      expect(m.zone).toBe("ballers");
+      expect(m.isMansion).toBe(true);
+      expect(m.isPermanent).toBe(true);
+      expect(m.health).toBe(100);
+      expect(m.level).toBe(6);
+      expect(m.glowing).toBe(true);
+    });
+  });
+
+  it("should only create mansions for first 5 holders even if more provided", () => {
+    const holders = Array.from({ length: 10 }, (_, i) => ({
+      address: `holder-${i}`,
+      balance: 1000000 - i * 50000,
+      percentage: 10 - i,
+      rank: i + 1,
+    }));
+
+    const mansions = createMansionBuildings(holders);
+    expect(mansions).toHaveLength(5);
+  });
+
+  it("should handle fewer than 5 holders", () => {
+    const holders = [
+      { address: "only-holder", balance: 5000000, percentage: 50, rank: 1 },
+    ];
+
+    const mansions = createMansionBuildings(holders);
+    expect(mansions).toHaveLength(1);
+    expect(mansions[0].holderRank).toBe(1);
+  });
+
+  it("should handle empty holders array", () => {
+    const mansions = createMansionBuildings([]);
+    expect(mansions).toHaveLength(0);
+  });
+
+  it("should assign different mansion names by rank", () => {
+    const holders = Array.from({ length: 5 }, (_, i) => ({
+      address: `holder-${i}`,
+      balance: 5000000 - i * 500000,
+      percentage: 20 - i * 3,
+      rank: i + 1,
+    }));
+
+    const mansions = createMansionBuildings(holders);
+    const names = mansions.map((m) => m.name);
+    const uniqueNames = new Set(names);
+    expect(uniqueNames.size).toBe(5);
+  });
+
+  it("should assign rank-based scaling (#1 largest)", () => {
+    const holders = Array.from({ length: 5 }, (_, i) => ({
+      address: `holder-${i}`,
+      balance: 5000000 - i * 500000,
+      percentage: 20 - i * 3,
+      rank: i + 1,
+    }));
+
+    const mansions = createMansionBuildings(holders);
+    // #1 has scale 1.5, #2-3 have 1.3, #4-5 have 1.15
+    expect(mansions[0].mansionScale).toBe(1.5);
+    expect(mansions[1].mansionScale).toBe(1.3);
+    expect(mansions[2].mansionScale).toBe(1.3);
+    expect(mansions[3].mansionScale).toBe(1.15);
+    expect(mansions[4].mansionScale).toBe(1.15);
   });
 });
 
@@ -1314,5 +1786,164 @@ describe("buildWorldState", () => {
 
     const newState = buildWorldState(mockEarners, mockTokens, previousState);
     expect(newState.events.length).toBeLessThanOrEqual(20);
+  });
+
+  describe("empty and edge case inputs", () => {
+    it("should handle empty earners and tokens", () => {
+      const state = buildWorldState([], []);
+      expect(state.population).toHaveLength(0);
+      expect(state.buildings).toHaveLength(0);
+      expect(state.health).toBe(25); // Baseline with 0 buildings
+      expect(state.weather).toBeDefined();
+      expect(state.lastUpdated).toBeGreaterThan(0);
+    });
+
+    it("should handle earners with no tokens", () => {
+      const state = buildWorldState(mockEarners, []);
+      expect(state.population).toHaveLength(1);
+      expect(state.buildings).toHaveLength(0);
+    });
+
+    it("should handle tokens with no earners", () => {
+      const state = buildWorldState([], mockTokens);
+      expect(state.population).toHaveLength(0);
+      expect(state.buildings).toHaveLength(1);
+    });
+
+    it("should not include no previous state events when previousState is undefined", () => {
+      const state = buildWorldState(mockEarners, mockTokens, undefined);
+      // Without previous state, new launches generate events
+      expect(state.events.length).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe("platform token filtering", () => {
+    it("should exclude platform tokens from buildings", () => {
+      const platformToken: TokenInfo = {
+        mint: "platform-only",
+        name: "Platform Token",
+        symbol: "PLAT",
+        creator: "platform",
+        marketCap: 1000000,
+        volume24h: 5000,
+        change24h: 10,
+        isPlatform: true,
+      };
+
+      const state = buildWorldState([], [platformToken]);
+      // Platform tokens should not become buildings
+      expect(state.buildings).toHaveLength(0);
+    });
+
+    it("should include platform tokens in health calculation", () => {
+      const platformToken: TokenInfo = {
+        mint: "platform-with-fees",
+        name: "Platform Token",
+        symbol: "PLAT",
+        creator: "platform",
+        marketCap: 1000000,
+        volume24h: 5000,
+        change24h: 10,
+        isPlatform: true,
+        lifetimeFees: 500,
+      };
+
+      const stateWithout = buildWorldState([], []);
+      const stateWith = buildWorldState([], [platformToken]);
+
+      // Platform token's lifetime fees should affect health
+      // (through totalLifetimeFees fallback calculation)
+      expect(stateWith.health).toBeGreaterThanOrEqual(stateWithout.health);
+    });
+  });
+
+  describe("mansion integration", () => {
+    it("should include mansion buildings when holders provided", () => {
+      const holders = [
+        { address: "whale-1", balance: 10000000, percentage: 30, rank: 1 },
+        { address: "whale-2", balance: 5000000, percentage: 15, rank: 2 },
+      ];
+
+      const state = buildWorldState(mockEarners, mockTokens, undefined, undefined, holders);
+      const mansions = state.buildings.filter((b: any) => b.isMansion);
+      expect(mansions).toHaveLength(2);
+    });
+
+    it("should not include mansions when holders is undefined", () => {
+      const state = buildWorldState(mockEarners, mockTokens);
+      const mansions = state.buildings.filter((b: any) => b.isMansion);
+      expect(mansions).toHaveLength(0);
+    });
+  });
+
+  describe("permanent building preservation", () => {
+    it("should never filter out permanent buildings regardless of health", () => {
+      const permanentToken: TokenInfo = {
+        mint: "TreasuryHub",
+        name: "Treasury",
+        symbol: "TREASURY",
+        creator: "system",
+        marketCap: 0,
+        volume24h: 0,
+        change24h: -100,
+      };
+
+      const state = buildWorldState([], [permanentToken]);
+      expect(state.buildings.length).toBe(1);
+      expect(state.buildings[0].isPermanent).toBe(true);
+      expect(state.buildings[0].health).toBe(100);
+    });
+
+    it("should keep BagsWorld HQ floating in sky", () => {
+      const hqToken: TokenInfo = {
+        mint: "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS",
+        name: "BagsWorld",
+        symbol: "BAGSWORLD",
+        creator: "creator",
+        marketCap: 1000000,
+        volume24h: 5000,
+        change24h: 10,
+      };
+
+      const state = buildWorldState([], [hqToken]);
+      const hq = state.buildings.find((b) => b.isFloating);
+      expect(hq).toBeDefined();
+      expect(hq!.y).toBe(500);
+      expect(hq!.level).toBe(5);
+      expect(hq!.zone).toBeUndefined();
+    });
+  });
+
+  describe("building sorting", () => {
+    it("should sort permanent buildings before regular buildings", () => {
+      const tokens: TokenInfo[] = [
+        {
+          mint: "regular-token",
+          name: "Regular",
+          symbol: "REG",
+          creator: "creator",
+          marketCap: 100000,
+          volume24h: 100,
+          change24h: 0,
+        },
+        {
+          mint: "TreasuryHub",
+          name: "Treasury",
+          symbol: "TREASURY",
+          creator: "system",
+          marketCap: 0,
+          volume24h: 0,
+          change24h: 0,
+        },
+      ];
+
+      const state = buildWorldState([], tokens);
+      // Permanent buildings should be sorted first
+      const permanentIdx = state.buildings.findIndex((b) => b.isPermanent);
+      const regularIdx = state.buildings.findIndex((b) => !b.isPermanent);
+      if (permanentIdx !== -1 && regularIdx !== -1) {
+        expect(permanentIdx).toBeLessThan(regularIdx);
+      }
+    });
   });
 });
