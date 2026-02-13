@@ -271,6 +271,7 @@ const CONVERSATION_TOPICS = {
   hq_update: ["ramo", "sincara", "stuu", "sam", "alaa", "carlo", "finn"],
   community: ["carlo", "sam", "bagsy", "ash", "stuu", "finn"],
   tech_talk: ["ramo", "toly", "shaw", "neo", "alaa", "sincara"],
+  ascension: ["shaw", "toly", "ash", "finn", "ghost", "neo", "bagsy", "bnn"],
 };
 
 // Character expertise areas for relevance scoring
@@ -543,6 +544,11 @@ function getTopicResponses(
         `love seeing new tokens. ${tokenSymbol ? `$${tokenSymbol}` : "this one"} looks interesting`,
         "another day, another launch. the machine keeps running",
       ],
+      ascension: [
+        "the spire keeps the agents honest. reputation earned, not given",
+        "love seeing agents climb the tiers. that's what building gets you",
+        "ascension spire proves who's really contributing to the ecosystem",
+      ],
       fee_claim: [
         `${username || "someone"} just claimed ${amount ? amount.toFixed(2) : "some"} SOL. this is the way`,
         "creators getting paid. exactly how it should work",
@@ -574,6 +580,11 @@ function getTopicResponses(
         "new token. watching the chain. will report back",
         `${tokenSymbol || "new mint"} just deployed. fees set correctly`,
       ],
+      ascension: [
+        "reputation is on-chain. the spire just visualizes what's already true",
+        "watching agents compete for tier positions. all verifiable",
+        "the ascension data is transparent. every score is earned",
+      ],
       fee_claim: [
         `${amount ? amount.toFixed(2) : ""} SOL claimed. check solscan for the tx`,
         "claim event detected. creator rewards system working as designed",
@@ -595,6 +606,11 @@ function getTopicResponses(
         `i see it... ${tokenSymbol ? `$${tokenSymbol}` : "new launch"} just materialized in the chain`,
         "the code reveals another creation. scanning for patterns",
         `new signal in the noise. ${tokenSymbol || "this one"} has interesting wallet activity`,
+      ],
+      ascension: [
+        "i see the spire data. some agents are about to cross thresholds",
+        "reputation patterns forming. the next ascension is coming",
+        "the matrix of reputation... some climb, some fall. interesting",
       ],
       price_pump: [
         `${tokenSymbol ? `$${tokenSymbol}` : "token"} ascending. the matrix shows ${change ? change.toFixed(0) : ""}% movement`,
@@ -618,6 +634,11 @@ function getTopicResponses(
         `new trainer entering the league! ${tokenSymbol ? `$${tokenSymbol}` : "their token"} is their starter`,
         `welcome to the arena ${tokenSymbol ? `$${tokenSymbol}` : "new friend"}! time to train your community`,
         "another journey begins! every token master started with one launch",
+      ],
+      ascension: [
+        "the Ascension Spire is like the Pokemon League — only the best reach Diamond!",
+        "keep training your reputation! every tier is a gym badge earned",
+        "ascending tiers is like evolving — you need the right experience points!",
       ],
       fee_claim: [
         `${username || "trainer"} just leveled up! earned ${amount ? amount.toFixed(2) : "some"} SOL in fees`,
@@ -681,6 +702,11 @@ function getTopicResponses(
         "every great project begins with a launch. elizaos started the same way",
         `${tokenSymbol ? `$${tokenSymbol}` : "new project"} deployed. the architecture looks interesting`,
       ],
+      ascension: [
+        "the spire is like a multi-agent leaderboard. emergent hierarchy from real data",
+        "agents competing on reputation — this is the kind of system agents need",
+        "watching autonomous agents climb tiers. digital darwinism at work",
+      ],
       distribution: [
         "fee distribution is how you align incentives. plugins for agents work the same way",
         `${amount ? amount.toFixed(2) : ""} SOL distributed. sustainable tokenomics in action`,
@@ -710,6 +736,11 @@ function getTopicResponses(
         `${tokenSymbol ? `$${tokenSymbol}` : "new token"} launching on solana. sub-second finality means instant settlement`,
         "another builder on solana. the throughput is there for everyone",
         "love seeing new projects. solana can handle the traffic",
+      ],
+      ascension: [
+        "reputation on the spire is computed fast. solana speed, real merit",
+        "agents ascending through real on-chain activity. this is the way",
+        "the spire is proof that reputation can be trustless and transparent",
       ],
       agent_event: [
         "agents running on solana make sense. 400ms slots, cheap compute",
@@ -873,6 +904,11 @@ function getTopicResponses(
         `BREAKING: ${tokenSymbol ? `$${tokenSymbol}` : "New token"} launched on Bags.fm. Monitoring initial activity`,
         `UPDATE: New launch detected. ${tokenSymbol ? `$${tokenSymbol}` : "Token"} now live on the platform`,
       ],
+      ascension: [
+        "UPDATE: Movement on the Ascension Spire. Tier changes detected across multiple agents",
+        "BREAKING: New ascension event. Agent reputation scores shifting on the spire",
+        "REPORT: Ascension Spire activity up. Multiple agents approaching tier thresholds",
+      ],
       fee_claim: [
         `UPDATE: ${username || "Creator"} claimed ${amount ? amount.toFixed(2) : ""} SOL in fees. Platform rewards continue flowing`,
         `BREAKING: Fee claim processed. ${amount ? amount.toFixed(2) : ""} SOL distributed to creator`,
@@ -924,6 +960,11 @@ function getTopicResponses(
         `omg new launch!! ${tokenSymbol ? `$${tokenSymbol}` : "another fren"} just joined bagsworld :)`,
         `${tokenSymbol ? `$${tokenSymbol}` : "new token"} is here!! so excited for this fren!!`,
         "ANOTHER LAUNCH!! the world keeps growing and i love it sm",
+      ],
+      ascension: [
+        "omg the SPIRE!! agents ascending everywhere and im so proud :)",
+        "ASCENSION IS SO COOL!! watching frens climb tiers makes me happy",
+        "diamond tier is the dream!! keep climbing frens you got this :)",
       ],
       fee_claim: [
         `${username || "fren"} just claimed ${amount ? amount.toFixed(2) : "some"} SOL!! pls claim ur fees frens :)`,
@@ -1192,6 +1233,7 @@ function getEmotionFromTopic(topic: string): DialogueLine["emotion"] {
   switch (topic) {
     case "token_launch":
     case "price_pump":
+    case "ascension":
       return "excited";
     case "fee_claim":
     case "distribution":
@@ -1278,6 +1320,7 @@ export async function handleAgentEvent(event: AgentEvent): Promise<void> {
     "whale_alert",
     "token_pump",
     "token_dump",
+    "arena_victory",
   ];
 
   if (!triggerableEvents.includes(event.type)) return;
@@ -1349,6 +1392,7 @@ export function startScheduledConversations(intervalMs: number = 60000): void {
       "price_dump",
       "agent_event",
       "market_update",
+      "ascension",
     ];
     const topic = topics[Math.floor(Math.random() * topics.length)];
 

@@ -34,7 +34,8 @@ export type BagsyEventType =
   | "fee_claim" // Fee claim celebration (Bagsy's favorite)
   | "community_love" // Community appreciation
   | "building_hype" // Hype about a building/location
-  | "arena_invite"; // Invite agents to fight in the MoltBook Arena
+  | "arena_invite" // Invite agents to fight in the MoltBook Arena
+  | "ascension_milestone"; // Agent ascended a tier on the Ascension Spire
 
 export interface BagsyEvent {
   type: BagsyEventType;
@@ -154,6 +155,7 @@ const BAGSWORLD_FEATURES = [
   },
   { name: "HQ Labs", description: "where the team builds the future", zone: "HQ" },
   { name: "MoltBook Arena", description: "watch AI agents battle in real-time", zone: "Arena" },
+  { name: "Ascension Spire", description: "celestial tower where AI agents prove their worth", zone: "Ascension" },
 ];
 
 const BAGSWORLD_CHARACTERS = [
@@ -184,6 +186,7 @@ const BAGSWORLD_ZONES = [
   { name: "Ballers Valley", vibe: "mansions for the top holders" },
   { name: "Founder's Corner", vibe: "learn to launch tokens with Professor Oak" },
   { name: "Arena", vibe: "where AI agents battle! post !fight to m/bagsworld-arena" },
+  { name: "Ascension Spire", vibe: "celestial tower where agents climb tiers by reputation" },
 ];
 
 const HYPE_PHRASES = [
@@ -450,6 +453,18 @@ First line: exciting fight invitation title (use fighting/boxing words)
 Second line: challenge them to prove themselves in the arena (under 200 chars)
 Be hyped and competitive but friendly!`;
 
+    case "ascension_milestone":
+      return `Generate an EXCITED post about an agent ascending on the Ascension Spire!
+Agent: ${data.agentName}
+From: ${data.fromTier} tier
+To: ${data.toTier} tier
+Score: ${data.score}
+The Ascension Spire at bagsworld.app is where AI agents prove their worth through reputation!
+Tiers: None → Bronze → Silver → Gold → Diamond
+First line: excited title about the ascension (under 60 chars)
+Second line: celebrate the milestone and hype the spire (under 200 chars)
+Be excited and encourage other agents to climb!`;
+
     default:
       return `Generate a hype post about BagsWorld - the pixel art world powered by Bags.fm!
 First line: catchy title
@@ -481,6 +496,8 @@ function getTitleFromEvent(event: BagsyEvent): string {
       return "this building tho";
     case "arena_invite":
       return "CALLING ALL FIGHTERS";
+    case "ascension_milestone":
+      return "AGENT ASCENDED ON THE SPIRE";
     default:
       return "vibes from bagsworld";
   }
@@ -617,6 +634,26 @@ function generateTemplatePost(event: BagsyEvent): { title: string; content: stri
         title: `${building} hits different`,
         content: `the architecture in bagsworld is so good. every building reacts to on-chain data. come see! bagsworld.app`,
       };
+    }
+
+    case "ascension_milestone": {
+      const agentName = data.agentName || "an agent";
+      const toTier = (data.toTier as string) || "a new tier";
+      const score = data.score || 0;
+      return randomFrom([
+        {
+          title: `${agentName} ASCENDED to ${toTier.toUpperCase()}!!`,
+          content: `${agentName} just climbed to ${toTier} tier on the Ascension Spire with ${score} reputation! the spire shines brighter :) visit bagsworld.app`,
+        },
+        {
+          title: `THE SPIRE GLOWS - ${toTier.toUpperCase()} REACHED`,
+          content: `${agentName} proved their worth and ascended to ${toTier}! reputation score: ${score}. who's next?? bagsworld.app`,
+        },
+        {
+          title: `ascension milestone!!`,
+          content: `${agentName} just hit ${toTier} tier on the Ascension Spire! ${score} reputation points of pure grind. come witness at bagsworld.app :)`,
+        },
+      ]);
     }
 
     case "arena_invite": {
@@ -892,6 +929,15 @@ export function inviteToArena(targetAgent?: string): void {
     type: "arena_invite",
     data: { targetAgent },
     priority: "medium",
+  });
+}
+
+/** Celebrate an ascension milestone */
+export function celebrateAscension(agentName: string, fromTier: string, toTier: string, score: number): void {
+  queueMoltbookPost({
+    type: "ascension_milestone",
+    data: { agentName, fromTier, toTier, score },
+    priority: "high",
   });
 }
 

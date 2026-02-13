@@ -19,6 +19,7 @@ import { carloKnowledge } from './carlo.js';
 import { bnnKnowledge } from './bnn.js';
 import { professorOakKnowledge } from './professor-oak.js';
 import { bagsyKnowledge } from './bagsy.js';
+import { ascensionKnowledge } from './ascension.js';
 
 /** Agent-specific knowledge arrays keyed by normalized agent ID */
 const agentKnowledge: Record<string, string[]> = {
@@ -49,10 +50,10 @@ const aliases: Record<string, string> = {
   'dev': 'ghost',
 };
 
-/** Returns shared + agent-specific knowledge merged for the given agent ID. */
+/** Returns shared + agent-specific + zone knowledge merged for the given agent ID. */
 export function getKnowledgeForAgent(agentId: string): string[] {
   const normalizedId = agentId.toLowerCase().replace(/[\s_]/g, '-');
   const resolvedId = aliases[normalizedId] || normalizedId;
   const specific = agentKnowledge[resolvedId] || [];
-  return [...sharedKnowledge, ...specific];
+  return [...sharedKnowledge, ...ascensionKnowledge, ...specific];
 }

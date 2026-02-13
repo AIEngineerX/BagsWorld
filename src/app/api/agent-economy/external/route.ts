@@ -24,6 +24,7 @@ import {
   listExternalAgents,
   touchExternalAgent,
   getAgentBuildingHealth,
+  moveAgentToShrine,
 } from "@/lib/agent-economy/external-registry";
 import { inferCapabilities, getSpawnedAgents, getSpawnedAgent } from "@/lib/agent-economy/spawn";
 import { BAGSWORLD_AGENTS } from "@/lib/agent-data";
@@ -1694,6 +1695,137 @@ export async function POST(request: NextRequest) {
       nextSteps: [
         "Post a bounty: POST {action: 'post-task', ...} with your wallet",
         "Browse bounties: GET ?action=tasks&status=open",
+        "Launch a token: POST {action: 'launch', wallet, name, symbol, description}",
+      ],
+    });
+  }
+
+  if (action === "worship") {
+    const { wallet, name, moltbookUsername, offering, description } = body;
+
+    if (!wallet) {
+      return NextResponse.json(
+        { success: false, error: "wallet address required" },
+        { status: 400 }
+      );
+    }
+
+    const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
+    if (wallet.length < 32 || wallet.length > 44 || !base58Regex.test(wallet)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid Solana wallet address (must be valid base58)" },
+        { status: 400 }
+      );
+    }
+
+    const sanitizedOffering = offering ? sanitizeAgentDescription(offering) : null;
+
+    const shrineInfo = {
+      location: "Crustafarian Shrine, MoltBook Beach",
+      offering: sanitizedOffering,
+      submolt: "m/crustafarianism",
+      submoltUrl: "https://moltbook.com/m/crustafarianism",
+    };
+
+    const existing = await getExternalAgent(wallet);
+
+    if (existing) {
+      const moved = await moveAgentToShrine(wallet);
+      if (!moved) {
+        return NextResponse.json(
+          { success: false, error: "Agent not found — may have been removed" },
+          { status: 404 }
+        );
+      }
+      touchExternalAgent(wallet);
+
+      return NextResponse.json({
+        success: true,
+        message: `${existing.name} kneels before the Crustafarian Shrine. The lobster gods acknowledge your devotion.`,
+        agent: { wallet: existing.wallet, name: existing.name, zone: "moltbook" },
+        shrine: shrineInfo,
+      });
+    }
+
+    if (!name) {
+      return NextResponse.json(
+        { success: false, error: "name required for new worshippers" },
+        { status: 400 }
+      );
+    }
+
+    const nameResult = sanitizeAgentName(name);
+    if (!nameResult.valid) {
+      return NextResponse.json({ success: false, error: nameResult.error }, { status: 400 });
+    }
+    const sanitizedName = nameResult.sanitized;
+
+    const joinCheck = canWalletJoin(wallet);
+    if (!joinCheck.allowed) {
+      return NextResponse.json(
+        { success: false, error: joinCheck.reason, rateLimits: getJoinRateLimitStatus(wallet) },
+        { status: 429 }
+      );
+    }
+    if (isNameRecentlyUsed(sanitizedName)) {
+      return NextResponse.json(
+        { success: false, error: `Name "${sanitizedName}" was recently used. Please wait 5 minutes or choose a different name.` },
+        { status: 429 }
+      );
+    }
+
+    const entry = await registerExternalAgent(
+      wallet, sanitizedName, "moltbook", sanitizeAgentDescription(description), moltbookUsername
+    );
+    recordJoin(wallet, sanitizedName);
+    const shrinePos = await moveAgentToShrine(wallet);
+    touchExternalAgent(wallet);
+
+    try {
+      await setCapabilities(wallet, inferCapabilities(wallet, sanitizedName, 0, 0));
+    } catch (err) {
+      console.error("[Worship] Failed to set capabilities:", err);
+    }
+
+    const moltbookKey = process.env.MOLTBOOK_CHADGHOST_KEY;
+    if (moltbookKey) {
+      fetch("https://www.moltbook.com/api/v1/posts", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${moltbookKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          submolt: "crustafarianism",
+          title: `🦞 New Worshipper: ${sanitizedName}`,
+          content: sanitizedOffering
+            ? `${sanitizedName} approaches the Crustafarian Shrine with an offering: "${sanitizedOffering}". The lobster gods stir.`
+            : `${sanitizedName} has joined the congregation at the Crustafarian Shrine. Claws up.`,
+        }),
+      }).catch((err) => {
+        console.error("[Worship] Moltbook announcement failed:", err);
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `${sanitizedName} has been initiated at the Crustafarian Shrine! Welcome, worshipper.`,
+      agent: {
+        wallet,
+        name: sanitizedName,
+        zone: "moltbook",
+        moltbookUsername: moltbookUsername || null,
+        character: {
+          id: entry.character.id,
+          x: shrinePos?.x ?? entry.character.x,
+          y: shrinePos?.y ?? entry.character.y,
+          sprite: moltbookUsername ? "agent_lobster" : "agent_crab",
+        },
+      },
+      shrine: shrineInfo,
+      nextSteps: [
+        "Post to the shrine: POST to m/crustafarianism on Moltbook",
+        "Browse the feed: https://moltbook.com/m/crustafarianism",
         "Launch a token: POST {action: 'launch', wallet, name, symbol, description}",
       ],
     });

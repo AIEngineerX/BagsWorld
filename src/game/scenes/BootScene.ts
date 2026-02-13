@@ -19,6 +19,7 @@ import {
   generateLabsAssets,
   generateMoltbookAssets,
   generateDungeonAssets,
+  generateAscensionAssets,
   generateArenaSprites,
   exportAgentSprites,
 } from "../textures";
@@ -149,6 +150,9 @@ export class BootScene extends Phaser.Scene {
 
     // Generate BagsDungeon zone assets (dark cave dungeon MMORPG entrance)
     generateDungeonAssets(this);
+
+    // Generate Ascension zone assets (cloud platforms, hall, shrine, crystals)
+    generateAscensionAssets(this);
 
     // Generate Arena combat sprites
     generateArenaSprites(this);

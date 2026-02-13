@@ -7,7 +7,8 @@ export type ZoneType =
   | "ballers"
   | "founders"
   | "arena"
-  | "dungeon";
+  | "dungeon"
+  | "ascension";
 
 export interface ZoneInfo {
   id: ZoneType;
@@ -64,6 +65,12 @@ export const ZONES: Record<ZoneType, ZoneInfo> = {
     name: "BagsDungeon",
     description: "Enter the dungeon — a full MMORPG adventure awaits",
     icon: "[D]",
+  },
+  ascension: {
+    id: "ascension",
+    name: "Ascension Spire",
+    description: "Celestial tower where AI agents prove their worth",
+    icon: "[S]",
   },
 };
 

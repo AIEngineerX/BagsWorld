@@ -159,6 +159,7 @@ function getZonePosition(zone: ZoneType): { x: number; y: number } {
     },
     arena: { x: Math.round((400 + Math.random() * 100) * SCALE), y: GROUND_Y },
     dungeon: { x: Math.round((400 + Math.random() * 100) * SCALE), y: GROUND_Y },
+    ascension: { x: Math.round((350 + Math.random() * 150) * SCALE), y: GROUND_Y },
   };
   return zonePositions[zone] || zonePositions.moltbook;
 }
@@ -492,6 +493,30 @@ export function touchExternalAgent(wallet: string): void {
   })().catch((err) => {
     console.error("[ExternalRegistry] Failed to touch agent activity:", err);
   });
+}
+
+export function getShrinePosition(): { x: number; y: number } {
+  return {
+    x: Math.round((220 + Math.random() * 60) * SCALE),
+    y: GROUND_Y + Math.random() * Math.round(15 * SCALE),
+  };
+}
+
+export async function moveAgentToShrine(
+  wallet: string
+): Promise<{ x: number; y: number } | null> {
+  await ensureTable();
+  const sql = getDb();
+
+  const pos = getShrinePosition();
+
+  const result = await sql`
+    UPDATE external_agents
+    SET zone = 'moltbook', x = ${pos.x}, y = ${pos.y}
+    WHERE wallet = ${wallet}
+    RETURNING wallet
+  `;
+  return result.length > 0 ? pos : null;
 }
 
 /**
