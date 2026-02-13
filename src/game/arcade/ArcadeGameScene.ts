@@ -68,6 +68,8 @@ export class ArcadeGameScene extends Phaser.Scene {
   private animState = "idle";
   private wasOnGround = true;
   private spawnedSections = new Set<number>();
+  private enemyAnimTimer = 0;
+  private enemyAnimFrame = 0;
 
   constructor() {
     super({ key: "ArcadeGameScene" });
@@ -216,6 +218,27 @@ export class ArcadeGameScene extends Phaser.Scene {
       this,
     );
 
+    this.enemyAnimTimer = 0;
+    this.enemyAnimFrame = 0;
+
+    // Background flickering lights (world-space, parallax-independent)
+    for (let i = 0; i < 10; i++) {
+      const lx = Phaser.Math.Between(50, LEVEL_WIDTH - 50);
+      const ly = Phaser.Math.Between(40, 180);
+      const colors = [0x4ade80, 0x3b82f6, 0xfbbf24, 0x06b6d4];
+      const color = colors[i % colors.length];
+      const light = this.add.rectangle(lx, ly, 2, 2, color, 0.2);
+      light.setDepth(-0.5);
+      this.tweens.add({
+        targets: light,
+        alpha: { from: 0.05, to: 0.35 },
+        duration: Phaser.Math.Between(800, 2000),
+        yoyo: true,
+        repeat: -1,
+        delay: Phaser.Math.Between(0, 1500),
+      });
+    }
+
     this.emitHUD();
     this.checkSectionSpawns();
   }
@@ -230,6 +253,13 @@ export class ArcadeGameScene extends Phaser.Scene {
     if (this.animTimer >= animSpeed) {
       this.animTimer -= animSpeed;
       this.animFrame = (this.animFrame + 1) % frameCount;
+    }
+
+    // Enemy idle animation timer (separate from player)
+    this.enemyAnimTimer += delta;
+    if (this.enemyAnimTimer >= 500) {
+      this.enemyAnimTimer -= 500;
+      this.enemyAnimFrame = (this.enemyAnimFrame + 1) % 2;
     }
 
     const stats = CHARACTER_STATS[this.character];
@@ -525,10 +555,10 @@ export class ArcadeGameScene extends Phaser.Scene {
     this.time.delayedCall(1500, () => {
       if (!grenade.active) return;
 
-      this.createExplosion(grenade.x, grenade.y);
+      this.createLargeExplosion(grenade.x, grenade.y);
 
       // Grenade-specific: extra shake + fire particles
-      this.cameras.main.shake(150, 0.008);
+      this.cameras.main.shake(200, 0.012);
       const fire = this.add.particles(
         grenade.x, grenade.y, "particle_fire",
         {
@@ -573,6 +603,9 @@ export class ArcadeGameScene extends Phaser.Scene {
     this.time.delayedCall(60, () => {
       if (this.player.active) this.player.clearTint();
     });
+
+    // Screen red flash on damage
+    this.cameras.main.flash(100, 255, 50, 50, true);
 
     // Screen shake on heavy hits
     if (amount >= 2) {
@@ -764,6 +797,8 @@ export class ArcadeGameScene extends Phaser.Scene {
     enemy: Phaser.Physics.Arcade.Sprite,
     damage: number,
   ): void {
+    if ((enemy as any).isDying) return;
+
     (enemy as any).hp = ((enemy as any).hp ?? 1) - damage;
 
     // Sharp hit-flash
@@ -775,22 +810,67 @@ export class ArcadeGameScene extends Phaser.Scene {
     if ((enemy as any).hp <= 0) {
       const type = (enemy as any).enemyType as EnemyType;
       this.score += ENEMY_STATS[type].score;
-
-      // Knockback tween before destruction
+      this.playEnemyDeath(enemy, type);
+      this.emitHUD();
+    } else {
+      // Non-lethal hit: stagger
+      const body = enemy.body as Phaser.Physics.Arcade.Body;
       const hitDir = this.player.x < enemy.x ? 1 : -1;
-      enemy.setTintFill(0xffffff);
+      body.setVelocityX(hitDir * 80);
+      body.setVelocityY(-50);
+      (enemy as any).staggerUntil = this.time.now + 300;
+    }
+  }
+
+  private playEnemyDeath(
+    enemy: Phaser.Physics.Arcade.Sprite,
+    type: EnemyType,
+  ): void {
+    (enemy as any).isDying = true;
+    const body = enemy.body as Phaser.Physics.Arcade.Body;
+    body.enable = false;
+
+    const hitDir = this.player.x < enemy.x ? 1 : -1;
+
+    // Frame 1: recoil
+    enemy.setTexture(`${type}_die_1`);
+    this.tweens.add({
+      targets: enemy,
+      x: enemy.x + hitDir * 8,
+      y: enemy.y - 4,
+      duration: 100,
+    });
+
+    // Frame 2: ragdoll
+    this.time.delayedCall(100, () => {
+      if (!enemy.active) return;
+      enemy.setTexture(`${type}_die_2`);
       this.tweens.add({
         targets: enemy,
-        x: enemy.x + hitDir * 10,
+        x: enemy.x + hitDir * 6,
+        y: enemy.y + 4,
         duration: 100,
-        onComplete: () => {
-          this.showScorePopup(enemy.x, enemy.y, ENEMY_STATS[type].score);
-          this.createExplosion(enemy.x, enemy.y);
-          enemy.destroy();
-        },
       });
-      this.emitHUD();
-    }
+    });
+
+    // Frame 3: crumple
+    this.time.delayedCall(200, () => {
+      if (!enemy.active) return;
+      enemy.setTexture(`${type}_die_3`);
+    });
+
+    // Frame 4: ground + explosion + cleanup
+    this.time.delayedCall(320, () => {
+      if (!enemy.active) return;
+      enemy.setTexture(`${type}_die_4`);
+    });
+
+    this.time.delayedCall(420, () => {
+      if (!enemy.active) return;
+      this.showScorePopup(enemy.x, enemy.y, ENEMY_STATS[type].score);
+      this.createExplosion(enemy.x, enemy.y);
+      enemy.destroy();
+    });
   }
 
   private checkSectionSpawns(): void {
@@ -884,9 +964,12 @@ export class ArcadeGameScene extends Phaser.Scene {
     }
 
     const textureKey = `${data.type}_idle`;
+
+    // Spawn enemies above their target position and drop them in
+    const spawnOffsetY = data.type === "turret" ? 0 : -40;
     const enemy = this.enemies.create(
       data.x,
-      data.y,
+      data.y + spawnOffsetY,
       textureKey,
     ) as Phaser.Physics.Arcade.Sprite;
     enemy.body!.setSize(stats.width - 4, stats.height - 4);
@@ -900,13 +983,42 @@ export class ArcadeGameScene extends Phaser.Scene {
     if (data.type === "turret") {
       (enemy.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
       (enemy.body as Phaser.Physics.Arcade.Body).setImmovable(true);
+    } else {
+      // Drop-in spawn animation: start transparent, fall to position, land with dust
+      enemy.setAlpha(0);
+      (enemy as any).staggerUntil = this.time.now + 600;
+      this.tweens.add({
+        targets: enemy,
+        alpha: 1,
+        duration: 200,
+      });
+      // Landing dust when they reach ground
+      this.time.delayedCall(500, () => {
+        if (!enemy.active) return;
+        const dust = this.add.particles(
+          enemy.x, enemy.y + stats.height / 2, "particle_dust",
+          {
+            speed: { min: 10, max: 30 },
+            angle: { min: 0, max: 360 },
+            lifespan: 250,
+            gravityY: 40,
+            scale: { start: 1, end: 0 },
+            emitting: false,
+          },
+        );
+        dust.explode(3);
+        this.time.delayedCall(300, () => dust.destroy());
+      });
     }
   }
 
   private updateEnemies(time: number): void {
     this.enemies.getChildren().forEach((obj) => {
       const enemy = obj as Phaser.Physics.Arcade.Sprite;
-      if (!enemy.active || (enemy as any).isBoss) return;
+      if (!enemy.active || (enemy as any).isBoss || (enemy as any).isDying) return;
+
+      // Skip AI during stagger
+      if ((enemy as any).staggerUntil && time < (enemy as any).staggerUntil) return;
 
       const type = (enemy as any).enemyType as EnemyType;
       const stats = ENEMY_STATS[type];
@@ -917,17 +1029,29 @@ export class ArcadeGameScene extends Phaser.Scene {
         this.player.y,
       );
 
+      // Texture animation: idle cycling for stationary, walk for moving
       if (type === "turret") {
-        enemy.setTexture("turret_idle");
-      } else if (this.animFrame % 2 === 0) {
-        enemy.setTexture(`${type}_walk_1`);
+        enemy.setTexture(this.enemyAnimFrame === 0 ? "turret_idle" : "turret_idle_2");
       } else {
-        enemy.setTexture(`${type}_walk_2`);
+        const body = enemy.body as Phaser.Physics.Arcade.Body;
+        if (Math.abs(body.velocity.x) > 5) {
+          enemy.setTexture(this.animFrame % 2 === 0 ? `${type}_walk_1` : `${type}_walk_2`);
+        } else {
+          enemy.setTexture(this.enemyAnimFrame === 0 ? `${type}_idle` : `${type}_idle_2`);
+        }
       }
 
       if (type !== "turret") {
         const body = enemy.body as Phaser.Physics.Arcade.Body;
-        if (distToPlayer > 200) {
+        const hp = (enemy as any).hp ?? stats.hp;
+        const lowHP = hp <= stats.hp * 0.3;
+
+        // Panic behavior: low HP enemies flee when player is close
+        if (lowHP && distToPlayer < 150) {
+          const fleeDir = this.player.x < enemy.x ? 1 : -1;
+          body.setVelocityX(fleeDir * stats.speed * 1.5);
+          enemy.setFlipX(fleeDir < 0);
+        } else if (distToPlayer > 200) {
           const patrolStart = (enemy as any).patrolStart as number;
           const patrolRange = (enemy as any).patrolRange as number;
 
@@ -1071,7 +1195,9 @@ export class ArcadeGameScene extends Phaser.Scene {
           this.animFrame % 2 === 0 ? "boss_walk_1" : "boss_walk_2",
         );
       } else {
-        this.boss.setTexture("boss_idle");
+        this.boss.setTexture(
+          this.enemyAnimFrame === 0 ? "boss_idle" : "boss_idle_2",
+        );
       }
     }
   }
@@ -1108,6 +1234,41 @@ export class ArcadeGameScene extends Phaser.Scene {
         }
       },
       repeat: 3,
+    });
+  }
+
+  private createLargeExplosion(x: number, y: number): void {
+    // Heavy screen shake
+    this.cameras.main.shake(150, 0.008);
+
+    // Spark particle burst (more particles than regular)
+    const sparks = this.add.particles(x, y, "particle_spark", {
+      speed: { min: 80, max: 200 },
+      angle: { min: 0, max: 360 },
+      lifespan: 400,
+      scale: { start: 1.5, end: 0 },
+      emitting: false,
+    });
+    sparks.explode(14);
+    this.time.delayedCall(500, () => sparks.destroy());
+
+    // Large explosion sprite animation (6 frames, 32x32)
+    const exp = this.add.sprite(x, y, "explosion_large_1");
+    exp.setDepth(20);
+
+    let frame = 1;
+    const timer = this.time.addEvent({
+      delay: 90,
+      callback: () => {
+        frame++;
+        if (frame > 6) {
+          exp.destroy();
+          timer.destroy();
+        } else {
+          exp.setTexture(`explosion_large_${frame}`);
+        }
+      },
+      repeat: 5,
     });
   }
 

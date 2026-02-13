@@ -4,6 +4,7 @@ import { PALETTE, darken, lighten } from "../../textures/constants";
 export function generateEffectSprites(scene: Phaser.Scene): void {
   generateBulletSprites(scene);
   generateExplosionSprites(scene);
+  generateLargeExplosionSprites(scene);
   generatePickupSprites(scene);
   generateGrenadeSprite(scene);
   generateParticleTextures(scene);
@@ -157,6 +158,119 @@ function generateExplosionSprites(scene: Phaser.Scene): void {
     g.fillRect(5, 8, 2, 2);
     g.fillRect(10, 6, 1, 1);
     g.generateTexture("explosion_4", S, S);
+    g.destroy();
+  }
+}
+
+// --- Large Explosions (32x32) — for grenades ---
+
+function generateLargeExplosionSprites(scene: Phaser.Scene): void {
+  const S = 32;
+
+  // explosion_large_1 — Bright white/yellow flash
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(PALETTE.white);
+    g.fillRect(10, 10, 12, 12);
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(8, 8, 16, 16);
+    g.fillStyle(PALETTE.white);
+    g.fillRect(12, 12, 8, 8);
+    g.generateTexture("explosion_large_1", S, S);
+    g.destroy();
+  }
+
+  // explosion_large_2 — Expanding fireball
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(PALETTE.orange);
+    g.fillRect(4, 4, 24, 24);
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(6, 6, 20, 20);
+    g.fillStyle(PALETTE.white);
+    g.fillRect(10, 10, 12, 12);
+    // Spark rays
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(0, 14, 4, 4);
+    g.fillRect(28, 13, 4, 4);
+    g.fillRect(13, 0, 4, 4);
+    g.fillRect(14, 28, 4, 4);
+    g.generateTexture("explosion_large_2", S, S);
+    g.destroy();
+  }
+
+  // explosion_large_3 — Peak with debris
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(PALETTE.red);
+    g.fillRect(2, 2, 28, 28);
+    g.fillStyle(PALETTE.orange);
+    g.fillRect(4, 4, 24, 24);
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(8, 8, 16, 16);
+    g.fillStyle(PALETTE.white);
+    g.fillRect(12, 12, 8, 8);
+    // Debris flying outward
+    g.fillStyle(PALETTE.orange);
+    g.fillRect(0, 8, 3, 3);
+    g.fillRect(29, 10, 3, 3);
+    g.fillRect(10, 0, 3, 3);
+    g.fillRect(8, 29, 3, 3);
+    g.fillRect(1, 1, 3, 3);
+    g.fillRect(28, 1, 3, 3);
+    g.fillRect(1, 28, 3, 3);
+    g.fillRect(28, 28, 3, 3);
+    g.generateTexture("explosion_large_3", S, S);
+    g.destroy();
+  }
+
+  // explosion_large_4 — Red-orange with outward smoke
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(PALETTE.red);
+    g.fillRect(3, 3, 26, 26);
+    g.fillStyle(PALETTE.orange);
+    g.fillRect(6, 6, 20, 20);
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(10, 10, 12, 12);
+    // Smoke wisps at edges
+    g.fillStyle(PALETTE.midGray);
+    g.fillRect(0, 6, 3, 4);
+    g.fillRect(29, 8, 3, 4);
+    g.fillRect(7, 0, 4, 3);
+    g.fillRect(5, 29, 4, 3);
+    g.generateTexture("explosion_large_4", S, S);
+    g.destroy();
+  }
+
+  // explosion_large_5 — Mostly smoke
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(PALETTE.lightGray);
+    g.fillRect(4, 4, 24, 24);
+    g.fillStyle(PALETTE.silver);
+    g.fillRect(6, 5, 20, 22);
+    g.fillStyle(PALETTE.midGray);
+    g.fillRect(8, 8, 16, 16);
+    // Fading embers
+    g.fillStyle(PALETTE.orange);
+    g.fillRect(10, 14, 3, 3);
+    g.fillRect(18, 12, 2, 2);
+    g.fillRect(14, 20, 2, 2);
+    g.generateTexture("explosion_large_5", S, S);
+    g.destroy();
+  }
+
+  // explosion_large_6 — Dissipating thin smoke
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(PALETTE.midGray, 0.6);
+    g.fillRect(6, 6, 20, 20);
+    g.fillStyle(PALETTE.lightGray, 0.4);
+    g.fillRect(8, 8, 16, 16);
+    g.fillStyle(PALETTE.silver, 0.3);
+    g.fillRect(10, 10, 12, 12);
+    g.generateTexture("explosion_large_6", S, S);
     g.destroy();
   }
 }
