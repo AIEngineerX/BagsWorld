@@ -12,4 +12,7 @@ export function setupMainCityZone(scene: WorldScene): void {
   scene.ground.setTexture("grass");
 
   scene.restoreNormalSky();
+
+  // Show treeline for Park zone
+  if (scene.treeline) scene.treeline.setVisible(true);
 }

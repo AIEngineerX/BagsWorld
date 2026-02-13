@@ -58,6 +58,8 @@ function createAscensionSky(scene: WorldScene): void {
   }
   scene.stars.forEach((star) => star.setVisible(false));
   scene.distantSkylineGfx.forEach((g) => g.setVisible(false));
+  scene.skyClouds.forEach((c) => c.setVisible(false));
+  if (scene.treeline) scene.treeline.setVisible(false);
 
   const s = SCALE;
   const fullH = GAME_HEIGHT; // Full canvas height (unscaled, matches Phaser config)

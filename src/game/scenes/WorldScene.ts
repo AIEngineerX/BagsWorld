@@ -85,7 +85,10 @@ export class WorldScene extends Phaser.Scene {
   private fireflies: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private ambientParticles: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   public skyGradient: Phaser.GameObjects.Graphics | null = null;
-  public stars: Phaser.GameObjects.Arc[] = [];
+  public stars: Phaser.GameObjects.Rectangle[] = [];
+  public skyClouds: Phaser.GameObjects.Ellipse[] = [];
+  public treeline: Phaser.GameObjects.Graphics | null = null;
+  private skyTimeState: "day" | "night" | "dusk" | "dawn" = "night";
   private musicPlaying = false;
   public audioContext: AudioContext | null = null;
   public gainNode: GainNode | null = null;
@@ -180,7 +183,7 @@ export class WorldScene extends Phaser.Scene {
   public tickerWorldStateVersion = -1;
   public worldStateVersion = 0;
   public skylineSprites: Phaser.GameObjects.Sprite[] = [];
-  public distantSkylineGfx: Phaser.GameObjects.Graphics[] = []; // Persistent background skyline (not animated in transitions)
+  public distantSkylineGfx: (Phaser.GameObjects.Graphics | Phaser.GameObjects.Rectangle)[] = []; // Persistent background skyline (not animated in transitions)
   private academyBuildings: Phaser.GameObjects.Sprite[] = []; // Academy building sprites
   public billboardTimer: Phaser.Time.TimerEvent | null = null;
   public trafficTimers: Phaser.Time.TimerEvent[] = [];
@@ -2711,21 +2714,10 @@ export class WorldScene extends Phaser.Scene {
     );
     this.groundPath.setDepth(1);
 
-    // Subtle transition gradient above grass (replaces harsh grass_dark border)
+    // Sky-to-grass transition gradient (updated by time state)
     this.groundTransition = this.add.graphics();
     this.groundTransition.setDepth(-0.5);
-    // Create a soft fade from sky color to grass area
-    this.groundTransition.fillGradientStyle(
-      0x87ceeb,
-      0x87ceeb, // Sky blue top
-      0x228b22,
-      0x228b22, // Forest green bottom (matches grass)
-      0,
-      0,
-      0.3,
-      0.3 // Alpha: transparent top, slightly visible bottom
-    );
-    this.groundTransition.fillRect(0, Math.round(430 * SCALE), GAME_WIDTH, Math.round(30 * SCALE));
+    this.drawGroundTransition("night");
   }
 
   private createSky(): void {
@@ -2733,19 +2725,35 @@ export class WorldScene extends Phaser.Scene {
     this.skyGradient.setDepth(-2);
 
     // Start with night sky (will be updated by timeInfo)
-    this.drawSkyGradient(true);
+    this.drawSkyGradient("night");
 
     // Add distant city skyline silhouette
     this.createDistantSkyline();
 
-    // Add stars (store references for day/night toggle)
+    // Add pixel-correct stars (rectangles instead of circles)
     this.stars = [];
-    for (let i = 0; i < Math.round(50 * SCALE); i++) {
-      const star = this.add.circle(
+    const starCount = Math.round(50 * SCALE);
+    for (let i = 0; i < starCount; i++) {
+      const roll = Math.random();
+      // Pixel sizes: 1x1 (55%), 2x1 (17%), 1x2 (17%), 2x2 (11%)
+      let sw: number, sh: number;
+      if (roll < 0.55) { sw = 1; sh = 1; }
+      else if (roll < 0.72) { sw = 2; sh = 1; }
+      else if (roll < 0.89) { sw = 1; sh = 2; }
+      else { sw = 2; sh = 2; }
+
+      // Color variation: 80% white, 12% warm, 8% cool
+      const colorRoll = Math.random();
+      let color = 0xffffff;
+      if (colorRoll > 0.92) color = 0xddddff; // cool tint
+      else if (colorRoll > 0.80) color = 0xffeedd; // warm tint
+
+      const star = this.add.rectangle(
         Math.random() * GAME_WIDTH,
         Math.random() * Math.round(300 * SCALE),
-        Math.random() * 1.5 * SCALE + 0.5 * SCALE,
-        0xffffff,
+        Math.round(sw * SCALE),
+        Math.round(sh * SCALE),
+        color,
         Math.random() * 0.5 + 0.3
       );
       star.setDepth(-1);
@@ -2754,40 +2762,111 @@ export class WorldScene extends Phaser.Scene {
       // Twinkle animation
       this.tweens.add({
         targets: star,
-        alpha: 0.2,
+        alpha: 0.1,
         duration: 1000 + Math.random() * 2000,
         yoyo: true,
         repeat: -1,
         ease: "Sine.easeInOut",
       });
     }
+
+    // Add drifting sky clouds
+    this.createSkyClouds();
+
+    // Draw treeline horizon
+    this.drawTreeline();
   }
 
-  private drawSkyGradient(isNight: boolean): void {
+  private drawSkyGradient(timeState: "day" | "night" | "dusk" | "dawn"): void {
     if (!this.skyGradient) return;
-
     this.skyGradient.clear();
+    this.skyTimeState = timeState;
 
-    if (isNight) {
-      // Night sky - dark blue
-      this.skyGradient.fillGradientStyle(
-        0x0f172a, // Dark blue top
-        0x0f172a,
-        0x1e293b, // Lighter blue bottom
-        0x1e293b,
-        1
+    const skyH = Math.round(430 * SCALE);
+    const bandCount = 24;
+    const bandH = Math.ceil(skyH / bandCount);
+
+    // Color palettes per time state
+    const palettes: Record<string, { pos: number; color: number }[]> = {
+      day: [
+        { pos: 0.0, color: 0x1560bd },  // deep blue zenith
+        { pos: 0.2, color: 0x1e7ad8 },
+        { pos: 0.4, color: 0x1e90ff },  // dodger blue
+        { pos: 0.6, color: 0x5dade2 },
+        { pos: 0.8, color: 0x87ceeb },  // sky blue
+        { pos: 1.0, color: 0xb8dff0 },  // pale horizon
+      ],
+      night: [
+        { pos: 0.0, color: 0x070b14 },  // near-black
+        { pos: 0.15, color: 0x0a1128 },
+        { pos: 0.35, color: 0x0f172a }, // dark navy
+        { pos: 0.55, color: 0x162033 },
+        { pos: 0.75, color: 0x1e293b }, // slate
+        { pos: 0.9, color: 0x273548 },
+        { pos: 1.0, color: 0x2d3f55 },  // faint city-glow horizon
+      ],
+      dusk: [
+        { pos: 0.0, color: 0x1a0a3e },  // deep purple
+        { pos: 0.15, color: 0x2d1066 },
+        { pos: 0.3, color: 0x5b2180 },  // violet
+        { pos: 0.45, color: 0x8b3a62 },  // magenta transition
+        { pos: 0.6, color: 0xc75030 },  // orange
+        { pos: 0.75, color: 0xe87840 },
+        { pos: 0.9, color: 0xf5a060 },  // peach
+        { pos: 1.0, color: 0xfcc89b },  // peach horizon
+      ],
+      dawn: [
+        { pos: 0.0, color: 0x0e1a3a },  // pre-dawn blue
+        { pos: 0.2, color: 0x1a2855 },
+        { pos: 0.35, color: 0x2a3a6a }, // transition blue
+        { pos: 0.5, color: 0x5a4a60 },  // purple-blue transition
+        { pos: 0.65, color: 0xb87030 }, // gold
+        { pos: 0.8, color: 0xe8a050 },
+        { pos: 0.9, color: 0xf5c080 },  // peach
+        { pos: 1.0, color: 0xfde0b0 },  // peach horizon
+      ],
+    };
+
+    const stops = palettes[timeState];
+
+    const lerpColor = (c1: number, c2: number, t: number): number => {
+      const r1 = (c1 >> 16) & 0xff, g1 = (c1 >> 8) & 0xff, b1 = c1 & 0xff;
+      const r2 = (c2 >> 16) & 0xff, g2 = (c2 >> 8) & 0xff, b2 = c2 & 0xff;
+      return (
+        (Math.round(r1 + (r2 - r1) * t) << 16) |
+        (Math.round(g1 + (g2 - g1) * t) << 8) |
+        Math.round(b1 + (b2 - b1) * t)
       );
-    } else {
-      // Day sky - bright blue
-      this.skyGradient.fillGradientStyle(
-        0x1e90ff, // Bright blue top (dodger blue)
-        0x1e90ff,
-        0x87ceeb, // Sky blue bottom
-        0x87ceeb,
-        1
-      );
+    };
+
+    const getColor = (pos: number): number => {
+      for (let i = 0; i < stops.length - 1; i++) {
+        if (pos >= stops[i].pos && pos <= stops[i + 1].pos) {
+          const t = (pos - stops[i].pos) / (stops[i + 1].pos - stops[i].pos);
+          return lerpColor(stops[i].color, stops[i + 1].color, t);
+        }
+      }
+      return stops[stops.length - 1].color;
+    };
+
+    for (let i = 0; i < bandCount; i++) {
+      const pos = i / bandCount;
+      const color = getColor(pos);
+      this.skyGradient.fillStyle(color, 1);
+      this.skyGradient.fillRect(0, i * bandH, GAME_WIDTH, bandH + 1);
+
+      // Pixel-art dithering between bands
+      if (i > 1 && i < bandCount - 1) {
+        const nextColor = getColor((i + 1) / bandCount);
+        const ditherColor = lerpColor(color, nextColor, 0.5);
+        this.skyGradient.fillStyle(ditherColor, 0.25);
+        for (let dx = 0; dx < GAME_WIDTH; dx += 6) {
+          if ((dx + i) % 3 === 0) {
+            this.skyGradient.fillRect(dx, i * bandH + bandH - 2, 2, 2);
+          }
+        }
+      }
     }
-    this.skyGradient.fillRect(0, 0, GAME_WIDTH, Math.round(430 * SCALE));
   }
 
   private updateSkyForTime(timeInfo: { isNight: boolean; isDusk: boolean; isDawn: boolean }): void {
@@ -2796,13 +2875,19 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
-    const isNightOrDusk = timeInfo.isNight || timeInfo.isDusk;
+    // Map booleans to 4-state time
+    let timeState: "day" | "night" | "dusk" | "dawn";
+    if (timeInfo.isNight) timeState = "night";
+    else if (timeInfo.isDusk) timeState = "dusk";
+    else if (timeInfo.isDawn) timeState = "dawn";
+    else timeState = "day";
 
     // Update sky gradient
-    this.drawSkyGradient(isNightOrDusk);
+    this.drawSkyGradient(timeState);
 
-    // Show/hide stars
-    const targetAlpha = isNightOrDusk ? 0.5 : 0;
+    // Graduated star alpha per time state
+    const starAlphaMap: Record<string, number> = { night: 0.6, dusk: 0.35, dawn: 0.15, day: 0 };
+    const targetAlpha = starAlphaMap[timeState];
     this.stars.forEach((star) => {
       this.tweens.add({
         targets: star,
@@ -2811,6 +2896,127 @@ export class WorldScene extends Phaser.Scene {
         ease: "Sine.easeInOut",
       });
     });
+
+    // Update sky cloud tinting
+    const cloudTints: Record<string, { color: number; alpha: number }> = {
+      day: { color: 0xffffff, alpha: 0.15 },
+      dusk: { color: 0xffaa66, alpha: 0.18 },
+      dawn: { color: 0xffd700, alpha: 0.16 },
+      night: { color: 0xffffff, alpha: 0 },
+    };
+    const ct = cloudTints[timeState];
+    this.skyClouds.forEach((cloud) => {
+      cloud.setFillStyle(ct.color, ct.alpha);
+    });
+
+    // Update ground transition
+    this.drawGroundTransition(timeState);
+  }
+
+  private createSkyClouds(): void {
+    this.skyClouds = [];
+    const cloudData = [
+      { x: 120, y: 160, w: 200, h: 16 },
+      { x: 380, y: 200, w: 160, h: 12 },
+      { x: 600, y: 140, w: 220, h: 18 },
+      { x: 850, y: 190, w: 180, h: 14 },
+      { x: 1050, y: 170, w: 150, h: 10 },
+    ];
+
+    cloudData.forEach((cd) => {
+      const cloud = this.add.ellipse(cd.x, cd.y, cd.w, cd.h, 0xffffff, 0.12 + Math.random() * 0.08);
+      cloud.setDepth(-1.5);
+      this.skyClouds.push(cloud);
+
+      this.tweens.add({
+        targets: cloud,
+        x: cloud.x + 25 + Math.random() * 20,
+        duration: 15000 + Math.random() * 10000,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+        delay: Math.random() * 5000,
+      });
+    });
+  }
+
+  private drawTreeline(): void {
+    if (!this.treeline) {
+      this.treeline = this.add.graphics();
+      this.treeline.setDepth(-0.3);
+    }
+    this.treeline.clear();
+
+    const baseY = Math.round(440 * SCALE);
+    const treeColors = [0x0a2a18, 0x0e3520];
+    let cx = 0;
+
+    while (cx < GAME_WIDTH) {
+      const w = Math.round((6 + Math.random() * 8) * SCALE);
+      const h = Math.round((8 + Math.random() * 10) * SCALE);
+      const color = treeColors[Math.floor(Math.random() * treeColors.length)];
+
+      // Draw triangular crown as stacked narrowing rectangles (pixel-art style)
+      this.treeline.fillStyle(color);
+      const layers = Math.max(3, Math.round(h / (2 * SCALE)));
+      for (let row = 0; row < layers; row++) {
+        const t = row / layers;
+        const rowW = Math.round(w * (1 - t * 0.7));
+        const rowX = cx + Math.round((w - rowW) / 2);
+        const rowY = baseY - h + Math.round(row * (h / layers));
+        this.treeline.fillRect(rowX, rowY, rowW, Math.ceil(h / layers) + 1);
+      }
+
+      // Short trunk
+      const trunkW = Math.round(2 * SCALE);
+      this.treeline.fillStyle(0x061a0e);
+      this.treeline.fillRect(
+        cx + Math.round((w - trunkW) / 2),
+        baseY,
+        trunkW,
+        Math.round(4 * SCALE)
+      );
+
+      cx += w + Math.round(Math.random() * 3 * SCALE);
+    }
+  }
+
+  private drawGroundTransition(timeState: "day" | "night" | "dusk" | "dawn"): void {
+    if (!this.groundTransition) return;
+    this.groundTransition.clear();
+
+    const topY = Math.round(430 * SCALE);
+    const bandH = Math.round(30 * SCALE);
+    const bands = 8;
+    const perBand = Math.ceil(bandH / bands);
+
+    // Sky-side color per time state (blends into grass green at bottom)
+    const skyColors: Record<string, number> = {
+      day: 0xb8dff0,    // pale blue horizon
+      night: 0x1e293b,  // slate
+      dusk: 0xfcc89b,   // peach
+      dawn: 0xfde0b0,   // warm peach
+    };
+    const grassColor = 0x1a472a; // matches grass base
+    const skyC = skyColors[timeState];
+
+    const lerpC = (c1: number, c2: number, t: number): number => {
+      const r1 = (c1 >> 16) & 0xff, g1 = (c1 >> 8) & 0xff, b1 = c1 & 0xff;
+      const r2 = (c2 >> 16) & 0xff, g2 = (c2 >> 8) & 0xff, b2 = c2 & 0xff;
+      return (
+        (Math.round(r1 + (r2 - r1) * t) << 16) |
+        (Math.round(g1 + (g2 - g1) * t) << 8) |
+        Math.round(b1 + (b2 - b1) * t)
+      );
+    };
+
+    for (let i = 0; i < bands; i++) {
+      const t = i / (bands - 1);
+      const color = lerpC(skyC, grassColor, t);
+      const alpha = 0.15 + t * 0.25; // fades in toward grass
+      this.groundTransition.fillStyle(color, alpha);
+      this.groundTransition.fillRect(0, topY + i * perBand, GAME_WIDTH, perBand + 1);
+    }
   }
 
   /**
@@ -2903,6 +3109,12 @@ export class WorldScene extends Phaser.Scene {
 
     // Restore distant skyline (may have been hidden by ascension zone)
     this.distantSkylineGfx.forEach((g) => g.setVisible(true));
+
+    // Restore sky clouds
+    this.skyClouds.forEach((c) => c.setVisible(true));
+
+    // Restore treeline
+    if (this.treeline) this.treeline.setVisible(true);
   }
 
   /**
@@ -3456,6 +3668,45 @@ export class WorldScene extends Phaser.Scene {
         Math.round((w.y + 8) * SCALE),
         Math.round(6 * SCALE)
       );
+    });
+
+    // === LAYER 7: Animated window flicker overlays ===
+    const flickerWindows = brightWindows.slice(0, 10);
+    const flickerRects: Phaser.GameObjects.Rectangle[] = [];
+    flickerWindows.forEach((w) => {
+      const rect = this.add.rectangle(
+        Math.round((w.x + 2) * SCALE),
+        Math.round((w.y + 2.5) * SCALE),
+        Math.round(4 * SCALE),
+        Math.round(5 * SCALE),
+        0xffeaa7,
+        w.b
+      );
+      rect.setDepth(-1.55);
+      flickerRects.push(rect);
+      this.distantSkylineGfx.push(rect);
+    });
+
+    // Timer: every 3.5s randomly flicker 2-3 windows
+    this.time.addEvent({
+      delay: 3500,
+      loop: true,
+      callback: () => {
+        const count = 2 + Math.floor(Math.random() * 2); // 2-3 windows
+        for (let i = 0; i < count; i++) {
+          const idx = Math.floor(Math.random() * flickerRects.length);
+          const rect = flickerRects[idx];
+          if (!rect || !(rect as Phaser.GameObjects.Rectangle).active) continue;
+          const baseAlpha = flickerWindows[idx].b;
+          this.tweens.add({
+            targets: rect,
+            alpha: baseAlpha * (0.3 + Math.random() * 0.9),
+            duration: 400 + Math.random() * 600,
+            yoyo: true,
+            ease: "Sine.easeInOut",
+          });
+        }
+      },
     });
   }
 
