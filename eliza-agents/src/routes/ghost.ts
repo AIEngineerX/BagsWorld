@@ -146,6 +146,13 @@ router.get("/status", async (req: Request, res: Response) => {
       minBuySellRatio: config.minBuySellRatio,
       slippageBps: config.slippageBps,
     },
+    buyAndBurn: {
+      enabled: config.burnEnabled,
+      burnPercent: config.burnPercent,
+      totalBagsBurned: stats.totalBagsBurned,
+      totalSolSpentOnBurns: stats.totalSolSpentOnBurns,
+      burnCount: stats.burnCount,
+    },
     smartMoneyWallets: trader.getSmartMoneyWalletsWithLabels(),
   });
 });
@@ -1774,6 +1781,34 @@ router.post("/telegram/test", requireAdminKey, async (req: Request, res: Respons
     botName: connectionTest.botName,
     messageId: messageTest.messageId,
   });
+});
+
+// GET /api/ghost/burns - Get buy & burn history and stats
+// Public endpoint - burn stats are transparent for community trust
+router.get("/burns", async (req: Request, res: Response) => {
+  const trader = getGhostTrader();
+
+  try {
+    const burnStats = await trader.getBurnStats();
+    const config = trader.getConfig();
+
+    res.json({
+      success: true,
+      burnEnabled: config.burnEnabled,
+      burnPercent: config.burnPercent,
+      totals: {
+        totalBagsBurned: burnStats.totalBagsBurned,
+        totalSolSpent: burnStats.totalSolSpent,
+        burnCount: burnStats.burnCount,
+      },
+      burns: burnStats.burns,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch burn stats",
+    });
+  }
 });
 
 export default router;
