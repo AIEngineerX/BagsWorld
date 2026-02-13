@@ -40,6 +40,7 @@ export type AgentEventType =
   | "corp_mission_complete" // Corp: mission completed
   | "corp_payroll" // Corp: payroll distributed
   | "corp_service" // Corp: service task posted/completed
+  | "ascension_milestone" // Agent ascended a tier on the Ascension Spire
   | "system"; // System messages
 
 export type AgentSource =

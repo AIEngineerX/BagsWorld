@@ -24,7 +24,11 @@ export type GoalType =
   | 'scan'
   | 'verify'
   | 'greet'
-  | 'respond_event';
+  | 'respond_event'
+  | 'ascend'
+  | 'earn_karma'
+  | 'challenge_rival'
+  | 'celebrate';
 
 export interface AgentGoal {
   id: string;
@@ -52,7 +56,7 @@ export type GoalInput = Omit<AgentGoal, 'id' | 'status' | 'createdAt' | 'activat
 // Zone rotation helper
 // ============================================================================
 
-const ALL_ZONES: ZoneType[] = ['main_city', 'trending', 'labs', 'founders', 'ballers'];
+const ALL_ZONES: ZoneType[] = ['main_city', 'trending', 'labs', 'founders', 'ballers', 'ascension'];
 
 // ============================================================================
 // GoalSystem
@@ -443,6 +447,57 @@ export class GoalSystem {
       bagsy: 'main_city',
     };
     return zoneMap[agentId] || 'main_city';
+  }
+
+  /**
+   * Decompose a high-level "ascend" goal into sub-goals.
+   * Gives agents purpose-driven behavior on the Ascension Spire:
+   * 1. earn_karma — post to MoltBook, engage with community
+   * 2. challenge_rival — interact with agents near same score
+   * 3. visit_zone "ascension" — go hang out at the spire
+   * 4. celebrate (conditional) — fires when tier threshold crossed
+   */
+  decomposeAscendGoal(agentId: string, currentTier: string): void {
+    // Sub-goal: earn karma through community engagement
+    this.addGoal(agentId, {
+      type: 'earn_karma',
+      priority: 7,
+      recurring: true,
+      recurringInterval: 300000, // every 5 min
+      expiresAt: Date.now() + 600000,
+    });
+
+    // Sub-goal: challenge nearby rivals on the spire
+    this.addGoal(agentId, {
+      type: 'challenge_rival',
+      priority: 5,
+      target: { zone: 'ascension' },
+      recurring: true,
+      recurringInterval: 240000, // every 4 min
+      expiresAt: Date.now() + 480000,
+    });
+
+    // Sub-goal: visit the ascension zone periodically
+    this.addGoal(agentId, {
+      type: 'visit_zone',
+      priority: 3,
+      target: { zone: 'ascension' },
+      recurring: true,
+      recurringInterval: 360000, // every 6 min
+      expiresAt: Date.now() + 720000,
+    });
+
+    // Sub-goal: celebrate if at diamond
+    if (currentTier === 'diamond') {
+      this.addGoal(agentId, {
+        type: 'celebrate',
+        priority: 8,
+        target: { zone: 'ascension' },
+        expiresAt: Date.now() + 120000,
+      });
+    }
+
+    console.log(`[GoalSystem] Decomposed ascend goal for ${agentId} (tier: ${currentTier})`);
   }
 
   /** Remove all goals for an agent */

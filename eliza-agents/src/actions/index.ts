@@ -16,6 +16,15 @@ export { getOraclePricesAction } from './getOraclePrices.js';
 export { claimFeesReminderAction } from './claimFeesReminderAction.js';
 export { shillTokenAction } from './shillTokenAction.js';
 
+// Ascension Spire Actions
+export {
+  celebrateAscensionAction,
+  challengeRivalAction,
+  reactToBlessingAction,
+  commentOnAscensionAction,
+  ascensionActions,
+} from './ascension.js';
+
 import { lookupTokenAction } from './lookupToken.js';
 import { getCreatorFeesAction } from './getCreatorFees.js';
 import { getTopCreatorsAction } from './getTopCreators.js';
@@ -29,6 +38,12 @@ import { getOracleLeaderboardAction } from './getOracleLeaderboard.js';
 import { getOraclePricesAction } from './getOraclePrices.js';
 import { claimFeesReminderAction } from './claimFeesReminderAction.js';
 import { shillTokenAction } from './shillTokenAction.js';
+import {
+  celebrateAscensionAction,
+  challengeRivalAction,
+  reactToBlessingAction,
+  commentOnAscensionAction,
+} from './ascension.js';
 
 export const allActions = [
   lookupTokenAction,
@@ -46,6 +61,11 @@ export const allActions = [
   // Finn Actions
   claimFeesReminderAction,
   shillTokenAction,
+  // Ascension Spire
+  celebrateAscensionAction,
+  challengeRivalAction,
+  reactToBlessingAction,
+  commentOnAscensionAction,
 ];
 
 export default allActions;

@@ -161,12 +161,16 @@ const OracleTowerModal = dynamic(
 const LauncherHub = dynamic(() => import("@/components/LauncherHub").then((m) => m.LauncherHub), {
   ssr: false,
 });
-const TradingTerminalModal = dynamic(
-  () => import("@/components/TradingTerminalModal").then((m) => m.TradingTerminalModal),
-  { ssr: false }
-);
 const MansionModal = dynamic(
   () => import("@/components/MansionModal").then((m) => m.MansionModal),
+  { ssr: false }
+);
+const ArcadeModal = dynamic(
+  () => import("@/components/ArcadeModal").then((m) => m.ArcadeModal),
+  { ssr: false }
+);
+const AscensionModal = dynamic(
+  () => import("@/components/AscensionModal").then((m) => m.AscensionModal),
   { ssr: false }
 );
 
@@ -296,7 +300,6 @@ export default function Home() {
     | "oracle"
     | "launcherHub"
     | "casinoAdmin"
-    | "tradingTerminal"
     | "mansion"
     | "arena"
     | "agentHut"
@@ -307,6 +310,8 @@ export default function Home() {
     | "bountyBoard"
     | "corpBoard"
     | "moltbookHQ"
+    | "arcade"
+    | "ascension"
     | null;
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const openModal = useCallback((modal: ModalType) => setActiveModal(modal), []);
@@ -333,7 +338,6 @@ export default function Home() {
       "bagsworld-treasury-click": (() => openModal("communityFund")) as EventListener,
       "bagsworld-casino-click": (() => openModal("casino")) as EventListener,
       "bagsworld-oracle-click": (() => openModal("oracle")) as EventListener,
-      "bagsworld-terminal-click": (() => openModal("tradingTerminal")) as EventListener,
       "bagsworld-mansion-click": ((
         e: CustomEvent<{
           name?: string;
@@ -345,6 +349,7 @@ export default function Home() {
         setMansionData(e.detail);
         openModal("mansion");
       }) as EventListener,
+      "bagsworld-arcade-click": (() => openModal("arcade")) as EventListener,
       "bagsworld-arena-click": (() => openModal("arena")) as EventListener,
       "bagsworld-agenthut-click": (() => openModal("agentHut")) as EventListener,
       "bagsworld-moltbar-click": (() => openModal("agentBar")) as EventListener,
@@ -355,6 +360,7 @@ export default function Home() {
       "bagsworld-launch-click": (() => openModal("launch")) as EventListener,
       "bagsworld-claim-click": (() => openModal("feeClaim")) as EventListener,
       "bagsworld-open-dungeon": (() => openModal("dungeon")) as EventListener,
+      "bagsworld-ascension-click": (() => openModal("ascension")) as EventListener,
       "bagsworld-phaser-zone-change": ((e: CustomEvent<{ zone: string }>) => {
         const zone = e.detail?.zone;
         if (zone) setZone(zone as ZoneType);
@@ -563,7 +569,7 @@ export default function Home() {
             {/* Scanlines disabled on mobile via CSS for better touch handling */}
             <div className="scanlines" aria-hidden="true" />
 
-            {/* Desktop zone nav overlay */}
+            {/* Desktop zone nav overlay (2-row grid with Dungeon) */}
             <div className="hidden sm:block absolute top-2 left-1/2 -translate-x-1/2 z-20">
               <ZoneNav />
             </div>
@@ -770,7 +776,6 @@ export default function Home() {
         {activeModal === "communityFund" && <CommunityFundModal onClose={closeModal} />}
         {activeModal === "casino" && <CasinoModal onClose={closeModal} />}
         {activeModal === "oracle" && <OracleTowerModal onClose={closeModal} />}
-        {activeModal === "tradingTerminal" && <TradingTerminalModal onClose={closeModal} />}
         {activeModal === "mansion" && mansionData && (
           <MansionModal
             onClose={() => {
@@ -811,6 +816,12 @@ export default function Home() {
 
         {/* MoltBook HQ Modal - Agent dashboard */}
         {activeModal === "moltbookHQ" && <MoltbookHQModal onClose={closeModal} />}
+
+        {/* Arcade Modal - Metal Bags game */}
+        {activeModal === "arcade" && <ArcadeModal onClose={closeModal} />}
+
+        {/* Ascension Modal - Crustafarian Shrine */}
+        {activeModal === "ascension" && <AscensionModal onClose={closeModal} />}
       </ErrorBoundary>
 
       {/* Scout Alerts - shows new token launch notifications */}
