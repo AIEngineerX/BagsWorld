@@ -21,6 +21,8 @@ import {
   setupArenaZone,
   disconnectArena,
   setupDungeonZone,
+  setupAscensionZone,
+  disconnectAscension,
   setupMainCityZone,
 } from "../zones";
 const GAME_WIDTH = 1280;
@@ -75,13 +77,15 @@ export class WorldScene extends Phaser.Scene {
   public ambientCreatures: BeachCrab[] = []; // Ambient crabs/lobsters/hermit crabs (always present)
   public fountainWater: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   public ground!: Phaser.GameObjects.TileSprite;
+  public groundPath!: Phaser.GameObjects.TileSprite;
+  public groundTransition!: Phaser.GameObjects.Graphics;
   private timeOfDay = 0;
   private overlay!: Phaser.GameObjects.Rectangle;
   private sunSprite: Phaser.GameObjects.Sprite | null = null;
   private fireflies: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private ambientParticles: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   public skyGradient: Phaser.GameObjects.Graphics | null = null;
-  private stars: Phaser.GameObjects.Arc[] = [];
+  public stars: Phaser.GameObjects.Arc[] = [];
   private musicPlaying = false;
   public audioContext: AudioContext | null = null;
   public gainNode: GainNode | null = null;
@@ -153,12 +157,16 @@ export class WorldScene extends Phaser.Scene {
   } | null = null;
   public dungeonElements: Phaser.GameObjects.GameObject[] = []; // Dungeon zone elements
   public dungeonZoneCreated = false; // Cache dungeon zone elements
+  public ascensionElements: Phaser.GameObjects.GameObject[] = []; // Ascension zone elements
+  public ascensionZoneCreated = false; // Cache ascension zone elements
   public foundersPopup: Phaser.GameObjects.Container | null = null; // Popup modal for building info
   public foundersActiveTab: string = "overview"; // Current tab in DexScreener Workshop popup
   private ballersGoldenSky: Phaser.GameObjects.Graphics | null = null; // Golden hour sky for Ballers Valley
   private academyTwilightSky: Phaser.GameObjects.Graphics | null = null; // Magical twilight sky for Academy
   public dungeonCaveSky: Phaser.GameObjects.Graphics | null = null; // Cave ceiling for dungeon zone
   public dungeonSkyElements: Phaser.GameObjects.GameObject[] = []; // Stalactites, crystals, etc.
+  public ascensionCelestialSky: Phaser.GameObjects.Graphics | null = null; // Celestial sky for ascension zone
+  public ascensionSkyElements: Phaser.GameObjects.GameObject[] = []; // Stars, motes, auroras, etc.
   private academyMoon: Phaser.GameObjects.Arc | null = null; // Moon for Academy zone
   private academyStars: Phaser.GameObjects.Arc[] = []; // Extra bright stars for Academy
   private boundZoneChange: ((e: Event) => void) | null = null;
@@ -223,6 +231,7 @@ export class WorldScene extends Phaser.Scene {
   private interactPrompt: Phaser.GameObjects.Container | null = null; // "Press E to talk/enter" UI
   private boundEnterWorld: ((e: Event) => void) | null = null;
   private boundExitWorld: ((e: Event) => void) | null = null;
+  private pendingEnterWorld: (() => void) | null = null; // Queued spawn when zone is transitioning
 
   // Quest marker system
   private boundQuestMarkers: ((e: Event) => void) | null = null;
@@ -443,6 +452,12 @@ export class WorldScene extends Phaser.Scene {
   ): void {
     if (this.playerEnabled && this.localPlayer) return;
 
+    // If a zone transition is in progress, queue the spawn for when it completes
+    if (this.isTransitioning) {
+      this.pendingEnterWorld = () => this.enterWorldWithTexture(textureKey, memeName, walkTextureKey);
+      return;
+    }
+
     this.playerSpriteVariant = -1; // Custom sprite
     this.playerEnabled = true;
 
@@ -506,6 +521,12 @@ export class WorldScene extends Phaser.Scene {
 
   private enterWorld(spriteVariant: number): void {
     if (this.playerEnabled && this.localPlayer) return; // Already in world
+
+    // If a zone transition is in progress, queue the spawn for when it completes
+    if (this.isTransitioning) {
+      this.pendingEnterWorld = () => this.enterWorld(spriteVariant);
+      return;
+    }
 
     this.playerSpriteVariant = spriteVariant;
     this.playerEnabled = true;
@@ -600,35 +621,40 @@ export class WorldScene extends Phaser.Scene {
 
     this.playerEnabled = false;
 
+    // Capture references before nulling — the fade-out tween needs the sprite
+    const exitingPlayer = this.localPlayer;
+    const textureKeysToClean = [...this.localPlayerTextureKeys];
+    this.localPlayer = null; // Null immediately so re-entry is safe during fade
+    this.localPlayerTextureKeys = [];
+    this.playerVelocity = { x: 0, y: 0 };
+    this.nearbyNPC = null;
+    this.nearbyBuilding = null;
+    this.pendingEnterWorld = null;
+    if (this.interactPrompt) {
+      this.interactPrompt.setVisible(false);
+    }
+
     // Clean up name label if present (for meme sprites)
-    const nameLabel = (this.localPlayer as any).nameLabel as Phaser.GameObjects.Text | undefined;
+    const nameLabel = (exitingPlayer as any).nameLabel as Phaser.GameObjects.Text | undefined;
     if (nameLabel) {
       nameLabel.destroy();
     }
 
-    // Fade out animation
+    // Fade out animation on the captured sprite
     this.tweens.add({
-      targets: this.localPlayer,
+      targets: exitingPlayer,
       alpha: 0,
       scale: 0.5,
       duration: 300,
       ease: "Cubic.easeIn",
       onComplete: () => {
-        this.localPlayer?.destroy();
-        this.localPlayer = null;
-        this.playerVelocity = { x: 0, y: 0 };
-        this.nearbyNPC = null;
-        this.nearbyBuilding = null;
-        if (this.interactPrompt) {
-          this.interactPrompt.setVisible(false);
-        }
+        exitingPlayer.destroy();
         // Clean up meme player textures to prevent memory leak (~4MB each)
-        for (const key of this.localPlayerTextureKeys) {
+        for (const key of textureKeysToClean) {
           if (this.textures.exists(key)) {
             this.textures.remove(key);
           }
         }
-        this.localPlayerTextureKeys = [];
       },
     });
 
@@ -642,20 +668,37 @@ export class WorldScene extends Phaser.Scene {
     this.interactPrompt.setDepth(150);
     this.interactPrompt.setVisible(false);
 
+    const promptText = this.isMobile ? "Tap to talk" : "Press E to talk";
+    const pillWidth = this.isMobile ? 100 : 120;
+
     // Background pill
     const bg = this.add.graphics();
     bg.fillStyle(0x000000, 0.8);
-    bg.fillRoundedRect(-60, -15, 120, 30, 8);
+    bg.fillRoundedRect(-pillWidth / 2, -15, pillWidth, 30, 8);
     this.interactPrompt.add(bg);
 
     // Text
-    const text = this.add.text(0, 0, "Press E to talk", {
+    const text = this.add.text(0, 0, promptText, {
       fontFamily: "monospace",
       fontSize: "12px",
       color: "#ffffff",
     });
     text.setOrigin(0.5, 0.5);
     this.interactPrompt.add(text);
+
+    // On mobile, make the prompt tappable to trigger interaction
+    if (this.isMobile) {
+      const hitArea = this.add.rectangle(0, 0, pillWidth + 20, 50, 0x000000, 0);
+      hitArea.setInteractive({ useHandCursor: true });
+      hitArea.on("pointerdown", () => {
+        if (this.nearbyNPC) {
+          this.interactWithNPC(this.nearbyNPC);
+        } else if (this.nearbyBuilding) {
+          this.interactWithBuilding(this.nearbyBuilding);
+        }
+      });
+      this.interactPrompt.add(hitArea);
+    }
   }
 
   private updateLocalPlayer(): void {
@@ -969,11 +1012,9 @@ export class WorldScene extends Phaser.Scene {
       character.id.startsWith("external-") || character.id.startsWith("agent-");
 
     if (isExternalAgent) {
-      // Show tooltip popup instead of auto-navigating
-      const matchSprite = this.characterSprites.get(character.id);
-      if (matchSprite) {
-        const isMoltbook = character.id.startsWith("agent-") || character.providerUsername != null;
-        this.showOpenClawTooltip(character, matchSprite, isMoltbook);
+      // Open the agent's profile page directly
+      if (character.profileUrl) {
+        window.open(character.profileUrl, "_blank");
       }
     } else if (character.isToly) {
       window.dispatchEvent(new CustomEvent("bagsworld-toly-click"));
@@ -1008,11 +1049,8 @@ export class WorldScene extends Phaser.Scene {
     } else if (character.isBagsy) {
       window.dispatchEvent(new CustomEvent("bagsworld-bagsy-click"));
     } else if (character.profileUrl) {
-      // Show tooltip with visit button instead of auto-navigating
-      const matchSprite = this.characterSprites.get(character.id);
-      if (matchSprite) {
-        this.showOpenClawTooltip(character, matchSprite, false);
-      }
+      // Open profile directly
+      window.open(character.profileUrl, "_blank");
     }
   }
 
@@ -1021,8 +1059,8 @@ export class WorldScene extends Phaser.Scene {
     const isPokeCenter = building.id.includes("PokeCenter");
     const isTradingGym = building.id.includes("TradingGym");
     const isCasino = building.id.includes("Casino");
-    const isTradingTerminal = building.id.includes("Terminal");
     const isOracle = building.id.includes("Oracle") || building.symbol === "ORACLE";
+    const isArcade = building.id.includes("Arcade") || building.symbol === "ARCADE";
     const isStarterBuilding = building.id.startsWith("Starter");
     const isTreasuryBuilding = building.id.startsWith("Treasury");
     const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSWORLD";
@@ -1057,15 +1095,15 @@ export class WorldScene extends Phaser.Scene {
           detail: { buildingId: building.id, name: building.name },
         })
       );
-    } else if (isTradingTerminal) {
-      window.dispatchEvent(
-        new CustomEvent("bagsworld-terminal-click", {
-          detail: { buildingId: building.id, name: building.name },
-        })
-      );
     } else if (isOracle) {
       window.dispatchEvent(
         new CustomEvent("bagsworld-oracle-click", {
+          detail: { buildingId: building.id, name: building.name },
+        })
+      );
+    } else if (isArcade) {
+      window.dispatchEvent(
+        new CustomEvent("bagsworld-arcade-click", {
           detail: { buildingId: building.id, name: building.name },
         })
       );
@@ -1239,6 +1277,7 @@ export class WorldScene extends Phaser.Scene {
     this.moltbookElements.forEach((el) => this.tweens.killTweensOf(el));
     this.arenaElements.forEach((el) => this.tweens.killTweensOf(el));
     this.dungeonElements.forEach((el) => this.tweens.killTweensOf(el));
+    this.ascensionElements.forEach((el) => this.tweens.killTweensOf(el));
     this.buildingSprites.forEach((container) => this.tweens.killTweensOf(container));
     this.characterSprites.forEach((sprite) => this.tweens.killTweensOf(sprite));
 
@@ -1261,6 +1300,7 @@ export class WorldScene extends Phaser.Scene {
     this.resetZoneElementPositions(this.moltbookElements);
     this.resetZoneElementPositions(this.arenaElements);
     this.resetZoneElementPositions(this.dungeonElements);
+    this.resetZoneElementPositions(this.ascensionElements);
 
     // Determine slide direction: Labs -> Moltbook Beach -> Park -> BagsCity -> Ballers Valley -> Founder's Corner -> Arena (left to right)
     // Zone order: labs (-2) -> moltbook (-1) -> main_city (0) -> trending (1) -> ballers (2) -> founders (3) -> arena (4)
@@ -1273,9 +1313,12 @@ export class WorldScene extends Phaser.Scene {
       ballers: 3,
       founders: 4,
       arena: 5,
+      ascension: 6,
     };
     const isGoingRight = zoneOrder[newZone] > zoneOrder[this.currentZone];
-    const isDungeonTransition = newZone === "dungeon" || this.currentZone === "dungeon";
+    const isDungeonTransition =
+      newZone === "dungeon" || this.currentZone === "dungeon" ||
+      newZone === "ascension" || this.currentZone === "ascension";
     const duration = isDungeonTransition ? 800 : 600; // Slower, dramatic descent for dungeon
     const slideDistance = Math.round(850 * SCALE); // Slightly more than screen width for full slide (scaled)
 
@@ -1304,6 +1347,8 @@ export class WorldScene extends Phaser.Scene {
       oldElements.push(...this.arenaElements);
     } else if (this.currentZone === "dungeon") {
       oldElements.push(...this.dungeonElements);
+    } else if (this.currentZone === "ascension") {
+      oldElements.push(...this.ascensionElements);
     } else {
       // Main city (Park) decorations
       this.decorations.forEach((d) => oldElements.push(d));
@@ -1333,6 +1378,7 @@ export class WorldScene extends Phaser.Scene {
         labs: 0x1a1a2e,
         dungeon: 0x1a1a1a,
         arena: 0x2d1b4e,
+        ascension: 0xe8e8f0,
         moltbook: 0xc2b280,
         ballers: 0x22c55e,
         founders: 0x8b6914,
@@ -1455,6 +1501,9 @@ export class WorldScene extends Phaser.Scene {
         disconnectArena(this);
       } else if (this.currentZone === "dungeon") {
         this.dungeonElements.forEach((el) => (el as any).setVisible(false));
+      } else if (this.currentZone === "ascension") {
+        this.ascensionElements.forEach((el) => (el as any).setVisible(false));
+        disconnectAscension(this);
       }
 
       // Update zone and set up new content
@@ -1470,6 +1519,7 @@ export class WorldScene extends Phaser.Scene {
         founders: "founders_ground", // Founder's Corner has warm workshop flooring
         arena: "arena_floor", // MoltBook Arena has dark checkerboard floor
         dungeon: "dungeon_ground", // BagsDungeon has dark cave stone floor
+        ascension: "ascension_cloud_ground", // Ascension Spire has bright cloud-tile floor
       };
       this.ground.setTexture(groundTextures[newZone]);
 
@@ -1531,6 +1581,13 @@ export class WorldScene extends Phaser.Scene {
 
       // Mark transition complete
       this.isTransitioning = false;
+
+      // Flush any pending player spawn that was queued during this transition
+      if (this.pendingEnterWorld) {
+        const pending = this.pendingEnterWorld;
+        this.pendingEnterWorld = null;
+        pending();
+      }
     });
   }
 
@@ -1540,6 +1597,8 @@ export class WorldScene extends Phaser.Scene {
 
     // Ensure ground is visible by default (zones that need it hidden will override)
     this.ground.setVisible(true);
+    if (this.groundPath) this.groundPath.setVisible(true);
+    if (this.groundTransition) this.groundTransition.setVisible(true);
 
     // Setup zone with elements offset, then animate them into position
     const duration = 400; // Smooth slide-in matching the overall transition feel
@@ -1679,6 +1738,28 @@ export class WorldScene extends Phaser.Scene {
           });
         }
       });
+    } else if (zone === "ascension") {
+      setupAscensionZone(this);
+
+      // Ascension elements rise from below (upward float-in)
+      const verticalDist = Math.round(300 * SCALE);
+      const newElements = [...this.ascensionElements].filter(Boolean);
+
+      newElements.forEach((el) => {
+        if ((el as any).y !== undefined) {
+          const targetY = (el as any).y;
+          (el as any).y = targetY + verticalDist;
+          (el as any).alpha = 0;
+          this.tweens.add({
+            targets: el,
+            y: targetY,
+            alpha: 1,
+            duration: 600,
+            ease: "Cubic.easeOut",
+            delay: Math.random() * 200,
+          });
+        }
+      });
     } else {
       setupMainCityZone(this);
 
@@ -1764,6 +1845,10 @@ export class WorldScene extends Phaser.Scene {
     } else if (this.currentZone === "dungeon") {
       // Hide dungeon elements
       this.dungeonElements.forEach((el) => (el as any).setVisible(false));
+    } else if (this.currentZone === "ascension") {
+      // Hide ascension elements and stop polling
+      this.ascensionElements.forEach((el) => (el as any).setVisible(false));
+      disconnectAscension(this);
     } else if (this.currentZone === "main_city") {
       // Main city uses shared decorations, don't destroy them
       // Just hide them
@@ -1803,7 +1888,9 @@ export class WorldScene extends Phaser.Scene {
     this.moltbookElements.forEach((el) => (el as any).setVisible(false));
     this.arenaElements.forEach((el) => (el as any).setVisible(false));
     this.dungeonElements.forEach((el) => (el as any).setVisible(false));
+    this.ascensionElements.forEach((el) => (el as any).setVisible(false));
     disconnectArena(this);
+    disconnectAscension(this);
     if (this.foundersPopup) {
       this.foundersPopup.destroy();
       this.foundersPopup = null;
@@ -1832,6 +1919,9 @@ export class WorldScene extends Phaser.Scene {
         break;
       case "dungeon":
         setupDungeonZone(this);
+        break;
+      case "ascension":
+        setupAscensionZone(this);
         break;
       case "main_city":
       default:
@@ -2416,11 +2506,20 @@ export class WorldScene extends Phaser.Scene {
       this.boundExitWorld = null;
     }
 
-    // Clean up local player
+    // Clean up local player and meme textures
     if (this.localPlayer) {
+      const nameLabel = (this.localPlayer as any).nameLabel as Phaser.GameObjects.Text | undefined;
+      if (nameLabel) nameLabel.destroy();
       this.localPlayer.destroy();
       this.localPlayer = null;
     }
+    for (const key of this.localPlayerTextureKeys) {
+      if (this.textures.exists(key)) {
+        this.textures.remove(key);
+      }
+    }
+    this.localPlayerTextureKeys = [];
+    this.pendingEnterWorld = null;
     if (this.interactPrompt) {
       this.interactPrompt.destroy();
       this.interactPrompt = null;
@@ -2510,20 +2609,20 @@ export class WorldScene extends Phaser.Scene {
 
     // Add path in the middle
     const pathY = Math.round(570 * SCALE);
-    const path = this.add.tileSprite(
+    this.groundPath = this.add.tileSprite(
       GAME_WIDTH / 2,
       pathY,
       GAME_WIDTH,
       Math.round(40 * SCALE),
       "path"
     );
-    path.setDepth(1);
+    this.groundPath.setDepth(1);
 
     // Subtle transition gradient above grass (replaces harsh grass_dark border)
-    const transitionGradient = this.add.graphics();
-    transitionGradient.setDepth(-0.5);
+    this.groundTransition = this.add.graphics();
+    this.groundTransition.setDepth(-0.5);
     // Create a soft fade from sky color to grass area
-    transitionGradient.fillGradientStyle(
+    this.groundTransition.fillGradientStyle(
       0x87ceeb,
       0x87ceeb, // Sky blue top
       0x228b22,
@@ -2533,7 +2632,7 @@ export class WorldScene extends Phaser.Scene {
       0.3,
       0.3 // Alpha: transparent top, slightly visible bottom
     );
-    transitionGradient.fillRect(0, Math.round(430 * SCALE), GAME_WIDTH, Math.round(30 * SCALE));
+    this.groundTransition.fillRect(0, Math.round(430 * SCALE), GAME_WIDTH, Math.round(30 * SCALE));
   }
 
   private createSky(): void {
@@ -2694,6 +2793,12 @@ export class WorldScene extends Phaser.Scene {
       this.dungeonCaveSky.setVisible(false);
     }
     this.dungeonSkyElements.forEach((el) => (el as any).setVisible(false));
+
+    // Hide the ascension celestial sky
+    if (this.ascensionCelestialSky) {
+      this.ascensionCelestialSky.setVisible(false);
+    }
+    this.ascensionSkyElements.forEach((el) => (el as any).setVisible(false));
 
     // Show the main sky gradient
     if (this.skyGradient) {
@@ -2892,6 +2997,7 @@ export class WorldScene extends Phaser.Scene {
     // === LAYER 1: Atmospheric haze/glow at horizon ===
     const hazeLayer = this.add.graphics();
     hazeLayer.setDepth(-2.5);
+    this.skylineSprites.push(hazeLayer as any);
 
     // Gradient haze from horizon upward (gives depth)
     for (let i = 0; i < 8; i++) {
@@ -2904,6 +3010,7 @@ export class WorldScene extends Phaser.Scene {
     // === LAYER 2: Far distant buildings (very faded, smaller) ===
     const farSkyline = this.add.graphics();
     farSkyline.setDepth(-2);
+    this.skylineSprites.push(farSkyline as any);
     farSkyline.fillStyle(0x2d3748, 0.25); // Very faded
 
     const drawFarBuilding = (x: number, topY: number, width: number) => {
@@ -2924,6 +3031,7 @@ export class WorldScene extends Phaser.Scene {
     // === LAYER 3: Main skyline buildings (medium opacity) ===
     const mainSkyline = this.add.graphics();
     mainSkyline.setDepth(-1.8);
+    this.skylineSprites.push(mainSkyline as any);
 
     const drawBuilding = (
       g: Phaser.GameObjects.Graphics,
@@ -3126,6 +3234,7 @@ export class WorldScene extends Phaser.Scene {
     // === LAYER 4: Building details (spires, antennas, rooftop features) ===
     const detailsLayer = this.add.graphics();
     detailsLayer.setDepth(-1.7);
+    this.skylineSprites.push(detailsLayer as any);
     detailsLayer.fillStyle(0x0f172a, 0.6);
 
     // Spire on tallest building
@@ -3171,6 +3280,7 @@ export class WorldScene extends Phaser.Scene {
     // === LAYER 5: Window lights (varied brightness, more of them) ===
     const windowsLayer = this.add.graphics();
     windowsLayer.setDepth(-1.6);
+    this.skylineSprites.push(windowsLayer as any);
 
     // Window definitions: x, y, brightness (0.15-0.4)
     const windows = [
@@ -3238,6 +3348,7 @@ export class WorldScene extends Phaser.Scene {
     // === LAYER 6: Subtle glow beneath some windows ===
     const glowLayer = this.add.graphics();
     glowLayer.setDepth(-1.65);
+    this.skylineSprites.push(glowLayer as any);
 
     // Add small glow spots beneath brightest windows
     const brightWindows = windows.filter((w) => w.b >= 0.35);
@@ -5440,7 +5551,8 @@ export class WorldScene extends Phaser.Scene {
     });
     sprite.on("pointerout", () => {
       sprite?.setScale(isSpecial ? 1.3 : 1.2);
-      this.hideTooltip();
+      // Delay tooltip hide so "Visit Profile" button can be clicked
+      this.scheduleHideTooltip();
       this.input.setDefaultCursor("default");
     });
     sprite.on("pointerdown", () => {
@@ -5498,8 +5610,8 @@ export class WorldScene extends Phaser.Scene {
         // Bagsy opens the mascot chat
         window.dispatchEvent(new CustomEvent("bagsworld-bagsy-click"));
       } else if (character.profileUrl) {
-        // Show tooltip with visit button instead of auto-navigating
-        this.showOpenClawTooltip(character, sprite!, false);
+        // Open profile directly
+        window.open(character.profileUrl, "_blank");
       }
     });
 
@@ -5639,8 +5751,8 @@ export class WorldScene extends Phaser.Scene {
     // Filter buildings by current zone
     // Buildings with no zone appear in most zones, but NOT in arena/dungeon (special zones)
     const zoneBuildings = buildings.filter((b) => {
-      // Arena and Dungeon zones have no token buildings
-      if (this.currentZone === "arena" || this.currentZone === "dungeon") return false;
+      // Arena, Dungeon, and Ascension zones have no token buildings
+      if (this.currentZone === "arena" || this.currentZone === "dungeon" || this.currentZone === "ascension") return false;
       if (!b.zone) return true; // No zone = appears in all non-special zones
       return b.zone === this.currentZone;
     });
@@ -5792,9 +5904,8 @@ export class WorldScene extends Phaser.Scene {
     const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
     const isTradingGym = building.id.includes("TradingGym") || building.symbol === "DOJO";
     const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
-    const isTradingTerminal =
-      building.id.includes("TradingTerminal") || building.symbol === "TERMINAL";
     const isOracle = building.id.includes("Oracle") || building.symbol === "ORACLE";
+    const isArcade = building.id.includes("Arcade") || building.symbol === "ARCADE";
     const isBagsHQ = building.isFloating || building.symbol === "BAGSWORLD";
     const isTreasury = building.id.startsWith("Treasury");
     const isMansion = building.isMansion;
@@ -5809,8 +5920,8 @@ export class WorldScene extends Phaser.Scene {
       isPokeCenter ||
       isTradingGym ||
       isCasino ||
-      isTradingTerminal ||
       isOracle ||
+      isArcade ||
       isBagsHQ ||
       isTreasury ||
       isMansion
@@ -5897,13 +6008,12 @@ export class WorldScene extends Phaser.Scene {
       container.add(shadow);
     }
 
-    // Use special texture for PokeCenter/TradingGym/Casino/Terminal/Oracle/HQ/Mansions, otherwise use level-based building with style
+    // Use special texture for PokeCenter/TradingGym/Casino/Oracle/HQ/Mansions, otherwise use level-based building with style
     const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
     const isTradingGym = building.id.includes("TradingGym") || building.symbol === "DOJO";
     const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
-    const isTradingTerminal =
-      building.id.includes("TradingTerminal") || building.symbol === "TERMINAL";
     const isOracle = building.id.includes("Oracle") || building.symbol === "ORACLE";
+    const isArcade = building.id.includes("Arcade") || building.symbol === "ARCADE";
     const isTreasury = building.id.startsWith("Treasury");
     const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSWORLD";
     const isMansion = building.isMansion;
@@ -5938,15 +6048,15 @@ export class WorldScene extends Phaser.Scene {
             ? "tradinggym"
             : isCasino
               ? "casino"
-              : isTradingTerminal
-                ? "terminal"
-                : isOracle
+              : isOracle
                   ? "oracle_tower"
-                  : isTreasury
-                    ? "treasury"
-                    : isBeachBuilding
-                      ? `beach_building_${beachBuildingLevel}`
-                      : `building_${building.level}_${styleIndex}`;
+                  : isArcade
+                    ? "arcade_building"
+                    : isTreasury
+                      ? "treasury"
+                      : isBeachBuilding
+                        ? `beach_building_${beachBuildingLevel}`
+                        : `building_${building.level}_${styleIndex}`;
     const sprite = this.add.sprite(0, 0, buildingTexture);
     sprite.setOrigin(0.5, 1);
     // HQ is larger and floating, mansions use rank-based scaling from building data
@@ -5964,13 +6074,13 @@ export class WorldScene extends Phaser.Scene {
               ? 1.0
               : isCasino
                 ? 1.0
-                : isTradingTerminal
-                  ? 1.0
-                  : isOracle
+                : isOracle
                     ? 1.0
-                    : isTreasury
+                    : isArcade
                       ? 1.0
-                      : buildingScale
+                      : isTreasury
+                        ? 1.0
+                        : buildingScale
     );
     container.add(sprite);
 
@@ -6055,57 +6165,6 @@ export class WorldScene extends Phaser.Scene {
 
       // Make mansion interactive (clickable cursor)
       sprite.setInteractive({ useHandCursor: true });
-    }
-
-    // Add pulsing glow animation for Trading Terminal
-    if (isTradingTerminal) {
-      // Terminal green glow
-      const terminalGlow = this.add.sprite(0, -50, "glow");
-      terminalGlow.setScale(1.3);
-      terminalGlow.setAlpha(0.2);
-      terminalGlow.setTint(0x22c55e); // Terminal green
-      container.add(terminalGlow);
-
-      // Pulsing glow animation
-      this.tweens.add({
-        targets: terminalGlow,
-        alpha: 0.35,
-        scale: 1.5,
-        duration: 1500,
-        ease: "Sine.easeInOut",
-        yoyo: true,
-        repeat: -1,
-      });
-
-      // Secondary cyan glow
-      const terminalGlow2 = this.add.sprite(0, -50, "glow");
-      terminalGlow2.setScale(0.9);
-      terminalGlow2.setAlpha(0.1);
-      terminalGlow2.setTint(0x06b6d4); // Cyan
-      container.add(terminalGlow2);
-
-      // Offset pulse for depth effect
-      this.tweens.add({
-        targets: terminalGlow2,
-        alpha: 0.2,
-        scale: 1.1,
-        duration: 1200,
-        ease: "Sine.easeInOut",
-        yoyo: true,
-        repeat: -1,
-        delay: 400,
-      });
-
-      // Subtle scale pulse on building
-      this.tweens.add({
-        targets: sprite,
-        scaleX: 1.02,
-        scaleY: 1.01,
-        duration: 2500,
-        ease: "Sine.easeInOut",
-        yoyo: true,
-        repeat: -1,
-      });
     }
 
     // Glow effect for pumping buildings (skip for HQ - it has its own gold glow)
@@ -6196,9 +6255,8 @@ export class WorldScene extends Phaser.Scene {
       const isPokeCenter = building.id.includes("PokeCenter");
       const isTradingGym = building.id.includes("TradingGym") || building.symbol === "DOJO";
       const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
-      const isTradingTerminal =
-        building.id.includes("TradingTerminal") || building.symbol === "TERMINAL";
       const isOracle = building.id.includes("Oracle") || building.symbol === "ORACLE";
+      const isArcade = building.id.includes("Arcade") || building.symbol === "ARCADE";
       const isStarterBuilding = building.id.startsWith("Starter");
       const isTreasuryBuilding = building.id.startsWith("Treasury");
       const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSWORLD";
@@ -6237,17 +6295,17 @@ export class WorldScene extends Phaser.Scene {
             detail: { buildingId: building.id, name: building.name },
           })
         );
-      } else if (isTradingTerminal) {
-        // Trading Terminal opens the professional trading terminal modal
-        window.dispatchEvent(
-          new CustomEvent("bagsworld-terminal-click", {
-            detail: { buildingId: building.id, name: building.name },
-          })
-        );
       } else if (isOracle) {
         // Oracle Tower opens the prediction market modal
         window.dispatchEvent(
           new CustomEvent("bagsworld-oracle-click", {
+            detail: { buildingId: building.id, name: building.name },
+          })
+        );
+      } else if (isArcade) {
+        // Arcade opens the Metal Bags game modal
+        window.dispatchEvent(
+          new CustomEvent("bagsworld-arcade-click", {
             detail: { buildingId: building.id, name: building.name },
           })
         );
@@ -6310,6 +6368,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private tooltip: Phaser.GameObjects.Container | null = null;
+  private tooltipHideTimer: ReturnType<typeof setTimeout> | null = null;
 
   private formatMarketCap(value: number): string {
     if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
@@ -7196,8 +7255,19 @@ export class WorldScene extends Phaser.Scene {
       });
       btnText.setOrigin(0.5, 0.5);
       btnBg.setInteractive({ useHandCursor: true });
-      btnBg.on("pointerover", () => btnBg.setFillStyle(borderColor, 1));
-      btnBg.on("pointerout", () => btnBg.setFillStyle(borderColor, 0.9));
+      btnBg.on("pointerover", () => {
+        btnBg.setFillStyle(borderColor, 1);
+        // Cancel any pending tooltip hide so the button stays clickable
+        if (this.tooltipHideTimer) {
+          clearTimeout(this.tooltipHideTimer);
+          this.tooltipHideTimer = null;
+        }
+      });
+      btnBg.on("pointerout", () => {
+        btnBg.setFillStyle(borderColor, 0.9);
+        // Re-schedule hide after leaving the button
+        this.scheduleHideTooltip();
+      });
       btnBg.on("pointerdown", () => {
         window.open(character.profileUrl, "_blank");
       });
@@ -7379,13 +7449,13 @@ export class WorldScene extends Phaser.Scene {
       // Different action text for special buildings
       const isOracleBuilding = building.id.includes("Oracle") || building.symbol === "ORACLE";
       const isCasinoBuilding = building.id.includes("Casino") || building.symbol === "CASINO";
-      const isTerminalBuilding = building.id.includes("Terminal") || building.symbol === "TERMINAL";
+      const isArcadeBuilding = building.id.includes("Arcade") || building.symbol === "ARCADE";
       const actionText =
-        building.isMansion || isOracleBuilding || isCasinoBuilding || isTerminalBuilding
+        building.isMansion || isOracleBuilding || isCasinoBuilding || isArcadeBuilding
           ? "Enter"
           : "Click to trade";
       const actionColor =
-        building.isMansion || isOracleBuilding || isCasinoBuilding || isTerminalBuilding
+        building.isMansion || isOracleBuilding || isCasinoBuilding || isArcadeBuilding
           ? "#fbbf24"
           : "#6b7280";
       const clickText = this.add.text(0, statusText ? 40 : 32, actionText, {
@@ -7406,10 +7476,28 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private hideTooltip(): void {
+    if (this.tooltipHideTimer) {
+      clearTimeout(this.tooltipHideTimer);
+      this.tooltipHideTimer = null;
+    }
     if (this.tooltip) {
       this.tooltip.destroy();
       this.tooltip = null;
     }
+  }
+
+  /**
+   * Schedule tooltip hide with a short delay so interactive buttons
+   * (e.g. "Visit Profile") can be clicked before the tooltip disappears.
+   */
+  private scheduleHideTooltip(): void {
+    if (this.tooltipHideTimer) {
+      clearTimeout(this.tooltipHideTimer);
+    }
+    this.tooltipHideTimer = setTimeout(() => {
+      this.tooltipHideTimer = null;
+      this.hideTooltip();
+    }, 500);
   }
 
   private triggerEvent(event: WorldState["events"][0]): void {

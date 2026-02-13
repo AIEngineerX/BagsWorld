@@ -144,23 +144,41 @@ export function EnterWorldButton({ className = "" }: EnterWorldButtonProps) {
   const [error, setError] = useState<string | null>(null);
   const [useDefaultSprite, setUseDefaultSprite] = useState(false);
   const [selectedDefault, setSelectedDefault] = useState(0);
+  const [isEntering, setIsEntering] = useState(false); // Prevent double-click during entry
+  const [currentStage, setCurrentStage] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Listen for player enter/exit events
+  // Listen for player enter/exit events + Escape key to close modal
   useEffect(() => {
-    const handleEntered = () => setIsInWorld(true);
-    const handleExited = () => setIsInWorld(false);
+    const handleEntered = () => {
+      setIsInWorld(true);
+      setIsEntering(false);
+    };
+    const handleExited = () => {
+      setIsInWorld(false);
+      setIsEntering(false);
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowSelector(false);
+      }
+    };
 
     window.addEventListener("bagsworld-player-entered", handleEntered);
     window.addEventListener("bagsworld-player-exited", handleExited);
+    window.addEventListener("keydown", handleKeyDown);
 
     return () => {
       window.removeEventListener("bagsworld-player-entered", handleEntered);
       window.removeEventListener("bagsworld-player-exited", handleExited);
+      window.removeEventListener("keydown", handleKeyDown);
+      // Cancel any in-flight sprite generation on unmount
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
   }, []);
-
-  const [currentStage, setCurrentStage] = useState(0);
 
   const generateMemeSprite = async () => {
     if (!memePrompt.trim()) {
@@ -168,11 +186,21 @@ export function EnterWorldButton({ className = "" }: EnterWorldButtonProps) {
       return;
     }
 
+    // Cancel any in-flight generation
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsGenerating(true);
     setError(null);
     setGeneratedSpriteUrl(null);
     setWalkSpriteSheetUrl(null);
     setCurrentStage(0);
+
+    // 45-second overall timeout for the entire generation pipeline
+    const timeoutId = setTimeout(() => controller.abort(), 45_000);
 
     try {
       // Stage 1: Analyzing
@@ -187,6 +215,7 @@ export function EnterWorldButton({ className = "" }: EnterWorldButtonProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: memePrompt }),
+        signal: controller.signal,
       });
 
       const data = await response.json();
@@ -207,12 +236,16 @@ export function EnterWorldButton({ className = "" }: EnterWorldButtonProps) {
           characterImageUrl: data.imageUrl,
           type: "walk",
         }),
+        signal: controller.signal,
       });
 
       const walkData = await walkResponse.json();
 
       if (walkResponse.ok && walkData.imageUrl) {
         setWalkSpriteSheetUrl(walkData.imageUrl);
+      } else {
+        // Walk animation failed — sprite still usable, notify the user
+        console.warn("[EnterWorld] Walk animation generation failed, using static sprite");
       }
 
       // Stage 4: Finalizing
@@ -223,11 +256,17 @@ export function EnterWorldButton({ className = "" }: EnterWorldButtonProps) {
       setGenerationStep("");
       setCurrentStage(0);
     } catch (err) {
-      console.error("Sprite generation error:", err);
-      setError(err instanceof Error ? err.message : "Failed to generate sprite");
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setError("Generation timed out — try a simpler prompt");
+      } else {
+        console.error("Sprite generation error:", err);
+        setError(err instanceof Error ? err.message : "Failed to generate sprite");
+      }
       setGenerationStep("");
       setCurrentStage(0);
     } finally {
+      clearTimeout(timeoutId);
+      abortControllerRef.current = null;
       setIsGenerating(false);
     }
   };
@@ -238,34 +277,33 @@ export function EnterWorldButton({ className = "" }: EnterWorldButtonProps) {
   };
 
   const handleEnterWorld = () => {
+    if (isEntering) return; // Prevent double-click
+    setIsEntering(true);
+
     // Switch to Park zone first
     window.dispatchEvent(
       new CustomEvent("bagsworld-zone-change", { detail: { zone: "main_city" } })
     );
 
-    // Spawn the player with either generated sprite or default
-    setTimeout(() => {
-      if (useDefaultSprite || !generatedSpriteUrl) {
-        // Use default sprite variant
-        window.dispatchEvent(
-          new CustomEvent("bagsworld-enter-world", {
-            detail: { spriteVariant: selectedDefault },
-          })
-        );
-      } else {
-        // Use AI-generated meme sprite with optional walk animation
-        window.dispatchEvent(
-          new CustomEvent("bagsworld-enter-world", {
-            detail: {
-              spriteVariant: -1, // Special flag for custom sprite
-              customSpriteUrl: generatedSpriteUrl,
-              walkSpriteSheetUrl: walkSpriteSheetUrl, // 4-frame walk cycle
-              memeName: memePrompt,
-            },
-          })
-        );
-      }
-    }, 100);
+    // Spawn the player — WorldScene queues this until zone transition completes
+    if (useDefaultSprite || !generatedSpriteUrl) {
+      window.dispatchEvent(
+        new CustomEvent("bagsworld-enter-world", {
+          detail: { spriteVariant: selectedDefault },
+        })
+      );
+    } else {
+      window.dispatchEvent(
+        new CustomEvent("bagsworld-enter-world", {
+          detail: {
+            spriteVariant: -1, // Special flag for custom sprite
+            customSpriteUrl: generatedSpriteUrl,
+            walkSpriteSheetUrl: walkSpriteSheetUrl, // 4-frame walk cycle
+            memeName: memePrompt,
+          },
+        })
+      );
+    }
 
     setShowSelector(false);
   };
@@ -403,7 +441,6 @@ export function EnterWorldButton({ className = "" }: EnterWorldButtonProps) {
                       if (e.key === "Enter" && !isGenerating) generateMemeSprite();
                     }}
                     onKeyUp={stopPropagation}
-                    onKeyPress={stopPropagation}
                     autoFocus
                   />
                 </div>
