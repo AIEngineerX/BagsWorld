@@ -169,10 +169,6 @@ const ArcadeModal = dynamic(
   () => import("@/components/ArcadeModal").then((m) => m.ArcadeModal),
   { ssr: false }
 );
-const AscensionModal = dynamic(
-  () => import("@/components/AscensionModal").then((m) => m.AscensionModal),
-  { ssr: false }
-);
 
 import { useGameStore } from "@/lib/store";
 import { useGameEvents } from "@/hooks/useGameEvents";
@@ -311,7 +307,6 @@ export default function Home() {
     | "corpBoard"
     | "moltbookHQ"
     | "arcade"
-    | "ascension"
     | null;
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const openModal = useCallback((modal: ModalType) => setActiveModal(modal), []);
@@ -360,7 +355,6 @@ export default function Home() {
       "bagsworld-launch-click": (() => openModal("launch")) as EventListener,
       "bagsworld-claim-click": (() => openModal("feeClaim")) as EventListener,
       "bagsworld-open-dungeon": (() => openModal("dungeon")) as EventListener,
-      "bagsworld-ascension-click": (() => openModal("ascension")) as EventListener,
       "bagsworld-phaser-zone-change": ((e: CustomEvent<{ zone: string }>) => {
         const zone = e.detail?.zone;
         if (zone) setZone(zone as ZoneType);
@@ -820,8 +814,6 @@ export default function Home() {
         {/* Arcade Modal - Metal Bags game */}
         {activeModal === "arcade" && <ArcadeModal onClose={closeModal} />}
 
-        {/* Ascension Modal - Crustafarian Shrine */}
-        {activeModal === "ascension" && <AscensionModal onClose={closeModal} />}
       </ErrorBoundary>
 
       {/* Scout Alerts - shows new token launch notifications */}
