@@ -165,8 +165,11 @@ const MansionModal = dynamic(
   () => import("@/components/MansionModal").then((m) => m.MansionModal),
   { ssr: false }
 );
-const ArcadeModal = dynamic(
-  () => import("@/components/ArcadeModal").then((m) => m.ArcadeModal),
+const ArcadeModal = dynamic(() => import("@/components/ArcadeModal").then((m) => m.ArcadeModal), {
+  ssr: false,
+});
+const OakIntroWizard = dynamic(
+  () => import("@/components/OakIntroWizard").then((m) => m.OakIntroWizard),
   { ssr: false }
 );
 
@@ -307,6 +310,7 @@ export default function Home() {
     | "corpBoard"
     | "moltbookHQ"
     | "arcade"
+    | "oakIntro"
     | null;
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const openModal = useCallback((modal: ModalType) => setActiveModal(modal), []);
@@ -353,6 +357,7 @@ export default function Home() {
       "bagsworld-corp-click": (() => openModal("corpBoard")) as EventListener,
       "bagsworld-moltbookhq-click": (() => openModal("moltbookHQ")) as EventListener,
       "bagsworld-launch-click": (() => openModal("launch")) as EventListener,
+      "bagsworld-oak-intro": (() => openModal("oakIntro")) as EventListener,
       "bagsworld-claim-click": (() => openModal("feeClaim")) as EventListener,
       "bagsworld-open-dungeon": (() => openModal("dungeon")) as EventListener,
       "bagsworld-phaser-zone-change": ((e: CustomEvent<{ zone: string }>) => {
@@ -394,6 +399,17 @@ export default function Home() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [openModal]);
+
+  // Auto-show Oak Intro Wizard on first visit (once per tab session)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const hasDeepLink = params.has("zone") || params.has("chat");
+    const alreadySeen = sessionStorage.getItem("bagsworld_intro_seen");
+    if (!hasDeepLink && !alreadySeen && !activeModal) {
+      const timer = setTimeout(() => openModal("oakIntro"), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initialize autonomous dialogue and behavior systems (all sync, non-blocking)
   useEffect(() => {
@@ -814,6 +830,16 @@ export default function Home() {
         {/* Arcade Modal - Metal Bags game */}
         {activeModal === "arcade" && <ArcadeModal onClose={closeModal} />}
 
+        {/* Oak Intro Wizard - Pokemon-style guided token launch */}
+        {activeModal === "oakIntro" && (
+          <OakIntroWizard
+            onClose={closeModal}
+            onLaunchSuccess={() => {
+              closeModal();
+              refreshAfterLaunch();
+            }}
+          />
+        )}
       </ErrorBoundary>
 
       {/* Scout Alerts - shows new token launch notifications */}
