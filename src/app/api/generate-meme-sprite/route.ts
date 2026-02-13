@@ -14,6 +14,13 @@ Show FULL BODY from head to feet in a front-facing or 3/4 view pose, standing id
 No background elements, props, or other characters.`;
 
 export async function POST(request: NextRequest) {
+  if (!process.env.FAL_KEY) {
+    return NextResponse.json(
+      { error: "AI sprite generation is not configured. Use a default sprite instead." },
+      { status: 503 }
+    );
+  }
+
   try {
     const { prompt } = await request.json();
 

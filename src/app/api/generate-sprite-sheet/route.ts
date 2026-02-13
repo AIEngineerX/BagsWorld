@@ -46,6 +46,13 @@ const PROMPTS: Record<SpriteType, string> = {
 };
 
 export async function POST(request: NextRequest) {
+  if (!process.env.FAL_KEY) {
+    return NextResponse.json(
+      { error: "AI sprite sheet generation is not configured." },
+      { status: 503 }
+    );
+  }
+
   try {
     const { characterImageUrl, type = "walk" } = await request.json();
 
