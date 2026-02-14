@@ -73,6 +73,8 @@ export function FinnbagsChat() {
   // Listen for Finn click events
   useEffect(() => {
     const handleFinnClick = () => {
+      // Don't open chat while a modal (intro wizard, etc.) is active
+      if ((window as any).__bagsworld_modal_open) return;
       setIsOpen(true);
       // Add Finn's greeting
       const randomQuote = FINN_QUOTES[Math.floor(Math.random() * FINN_QUOTES.length)];

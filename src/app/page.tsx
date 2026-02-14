@@ -316,6 +316,14 @@ export default function Home() {
   const openModal = useCallback((modal: ModalType) => setActiveModal(modal), []);
   const closeModal = useCallback(() => setActiveModal(null), []);
 
+  // Expose modal state globally so chat components can suppress opens during modals
+  useEffect(() => {
+    (window as any).__bagsworld_modal_open = activeModal !== null;
+    return () => {
+      (window as any).__bagsworld_modal_open = false;
+    };
+  }, [activeModal]);
+
   const [mansionData, setMansionData] = useState<{
     name?: string;
     holderRank?: number;
