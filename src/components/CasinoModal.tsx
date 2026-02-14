@@ -592,7 +592,9 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
     return (
       <div
         className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50"
-        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
       >
         <button
           onClick={onClose}
@@ -980,7 +982,9 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
     return (
       <div
         className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50"
-        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
       >
         <button
           onClick={onClose}

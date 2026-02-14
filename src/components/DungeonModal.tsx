@@ -18,7 +18,9 @@ export function DungeonModal({ onClose }: DungeonModalProps) {
   return (
     <div
       className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <button
         onClick={onClose}

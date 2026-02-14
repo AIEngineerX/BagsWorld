@@ -66,11 +66,7 @@ function ZoneButton({
   const isActive = currentZone === zoneId;
   const isDungeon = zoneId === "dungeon";
   const isAscension = zoneId === "ascension";
-  const activeClass = isDungeon
-    ? DUNGEON_ACTIVE
-    : isAscension
-      ? ASCENSION_ACTIVE
-      : BTN_ACTIVE;
+  const activeClass = isDungeon ? DUNGEON_ACTIVE : isAscension ? ASCENSION_ACTIVE : BTN_ACTIVE;
 
   return (
     <button
@@ -146,11 +142,7 @@ export function ZoneNav() {
         </div>
         {/* Row 3: Dungeon — centered */}
         <div className="flex justify-center">
-          <ZoneButton
-            zoneId="dungeon"
-            currentZone={currentZone}
-            onZoneChange={handleZoneChange}
-          />
+          <ZoneButton zoneId="dungeon" currentZone={currentZone} onZoneChange={handleZoneChange} />
         </div>
       </nav>
     </>

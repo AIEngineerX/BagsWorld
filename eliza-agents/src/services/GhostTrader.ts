@@ -40,6 +40,9 @@ const SOL_INCINERATOR_API_URL = "https://v1.api.sol-incinerator.com";
 const DEFAULT_BURN_PERCENT = 25; // 25% of profits
 const MIN_BURN_SOL = 0.005; // Minimum SOL worth burning (below this, tx fees aren't worth it)
 
+// Default token decimals for Bags.fm tokens (Meteora DBC uses 6 decimals, same as pump.fun)
+const DEFAULT_TOKEN_DECIMALS = 6;
+
 // Default trading configuration (BagBot-inspired, tuned for Bags.fm reality)
 // Reference: https://github.com/BagBotX/bagbot + DexScreener Bags runner analysis
 // Updated Jan 2025: Relaxed filters based on GAS token success patterns
@@ -50,8 +53,9 @@ const DEFAULT_CONFIG = {
   maxPositionSol: 1.0, // Match BagBot
   maxTotalExposureSol: 3.0, // Allow 3 full positions
   maxOpenPositions: 3, // Conservative position limit
-  // Profit taking - BagBot style: 33% at 1.5R, 33% at 2R, trailing
-  takeProfitTiers: [1.5, 2.0, 3.0], // Take 33% at each tier
+  // Profit taking - BagBot style: partial sell at each tier, trailing stop for rest
+  takeProfitTiers: [1.5, 2.0, 3.0], // Take partialSellPercent% at each tier
+  partialSellPercent: 33, // Sell 33% of remaining tokens at each take-profit tier
   trailingStopPercent: 10, // After 2x, trail by 10%
   // Risk management
   stopLossPercent: 15, // Cut losses at -15% (BagBot uses same)
@@ -211,6 +215,7 @@ export interface GhostTraderConfig {
   maxOpenPositions: number;
   // Profit taking
   takeProfitTiers: number[];
+  partialSellPercent: number; // % of remaining tokens to sell at each take-profit tier
   trailingStopPercent: number;
   // Risk management
   stopLossPercent: number;
@@ -302,6 +307,9 @@ export class GhostTrader {
   // Store last evaluation for telegram broadcast (need metrics after position created)
   private lastEvaluation: TradeEvaluation | null = null;
 
+  // Cache token decimals to avoid repeated RPC calls
+  private tokenDecimalsCache: Map<string, number> = new Map();
+
   constructor() {
     this.config = { ...DEFAULT_CONFIG };
     this.bagsApi = getBagsApiService();
@@ -327,6 +335,23 @@ export class GhostTrader {
     }
     if (process.env.GHOST_MAX_POSITIONS) {
       this.config.maxOpenPositions = parseInt(process.env.GHOST_MAX_POSITIONS);
+    }
+    // Risk management config
+    if (process.env.GHOST_STOP_LOSS_PERCENT) {
+      this.config.stopLossPercent = parseFloat(process.env.GHOST_STOP_LOSS_PERCENT);
+    }
+    if (process.env.GHOST_TRAILING_STOP_PERCENT) {
+      this.config.trailingStopPercent = parseFloat(process.env.GHOST_TRAILING_STOP_PERCENT);
+    }
+    if (process.env.GHOST_TAKE_PROFIT_TIERS) {
+      // Comma-separated: "1.5,2.0,3.0"
+      this.config.takeProfitTiers = process.env.GHOST_TAKE_PROFIT_TIERS
+        .split(",")
+        .map((s) => parseFloat(s.trim()))
+        .filter((n) => !isNaN(n));
+    }
+    if (process.env.GHOST_PARTIAL_SELL_PERCENT) {
+      this.config.partialSellPercent = parseFloat(process.env.GHOST_PARTIAL_SELL_PERCENT);
     }
     // Buy & burn config
     if (envBool("GHOST_BURN_ENABLED")) {
@@ -508,6 +533,55 @@ export class GhostTrader {
       console.log("[GhostTrader] Loaded persisted state: ENABLED");
     }
 
+    // Load persisted config overrides from database
+    // Priority: defaults → DB persisted → env vars (env wins, set in constructor before this)
+    // Since env vars are already applied in constructor, we only apply DB values for keys
+    // that DON'T have env var overrides (env vars take precedence).
+    const envOverriddenKeys = new Set<string>();
+    if (process.env.GHOST_MAX_POSITION_SOL) envOverriddenKeys.add("config_maxPositionSol");
+    if (process.env.GHOST_MAX_TOTAL_EXPOSURE) envOverriddenKeys.add("config_maxTotalExposureSol");
+    if (process.env.GHOST_MAX_POSITIONS) envOverriddenKeys.add("config_maxOpenPositions");
+    if (process.env.GHOST_STOP_LOSS_PERCENT) envOverriddenKeys.add("config_stopLossPercent");
+    if (process.env.GHOST_TRAILING_STOP_PERCENT) envOverriddenKeys.add("config_trailingStopPercent");
+    if (process.env.GHOST_TAKE_PROFIT_TIERS) envOverriddenKeys.add("config_takeProfitTiers");
+    if (process.env.GHOST_PARTIAL_SELL_PERCENT) envOverriddenKeys.add("config_partialSellPercent");
+    if (process.env.GHOST_BURN_ENABLED) envOverriddenKeys.add("config_burnEnabled");
+    if (process.env.GHOST_BURN_PERCENT) envOverriddenKeys.add("config_burnPercent");
+
+    const allConfigRows = (await this.db`
+      SELECT key, value FROM ghost_config WHERE key LIKE 'config_%'
+    `) as Array<{ key: string; value: string }>;
+
+    let dbOverrides = 0;
+    for (const row of allConfigRows) {
+      if (envOverriddenKeys.has(row.key)) continue; // env var takes precedence
+
+      const configKey = row.key.replace("config_", "") as keyof GhostTraderConfig;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cfg = this.config as any;
+      if (configKey === "takeProfitTiers") {
+        const parsed = JSON.parse(row.value);
+        if (Array.isArray(parsed)) {
+          cfg[configKey] = parsed;
+          dbOverrides++;
+        }
+      } else if (configKey === "burnEnabled") {
+        cfg[configKey] = row.value === "true";
+        dbOverrides++;
+      } else if (configKey in this.config) {
+        const numValue = parseFloat(row.value);
+        if (!isNaN(numValue)) {
+          cfg[configKey] = numValue;
+          dbOverrides++;
+        }
+      }
+    }
+
+    if (dbOverrides > 0) {
+      console.log(`[GhostTrader] Loaded ${dbOverrides} persisted config overrides from database`);
+    }
+
     console.log("[GhostTrader] Database schema initialized");
   }
 
@@ -625,6 +699,27 @@ export class GhostTrader {
       }
 
       console.log(`[GhostTrader] Loaded learning data for ${rows.length} signals`);
+
+      // Detect corrupted learning data from the pre-fix entry price bug:
+      // If we have 5+ signals with 3+ trades each and the aggregate win rate is < 5%,
+      // the data is almost certainly poisoned by the old LAMPORTS_PER_SOL unit mismatch.
+      const reliableSignals = Array.from(this.signalPerformance.values()).filter(
+        (s) => s.totalTrades >= 3
+      );
+      if (reliableSignals.length >= 5) {
+        const totalWins = reliableSignals.reduce((sum, s) => sum + s.winningTrades, 0);
+        const totalTrades = reliableSignals.reduce((sum, s) => sum + s.totalTrades, 0);
+        const aggregateWinRate = totalTrades > 0 ? totalWins / totalTrades : 0;
+
+        if (aggregateWinRate < 0.05) {
+          console.warn(
+            `[GhostTrader] CORRUPTED LEARNING DATA DETECTED: ${reliableSignals.length} signals, ` +
+            `${totalWins}/${totalTrades} wins (${(aggregateWinRate * 100).toFixed(1)}% win rate). ` +
+            `Auto-resetting to clean slate.`
+          );
+          await this.resetLearning();
+        }
+      }
     } catch (error) {
       console.error("[GhostTrader] Failed to load learning data:", error);
     }
@@ -816,24 +911,44 @@ export class GhostTrader {
   /**
    * Reset all learning data - use when strategy changes significantly
    */
-  async resetLearning(): Promise<{ success: boolean; signalsCleared: number }> {
+  async resetLearning(): Promise<{ success: boolean; signalsCleared: number; memoriesCleared: number }> {
     const signalsCleared = this.signalPerformance.size;
+    let memoriesCleared = 0;
 
-    // Clear in-memory cache
+    // Clear in-memory learning cache
     this.signalPerformance.clear();
 
-    // Clear database
+    // Clear learning database
     if (this.db) {
-      try {
-        await this.db`DELETE FROM ghost_learning`;
-        console.log(`[GhostTrader] Reset learning data: ${signalsCleared} signals cleared`);
-      } catch (error) {
-        console.error("[GhostTrader] Failed to reset learning data:", error);
-        return { success: false, signalsCleared: 0 };
+      await this.db`DELETE FROM ghost_learning`;
+      console.log(`[GhostTrader] Reset learning data: ${signalsCleared} signals cleared`);
+    }
+
+    // Clear poisoned trade memories from MemoryService
+    // These contain false "stop_loss" / "stopped out" outcomes from the old entry price bug
+    const memoryService = getMemoryService();
+    if (memoryService) {
+      const poisonedMemories = await memoryService.getMemories("ghost", {
+        memoryType: "fact",
+        limit: 200,
+      });
+
+      const tradeMemoryKeywords = ["stop_loss", "stopped out", "dead_position", "token died", "Closed $", "failed"];
+      const toDelete = poisonedMemories.filter((m) =>
+        tradeMemoryKeywords.some((kw) => m.content.includes(kw))
+      );
+
+      for (const mem of toDelete) {
+        await memoryService.deleteMemory(mem.id);
+      }
+      memoriesCleared = toDelete.length;
+
+      if (memoriesCleared > 0) {
+        console.log(`[GhostTrader] Cleared ${memoriesCleared} poisoned trade memories`);
       }
     }
 
-    return { success: true, signalsCleared };
+    return { success: true, signalsCleared, memoriesCleared };
   }
 
   // ==========================================================================
@@ -1080,7 +1195,7 @@ export class GhostTrader {
       }
 
       // === TAKE-PROFIT (Partial Exit Ladder) ===
-      // Sell 33% at each tier: 1.5x, 2.0x, then trailing stop manages the rest
+      // Sell partialSellPercent% at each tier, then trailing stop manages the rest
       const sortedTiers = [...this.config.takeProfitTiers].sort((a, b) => a - b);
       const nextTierIndex = position.tiersSold || 0;
 
@@ -1092,11 +1207,13 @@ export class GhostTrader {
             `[GhostTrader] Partial take-profit tier ${nextTierIndex + 1} triggered for ${position.tokenSymbol} at ${currentMultiplier.toFixed(2)}x (target was ${nextTier}x)`
           );
 
-          // Chatter about the partial win
+          // Chatter about the partial win (percentage-based messaging)
+          const pctGain = ((currentMultiplier - 1) * 100).toFixed(0);
+          const sellPct = this.config.partialSellPercent;
           const winMessages = [
-            `taking 33% off $${position.tokenSymbol} at ${currentMultiplier.toFixed(1)}x, letting the rest ride`,
-            `partial exit on $${position.tokenSymbol} at ${currentMultiplier.toFixed(1)}x 💰`,
-            `$${position.tokenSymbol} +${((currentMultiplier - 1) * 100).toFixed(0)}% — securing some, riding more`,
+            `taking ${sellPct}% off $${position.tokenSymbol} at +${pctGain}%, letting the rest ride`,
+            `partial exit on $${position.tokenSymbol} at +${pctGain}%`,
+            `$${position.tokenSymbol} +${pctGain}% — securing ${sellPct}%, riding more`,
           ];
           this.maybeChatter(winMessages[Math.floor(Math.random() * winMessages.length)], "happy");
 
@@ -1109,12 +1226,12 @@ export class GhostTrader {
       // Log position status for monitoring (not yet at take-profit)
       if (currentMultiplier >= 1.2) {
         console.log(
-          `[GhostTrader] ${position.tokenSymbol} at ${currentMultiplier.toFixed(2)}x - approaching take-profit (tier ${nextTierIndex + 1}: ${sortedTiers[nextTierIndex] || sortedTiers[sortedTiers.length - 1]}x)`
+          `[GhostTrader] ${position.tokenSymbol} at +${priceChangePercent.toFixed(1)}% - approaching take-profit (tier ${nextTierIndex + 1}: +${((sortedTiers[nextTierIndex] || sortedTiers[sortedTiers.length - 1]) - 1) * 100}%)`
         );
       } else if (holdTimeMinutes > 60) {
         // Log stale positions that haven't moved
         console.log(
-          `[GhostTrader] ${position.tokenSymbol} held ${holdTimeMinutes.toFixed(0)}min at ${currentMultiplier.toFixed(2)}x, vol: $${volume24hUsd.toFixed(0)}`
+          `[GhostTrader] ${position.tokenSymbol} held ${holdTimeMinutes.toFixed(0)}min at ${priceChangePercent >= 0 ? "+" : ""}${priceChangePercent.toFixed(1)}%, vol: $${volume24hUsd.toFixed(0)}`
         );
 
         // Occasional concern about slow positions
@@ -1623,9 +1740,13 @@ export class GhostTrader {
       return false;
     }
 
-    // Calculate entry price
+    // Calculate entry price (SOL per whole token, adjusted for token decimals)
     const tokensReceived = parseFloat(quote.outAmount);
-    const entryPriceSol = suggestedAmount / (tokensReceived / LAMPORTS_PER_SOL);
+    const { entryPriceSol } = await this.calculateEntryPrice(
+      suggestedAmount,
+      quote.outAmount,
+      launch.mint
+    );
 
     // Create position record
     const position: GhostPosition = {
@@ -1819,7 +1940,7 @@ export class GhostTrader {
   }
 
   /**
-   * Execute a partial close (sell 33% of remaining tokens at a take-profit tier)
+   * Execute a partial close (sell configurable % of remaining tokens at a take-profit tier)
    * Keeps the position open for further upside
    */
   private async executePartialClose(
@@ -1835,8 +1956,8 @@ export class GhostTrader {
       return;
     }
 
-    // Calculate sell amount: 33% of remaining tokens
-    const sellFraction = 0.33;
+    // Calculate sell amount: configurable % of remaining tokens
+    const sellFraction = this.config.partialSellPercent / 100;
     let sellAmountTokens = Math.floor(position.amountTokens * sellFraction);
 
     // Check actual token balance before attempting sell
@@ -1895,7 +2016,7 @@ export class GhostTrader {
     const tierMultiplier = sortedTiers[tierIndex];
 
     console.log(
-      `[GhostTrader] Partial close: ${position.tokenSymbol} tier ${tierIndex + 1} (${tierMultiplier}x), selling 33% (${sellAmountTokens} tokens), attempt ${position.sellAttempts}/${MAX_SELL_ATTEMPTS}`
+      `[GhostTrader] Partial close: ${position.tokenSymbol} tier ${tierIndex + 1} (+${((tierMultiplier - 1) * 100).toFixed(0)}%), selling ${this.config.partialSellPercent}% (${sellAmountTokens} tokens), attempt ${position.sellAttempts}/${MAX_SELL_ATTEMPTS}`
     );
 
     // Get trade quote for selling partial tokens back to SOL
@@ -1970,15 +2091,16 @@ export class GhostTrader {
       pnlSol: partialPnl,
       exitReason: `partial_take_profit_tier${tierIndex + 1}`,
       holdTimeMinutes,
-      partialPercent: 33,
+      partialPercent: this.config.partialSellPercent,
     };
     this.telegramBroadcaster.broadcastExit(exitSignal);
 
-    // Visual feedback in game world
+    // Visual feedback in game world (percentage-based)
     if (this.worldSync) {
+      const pctGain = ((currentPriceSol / position.entryPriceSol - 1) * 100).toFixed(0);
       this.worldSync.sendSpeak(
         "ghost",
-        `took 33% off $${position.tokenSymbol} at ${(currentPriceSol / position.entryPriceSol * (1 / (1 - solProportionSold))).toFixed(1)}x, letting rest ride`,
+        `took ${this.config.partialSellPercent}% off $${position.tokenSymbol} at +${pctGain}%, letting rest ride`,
         "happy"
       );
     }
@@ -2294,9 +2416,13 @@ export class GhostTrader {
       speechMessage = `aping into $${position.tokenSymbol}`;
       emotion = "excited";
     } else {
-      const pnlSign = (position.pnlSol || 0) >= 0 ? "+" : "";
-      const pnlStr = `${pnlSign}${(position.pnlSol || 0).toFixed(4)} SOL`;
-      const isProfitable = (position.pnlSol || 0) >= 0;
+      const pnl = position.pnlSol || 0;
+      const pnlSign = pnl >= 0 ? "+" : "";
+      const pnlStr = `${pnlSign}${pnl.toFixed(4)} SOL`;
+      const pnlPct = position.amountSol > 0
+        ? `${pnlSign}${((pnl / position.amountSol) * 100).toFixed(1)}%`
+        : "";
+      const isProfitable = pnl >= 0;
       const exitReason =
         position.exitReason === "trailing_stop"
           ? "trailing stop locked in gains"
@@ -2307,10 +2433,10 @@ export class GhostTrader {
               : position.exitReason === "dead_position"
                 ? "token died, cutting losses"
                 : position.exitReason;
-      message = `closed $${position.tokenSymbol}. ${exitReason}. pnl: ${pnlStr}`;
+      message = `closed $${position.tokenSymbol}. ${exitReason}. pnl: ${pnlStr} (${pnlPct})`;
       speechMessage = isProfitable
-        ? `banked ${pnlStr} on $${position.tokenSymbol}`
-        : `cut losses on $${position.tokenSymbol}`;
+        ? `banked ${pnlPct} on $${position.tokenSymbol}`
+        : `cut losses on $${position.tokenSymbol} (${pnlPct})`;
       emotion = isProfitable ? "happy" : "sad";
     }
 
@@ -2425,6 +2551,43 @@ export class GhostTrader {
   // Utility Methods
   // ==========================================================================
 
+  /**
+   * Get token decimals with caching. Fetches from RPC, defaults to 6 (Bags.fm standard).
+   */
+  private async getTokenDecimals(mint: string): Promise<number> {
+    const cached = this.tokenDecimalsCache.get(mint);
+    if (cached !== undefined) return cached;
+
+    let decimals = DEFAULT_TOKEN_DECIMALS;
+    if (this.solanaService) {
+      decimals = await this.solanaService.getTokenDecimals(mint);
+    }
+
+    this.tokenDecimalsCache.set(mint, decimals);
+    return decimals;
+  }
+
+  /**
+   * Calculate entry price per whole token in SOL from Jupiter quote amounts.
+   * outAmount is in token's smallest units, so we must adjust by token decimals.
+   */
+  private async calculateEntryPrice(
+    solSpent: number,
+    outAmountRaw: string,
+    tokenMint: string
+  ): Promise<{ entryPriceSol: number; wholeTokensReceived: number }> {
+    const rawTokens = parseFloat(outAmountRaw);
+    const decimals = await this.getTokenDecimals(tokenMint);
+    const wholeTokensReceived = rawTokens / (10 ** decimals);
+    const entryPriceSol = solSpent / wholeTokensReceived;
+
+    console.log(
+      `[GhostTrader] Entry price calc: ${solSpent} SOL / ${wholeTokensReceived.toFixed(2)} tokens (${decimals} decimals) = ${entryPriceSol.toExponential(4)} SOL/token`
+    );
+
+    return { entryPriceSol, wholeTokensReceived };
+  }
+
   private wasRecentlyEvaluated(mint: string): boolean {
     const lastEval = this.recentlyEvaluated.get(mint);
     if (!lastEval) return false;
@@ -2514,6 +2677,41 @@ export class GhostTrader {
   setConfig(updates: Partial<GhostTraderConfig>): void {
     this.config = { ...this.config, ...updates };
     console.log("[GhostTrader] Config updated:", updates);
+
+    // Persist changed config fields to database (fire-and-forget)
+    this.persistConfigToDatabase(updates);
+  }
+
+  private async persistConfigToDatabase(updates: Partial<GhostTraderConfig>): Promise<void> {
+    if (!this.db) return;
+
+    // Persistable config keys (excludes 'enabled' which has its own enable/disable methods)
+    const persistableKeys: Array<keyof GhostTraderConfig> = [
+      "minPositionSol", "maxPositionSol", "maxTotalExposureSol", "maxOpenPositions",
+      "takeProfitTiers", "partialSellPercent", "trailingStopPercent",
+      "stopLossPercent", "maxHoldTimeMinutes", "minVolumeToHoldUsd", "deadPositionDecayPercent",
+      "minLiquidityUsd", "minMarketCapUsd", "maxCreatorFeeBps", "minBuySellRatio",
+      "minHolders", "minVolume24hUsd", "maxPriceImpactPercent",
+      "minLaunchAgeSec", "maxLaunchAgeSec", "slippageBps",
+      "burnEnabled", "burnPercent",
+      "maxTop5ConcentrationPct", "maxSingleHolderPct",
+    ];
+
+    for (const key of persistableKeys) {
+      if (updates[key] === undefined) continue;
+
+      const value = Array.isArray(updates[key])
+        ? JSON.stringify(updates[key])
+        : String(updates[key]);
+
+      await this.db`
+        INSERT INTO ghost_config (key, value, updated_at)
+        VALUES (${`config_${key}`}, ${value}, NOW())
+        ON CONFLICT (key) DO UPDATE SET value = ${value}, updated_at = NOW()
+      `;
+    }
+
+    console.log(`[GhostTrader] Persisted ${Object.keys(updates).length} config fields to database`);
   }
 
   getStats(): GhostTraderStats {
@@ -2674,9 +2872,13 @@ export class GhostTrader {
       return { success: false, error: "Transaction failed to submit" };
     }
 
-    // Calculate entry price
+    // Calculate entry price (SOL per whole token, adjusted for token decimals)
     const tokensReceived = parseFloat(quote.outAmount);
-    const entryPriceSol = amountSol / (tokensReceived / LAMPORTS_PER_SOL);
+    const { entryPriceSol } = await this.calculateEntryPrice(
+      amountSol,
+      quote.outAmount,
+      mint
+    );
 
     // Create position
     const position: GhostPosition = {

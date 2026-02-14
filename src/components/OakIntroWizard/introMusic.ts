@@ -8,9 +8,27 @@
 
 // Note frequencies (octave 3-5)
 const NOTE: Record<string, number> = {
-  C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.0, A3: 220.0, B3: 246.94,
-  C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.0, A4: 440.0, B4: 493.88,
-  C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.0, B5: 987.77,
+  C3: 130.81,
+  D3: 146.83,
+  E3: 164.81,
+  F3: 174.61,
+  G3: 196.0,
+  A3: 220.0,
+  B3: 246.94,
+  C4: 261.63,
+  D4: 293.66,
+  E4: 329.63,
+  F4: 349.23,
+  G4: 392.0,
+  A4: 440.0,
+  B4: 493.88,
+  C5: 523.25,
+  D5: 587.33,
+  E5: 659.25,
+  F5: 698.46,
+  G5: 783.99,
+  A5: 880.0,
+  B5: 987.77,
 };
 
 interface NoteEvent {
@@ -31,8 +49,15 @@ function getMelody(bpm: number): NoteEvent[] {
 
   // Phrase 1: Rising adventure motif
   const phrase1: [number, number][] = [
-    [NOTE.E4, b * 0.5], [NOTE.G4, b * 0.5], [NOTE.A4, b], [NOTE.B4, b * 0.5], [NOTE.A4, b * 0.5],
-    [NOTE.G4, b], [NOTE.E4, b * 0.5], [NOTE.D4, b * 0.5], [NOTE.E4, b * 2],
+    [NOTE.E4, b * 0.5],
+    [NOTE.G4, b * 0.5],
+    [NOTE.A4, b],
+    [NOTE.B4, b * 0.5],
+    [NOTE.A4, b * 0.5],
+    [NOTE.G4, b],
+    [NOTE.E4, b * 0.5],
+    [NOTE.D4, b * 0.5],
+    [NOTE.E4, b * 2],
   ];
   for (const [freq, dur] of phrase1) {
     notes.push({ freq, time: t, dur: dur * 0.9 });
@@ -42,8 +67,14 @@ function getMelody(bpm: number): NoteEvent[] {
   // Phrase 2: Answer phrase with higher energy
   t += b * 0.5;
   const phrase2: [number, number][] = [
-    [NOTE.A4, b * 0.5], [NOTE.B4, b * 0.5], [NOTE.C5, b], [NOTE.D5, b * 0.5], [NOTE.C5, b * 0.5],
-    [NOTE.B4, b * 0.5], [NOTE.A4, b * 0.5], [NOTE.G4, b * 2],
+    [NOTE.A4, b * 0.5],
+    [NOTE.B4, b * 0.5],
+    [NOTE.C5, b],
+    [NOTE.D5, b * 0.5],
+    [NOTE.C5, b * 0.5],
+    [NOTE.B4, b * 0.5],
+    [NOTE.A4, b * 0.5],
+    [NOTE.G4, b * 2],
   ];
   for (const [freq, dur] of phrase2) {
     notes.push({ freq, time: t, dur: dur * 0.9 });
@@ -53,8 +84,14 @@ function getMelody(bpm: number): NoteEvent[] {
   // Phrase 3: Triumphant resolution
   t += b * 0.5;
   const phrase3: [number, number][] = [
-    [NOTE.E5, b], [NOTE.D5, b * 0.5], [NOTE.C5, b * 0.5], [NOTE.B4, b],
-    [NOTE.A4, b * 0.5], [NOTE.G4, b * 0.5], [NOTE.A4, b], [NOTE.E4, b * 2],
+    [NOTE.E5, b],
+    [NOTE.D5, b * 0.5],
+    [NOTE.C5, b * 0.5],
+    [NOTE.B4, b],
+    [NOTE.A4, b * 0.5],
+    [NOTE.G4, b * 0.5],
+    [NOTE.A4, b],
+    [NOTE.E4, b * 2],
   ];
   for (const [freq, dur] of phrase3) {
     notes.push({ freq, time: t, dur: dur * 0.9 });
@@ -75,11 +112,20 @@ function getHarmony(bpm: number): NoteEvent[] {
   // Chord hits on downbeats
   const chords: [number, number][] = [
     // Am chord tones
-    [NOTE.C4, b * 2], [NOTE.E4, b * 2], [NOTE.C4, b * 2], [NOTE.D4, b * 2],
+    [NOTE.C4, b * 2],
+    [NOTE.E4, b * 2],
+    [NOTE.C4, b * 2],
+    [NOTE.D4, b * 2],
     // F-G chord tones
-    [NOTE.F4, b * 2], [NOTE.E4, b * 2], [NOTE.D4, b * 2], [NOTE.C4, b * 2],
+    [NOTE.F4, b * 2],
+    [NOTE.E4, b * 2],
+    [NOTE.D4, b * 2],
+    [NOTE.C4, b * 2],
     // Resolve
-    [NOTE.E4, b * 2], [NOTE.D4, b * 2], [NOTE.C4, b * 2], [NOTE.E4, b * 2],
+    [NOTE.E4, b * 2],
+    [NOTE.D4, b * 2],
+    [NOTE.C4, b * 2],
+    [NOTE.E4, b * 2],
   ];
 
   for (const [freq, dur] of chords) {
@@ -98,9 +144,18 @@ function getBass(bpm: number): NoteEvent[] {
 
   // Bass starts on beat 1
   const pattern: [number, number][] = [
-    [NOTE.A3, b * 2], [NOTE.E3, b * 2], [NOTE.A3, b * 2], [NOTE.G3, b * 2],
-    [NOTE.F3, b * 2], [NOTE.C3, b * 2], [NOTE.G3, b * 2], [NOTE.E3, b * 2],
-    [NOTE.A3, b * 2], [NOTE.G3, b * 2], [NOTE.F3, b * 2], [NOTE.E3, b * 2],
+    [NOTE.A3, b * 2],
+    [NOTE.E3, b * 2],
+    [NOTE.A3, b * 2],
+    [NOTE.G3, b * 2],
+    [NOTE.F3, b * 2],
+    [NOTE.C3, b * 2],
+    [NOTE.G3, b * 2],
+    [NOTE.E3, b * 2],
+    [NOTE.A3, b * 2],
+    [NOTE.G3, b * 2],
+    [NOTE.F3, b * 2],
+    [NOTE.E3, b * 2],
     [NOTE.A3, b * 4],
   ];
 
@@ -229,9 +284,12 @@ export class IntroMusic {
 
     // Loop duration
     const loopDuration = totalBeats * b;
-    this.loopTimeout = setTimeout(() => {
-      if (this._playing) this.scheduleLoop();
-    }, loopDuration * 1000 - 200); // schedule slightly early for seamless loop
+    this.loopTimeout = setTimeout(
+      () => {
+        if (this._playing) this.scheduleLoop();
+      },
+      loopDuration * 1000 - 200
+    ); // schedule slightly early for seamless loop
   }
 
   start(volume = 0.08): void {
@@ -270,7 +328,11 @@ export class IntroMusic {
       // Clean up after fade
       setTimeout(() => {
         for (const node of this.scheduledNodes) {
-          try { node.stop(); } catch { /* already stopped */ }
+          try {
+            node.stop();
+          } catch {
+            /* already stopped */
+          }
         }
         this.scheduledNodes = [];
         this.ctx?.close();
@@ -301,7 +363,10 @@ export class IntroMusic {
         osc.stop(now + 0.35);
       } else if (type === "chime") {
         // Two-note chime (like Pokemon item get)
-        for (const [freq, delay] of [[659.25, 0], [783.99, 0.12]] as const) {
+        for (const [freq, delay] of [
+          [659.25, 0],
+          [783.99, 0.12],
+        ] as const) {
           const osc = ctx.createOscillator();
           osc.type = "square";
           const g = ctx.createGain();

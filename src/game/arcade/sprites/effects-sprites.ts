@@ -280,11 +280,7 @@ function generateLargeExplosionSprites(scene: Phaser.Scene): void {
 function generatePickupSprites(scene: Phaser.Scene): void {
   const S = 16;
 
-  function drawPickupBox(
-    g: Phaser.GameObjects.Graphics,
-    color: number,
-    label: string,
-  ) {
+  function drawPickupBox(g: Phaser.GameObjects.Graphics, color: number, label: string) {
     // Outer box
     g.fillStyle(darken(color, 0.3));
     g.fillRect(0, 0, S, S);
@@ -342,39 +338,55 @@ function generatePickupSprites(scene: Phaser.Scene): void {
 }
 
 // Simple pixel letter renderer (5px tall, variable width)
-function drawPixelLetter(
-  g: Phaser.GameObjects.Graphics,
-  x: number,
-  y: number,
-  letter: string,
-) {
+function drawPixelLetter(g: Phaser.GameObjects.Graphics, x: number, y: number, letter: string) {
   // Each letter defined as array of [dx, dy] pixel positions
   const letters: Record<string, [number, number][]> = {
     S: [
-      [1, 0], [2, 0], [3, 0],
+      [1, 0],
+      [2, 0],
+      [3, 0],
       [0, 1],
-      [1, 2], [2, 2],
+      [1, 2],
+      [2, 2],
       [3, 3],
-      [0, 4], [1, 4], [2, 4],
+      [0, 4],
+      [1, 4],
+      [2, 4],
     ],
     H: [
-      [0, 0], [3, 0],
-      [0, 1], [3, 1],
-      [0, 2], [1, 2], [2, 2], [3, 2],
-      [0, 3], [3, 3],
-      [0, 4], [3, 4],
+      [0, 0],
+      [3, 0],
+      [0, 1],
+      [3, 1],
+      [0, 2],
+      [1, 2],
+      [2, 2],
+      [3, 2],
+      [0, 3],
+      [3, 3],
+      [0, 4],
+      [3, 4],
     ],
     "+": [
       [1, 0],
-      [0, 1], [1, 1], [2, 1],
+      [0, 1],
+      [1, 1],
+      [2, 1],
       [1, 2],
     ],
     G: [
-      [1, 0], [2, 0], [3, 0],
+      [1, 0],
+      [2, 0],
+      [3, 0],
       [0, 1],
-      [0, 2], [2, 2], [3, 2],
-      [0, 3], [3, 3],
-      [1, 4], [2, 4], [3, 4],
+      [0, 2],
+      [2, 2],
+      [3, 2],
+      [0, 3],
+      [3, 3],
+      [1, 4],
+      [2, 4],
+      [3, 4],
     ],
   };
 

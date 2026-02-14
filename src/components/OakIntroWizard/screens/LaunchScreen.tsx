@@ -88,10 +88,7 @@ function WalletConnectView({ onAdvance }: Pick<ScreenProps, "onAdvance">) {
 }
 
 /* ─── Sub-screen: Launch Review ─── */
-function LaunchReviewView({
-  state,
-  dispatch,
-}: Pick<ScreenProps, "state" | "dispatch">) {
+function LaunchReviewView({ state, dispatch }: Pick<ScreenProps, "state" | "dispatch">) {
   const handleLaunch = () => {
     dispatch({ type: "SET_SCREEN", screen: "launching" });
   };

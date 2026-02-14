@@ -191,8 +191,7 @@ export class ArcadeHUDScene extends Phaser.Scene {
     this.hpBarFill.clear();
     const ratio = Math.max(0, hp) / maxHP;
     const barW = Math.floor(60 * ratio);
-    const color =
-      ratio > 0.5 ? 0x4ade80 : ratio > 0.25 ? 0xf97316 : 0xfbbf24;
+    const color = ratio > 0.5 ? 0x4ade80 : ratio > 0.25 ? 0xf97316 : 0xfbbf24;
     this.hpBarFill.fillStyle(color);
     this.hpBarFill.fillRect(38, 8, barW, 6);
     this.hpBarFill.fillStyle(0xffffff, 0.3);
@@ -230,11 +229,7 @@ export class ArcadeHUDScene extends Phaser.Scene {
 
     const shown = Math.min(count, 5);
     for (let i = 0; i < shown; i++) {
-      const s = this.add.sprite(
-        ARCADE_WIDTH - 8 - i * 10,
-        ARCADE_HEIGHT - 10,
-        "grenade",
-      );
+      const s = this.add.sprite(ARCADE_WIDTH - 8 - i * 10, ARCADE_HEIGHT - 10, "grenade");
       this.grenadeSprites.push(s);
     }
     if (count > 5) {
@@ -242,7 +237,7 @@ export class ArcadeHUDScene extends Phaser.Scene {
         ARCADE_WIDTH - 60,
         ARCADE_HEIGHT - 14,
         `+${count - 5}`,
-        { fontFamily: "monospace", fontSize: "7px", color: "#4ade80" },
+        { fontFamily: "monospace", fontSize: "7px", color: "#4ade80" }
       );
     }
   }

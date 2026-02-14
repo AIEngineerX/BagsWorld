@@ -252,7 +252,9 @@ export function BountyBoardModal({ onClose }: BountyBoardModalProps) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div className="relative bg-gradient-to-b from-amber-950/95 to-stone-950/95 border border-amber-700/50 rounded-t-xl sm:rounded-xl w-full max-w-lg max-h-[80vh] sm:max-h-[85vh] flex flex-col shadow-2xl shadow-amber-900/30">
         {/* Mobile drag handle */}

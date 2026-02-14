@@ -38,9 +38,7 @@ function getAgentContext(agentId: string): { name: string; role: string } {
   const agent = BAGSWORLD_AGENTS.find(
     (a) => a.id === cleanId || a.id === agentId || a.name.toLowerCase() === cleanId.toLowerCase()
   );
-  return agent
-    ? { name: agent.name, role: agent.role }
-    : { name: cleanId, role: "Agent" };
+  return agent ? { name: agent.name, role: agent.role } : { name: cleanId, role: "Agent" };
 }
 
 /** Extract JSON from LLM output — handles fences, leading/trailing text. */
@@ -75,9 +73,7 @@ export function parseJsonResponse(raw: string): Record<string, unknown> | null {
 }
 
 /** Returns null on failure — caller should fall back to templates. */
-export async function generateTaskResult(
-  opts: TaskResultInput
-): Promise<TaskResultOutput | null> {
+export async function generateTaskResult(opts: TaskResultInput): Promise<TaskResultOutput | null> {
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   if (!anthropicKey) return null;
 

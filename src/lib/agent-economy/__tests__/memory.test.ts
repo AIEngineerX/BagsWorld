@@ -148,13 +148,21 @@ describe("recallMemories", () => {
   it("returns formatted memories, handles both string and Date created_at", async () => {
     mockSql.mockResolvedValueOnce([
       { title: "Fee analysis", content: "BAGS leads", created_at: "2025-01-15T10:00:00.000Z" },
-      { title: "Volume report", content: "MOLT up 40%", created_at: new Date("2025-01-14T10:00:00.000Z") },
+      {
+        title: "Volume report",
+        content: "MOLT up 40%",
+        created_at: new Date("2025-01-14T10:00:00.000Z"),
+      },
     ]);
 
     const memories = await recallMemories({ agentId: "ghost" });
 
     expect(memories).toHaveLength(2);
-    expect(memories[0]).toEqual({ title: "Fee analysis", content: "BAGS leads", createdAt: "2025-01-15T10:00:00.000Z" });
+    expect(memories[0]).toEqual({
+      title: "Fee analysis",
+      content: "BAGS leads",
+      createdAt: "2025-01-15T10:00:00.000Z",
+    });
     expect(memories[1].createdAt).toBe("2025-01-14T10:00:00.000Z");
   });
 
@@ -177,8 +185,11 @@ describe("recallMemories", () => {
     mockSql.mockResolvedValue([]);
     await recallMemories({ agentId: "ghost", capability: "analysis" });
 
-    const call = mockSql.mock.calls.find((c) =>
-      Array.isArray(c[0]) && c[0].join("").includes("SELECT title") && c[0].join("").includes("capability")
+    const call = mockSql.mock.calls.find(
+      (c) =>
+        Array.isArray(c[0]) &&
+        c[0].join("").includes("SELECT title") &&
+        c[0].join("").includes("capability")
     );
     expect(call).toBeTruthy();
   });

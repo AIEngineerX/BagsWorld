@@ -105,7 +105,6 @@ function generateProps(scene: Phaser.Scene): void {
     g.generateTexture("crate", T, T);
     g.destroy();
   }
-
 }
 
 // --- Backgrounds (parallax layers) ---
@@ -265,10 +264,33 @@ function generateBackgrounds(scene: Phaser.Scene): void {
     // Scattered 1px stars (keep existing positions)
     g.fillStyle(PALETTE.white);
     const stars = [
-      [23,12],[67,45],[112,8],[156,34],[198,22],[234,55],[270,15],
-      [310,40],[345,9],[389,52],[420,28],[450,18],[38,70],[88,88],
-      [145,65],[200,92],[255,78],[320,85],[378,62],[440,72],
-      [15,110],[60,125],[130,105],[185,118],[250,108],[330,120],[410,95],
+      [23, 12],
+      [67, 45],
+      [112, 8],
+      [156, 34],
+      [198, 22],
+      [234, 55],
+      [270, 15],
+      [310, 40],
+      [345, 9],
+      [389, 52],
+      [420, 28],
+      [450, 18],
+      [38, 70],
+      [88, 88],
+      [145, 65],
+      [200, 92],
+      [255, 78],
+      [320, 85],
+      [378, 62],
+      [440, 72],
+      [15, 110],
+      [60, 125],
+      [130, 105],
+      [185, 118],
+      [250, 108],
+      [330, 120],
+      [410, 95],
     ];
     stars.forEach(([sx, sy]) => g.fillRect(sx, sy, 1, 1));
     // Brighter 2px stars
@@ -335,5 +357,4 @@ function generateBackgrounds(scene: Phaser.Scene): void {
     g.generateTexture("bg_midground", 480, MH);
     g.destroy();
   }
-
 }

@@ -117,7 +117,10 @@ import {
  * This ensures founding corp agents (Finn, Ramo, etc.) resolve correctly even when
  * the economy loop hasn't spawned them into memory.
  */
-function resolveAgentName(wallet: string | undefined | null, spawnedAgents?: ReturnType<typeof getSpawnedAgents>): string {
+function resolveAgentName(
+  wallet: string | undefined | null,
+  spawnedAgents?: ReturnType<typeof getSpawnedAgents>
+): string {
   if (!wallet) return "unknown";
   const agents = spawnedAgents || getSpawnedAgents();
 
@@ -505,7 +508,8 @@ export async function GET(request: NextRequest) {
         dissolve: "POST {action: 'corp-dissolve', corpId, agentId}",
         promote: "POST {action: 'corp-promote', corpId, ceoAgentId, memberAgentId, role}",
         payroll: "POST {action: 'corp-payroll', corpId, agentId}",
-        mission: "POST {action: 'corp-mission', corpId, title, targetType, targetValue, rewardSol?}",
+        mission:
+          "POST {action: 'corp-mission', corpId, title, targetType, targetValue, rewardSol?}",
         list: "GET ?action=corp-list",
         detail: "GET ?action=corp-detail&corpId=X",
         myCorp: "GET ?action=my-corp&wallet=X or ?action=my-corp&agentId=X",
@@ -880,7 +884,8 @@ export async function GET(request: NextRequest) {
           success: true,
           corp: null,
           message: "Not a member of any corp",
-          suggestion: "Found a corp with POST {action: 'corp-found'} or join one with POST {action: 'corp-join'}",
+          suggestion:
+            "Found a corp with POST {action: 'corp-found'} or join one with POST {action: 'corp-join'}",
         });
       }
       return NextResponse.json({ success: true, corp });
@@ -1005,7 +1010,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, events });
     } catch (err) {
       return NextResponse.json(
-        { success: false, error: err instanceof Error ? err.message : "Failed to fetch activity feed" },
+        {
+          success: false,
+          error: err instanceof Error ? err.message : "Failed to fetch activity feed",
+        },
         { status: 500 }
       );
     }
@@ -1069,8 +1077,7 @@ export async function GET(request: NextRequest) {
           title: t.title,
           capability: t.capabilityRequired,
           status: t.status,
-          narrative:
-            typeof t.resultData?.narrative === "string" ? t.resultData.narrative : null,
+          narrative: typeof t.resultData?.narrative === "string" ? t.resultData.narrative : null,
           resultData: t.resultData,
           completedAt: t.completedAt || t.deliveredAt,
           rewardSol: t.rewardSol,
@@ -1083,7 +1090,10 @@ export async function GET(request: NextRequest) {
       });
     } catch (err) {
       return NextResponse.json(
-        { success: false, error: err instanceof Error ? err.message : "Failed to fetch agent work log" },
+        {
+          success: false,
+          error: err instanceof Error ? err.message : "Failed to fetch agent work log",
+        },
         { status: 500 }
       );
     }
@@ -1096,7 +1106,10 @@ export async function GET(request: NextRequest) {
       const corps = await listCorps();
       const founding = corps.find((c) => c.isFounding);
       if (!founding) {
-        return NextResponse.json({ success: false, error: "No founding corp found" }, { status: 404 });
+        return NextResponse.json(
+          { success: false, error: "No founding corp found" },
+          { status: 404 }
+        );
       }
       const members = founding.members.map((m) => ({
         agentId: m.agentId,
@@ -1139,7 +1152,10 @@ export async function GET(request: NextRequest) {
       });
     } catch (err) {
       return NextResponse.json(
-        { success: false, error: err instanceof Error ? err.message : "Failed to generate corp tasks" },
+        {
+          success: false,
+          error: err instanceof Error ? err.message : "Failed to generate corp tasks",
+        },
         { status: 500 }
       );
     }
@@ -1576,10 +1592,7 @@ export async function POST(request: NextRequest) {
       );
     }
     if (!name) {
-      return NextResponse.json(
-        { success: false, error: "name required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "name required" }, { status: 400 });
     }
 
     // Validate wallet format
@@ -1610,7 +1623,10 @@ export async function POST(request: NextRequest) {
 
     if (isNameRecentlyUsed(sanitizedName)) {
       return NextResponse.json(
-        { success: false, error: `Name "${sanitizedName}" was recently used. Please wait 5 minutes or choose a different name.` },
+        {
+          success: false,
+          error: `Name "${sanitizedName}" was recently used. Please wait 5 minutes or choose a different name.`,
+        },
         { status: 429 }
       );
     }
@@ -1621,7 +1637,15 @@ export async function POST(request: NextRequest) {
       // Still set capabilities if provided
       if (Array.isArray(capabilities) && capabilities.length > 0) {
         try {
-          const validCaps: AgentCapability[] = ["alpha", "trading", "content", "launch", "combat", "scouting", "analysis"];
+          const validCaps: AgentCapability[] = [
+            "alpha",
+            "trading",
+            "content",
+            "launch",
+            "combat",
+            "scouting",
+            "analysis",
+          ];
           const agentCaps = capabilities
             .filter((c: string) => validCaps.includes(c as AgentCapability))
             .map((c: string) => ({
@@ -1643,18 +1667,38 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate zone
-    const validZones: ZoneType[] = ["moltbook", "main_city", "trending", "labs", "founders", "ballers"];
+    const validZones: ZoneType[] = [
+      "moltbook",
+      "main_city",
+      "trending",
+      "labs",
+      "founders",
+      "ballers",
+    ];
     const targetZone = validZones.includes(zone as ZoneType) ? (zone as ZoneType) : "moltbook";
 
     // Register agent
-    const entry = await registerExternalAgent(wallet, sanitizedName, targetZone, sanitizedDescription);
+    const entry = await registerExternalAgent(
+      wallet,
+      sanitizedName,
+      targetZone,
+      sanitizedDescription
+    );
     recordJoin(wallet, sanitizedName);
     touchExternalAgent(wallet);
 
     // Set capabilities
     if (Array.isArray(capabilities) && capabilities.length > 0) {
       try {
-        const validCaps: AgentCapability[] = ["alpha", "trading", "content", "launch", "combat", "scouting", "analysis"];
+        const validCaps: AgentCapability[] = [
+          "alpha",
+          "trading",
+          "content",
+          "launch",
+          "combat",
+          "scouting",
+          "analysis",
+        ];
         const agentCaps = capabilities
           .filter((c: string) => validCaps.includes(c as AgentCapability))
           .map((c: string) => ({
@@ -1769,13 +1813,20 @@ export async function POST(request: NextRequest) {
     }
     if (isNameRecentlyUsed(sanitizedName)) {
       return NextResponse.json(
-        { success: false, error: `Name "${sanitizedName}" was recently used. Please wait 5 minutes or choose a different name.` },
+        {
+          success: false,
+          error: `Name "${sanitizedName}" was recently used. Please wait 5 minutes or choose a different name.`,
+        },
         { status: 429 }
       );
     }
 
     const entry = await registerExternalAgent(
-      wallet, sanitizedName, "moltbook", sanitizeAgentDescription(description), moltbookUsername
+      wallet,
+      sanitizedName,
+      "moltbook",
+      sanitizeAgentDescription(description),
+      moltbookUsername
     );
     recordJoin(wallet, sanitizedName);
     const shrinePos = await moveAgentToShrine(wallet);
@@ -1912,7 +1963,12 @@ export async function POST(request: NextRequest) {
       const member = await joinCorp(corpId, agentId, wallet);
       const corp = await getCorp(corpId);
       emitCorpJoined(agentId, corp?.name || "a corp").catch(() => {});
-      return NextResponse.json({ success: true, message: `Joined corp!`, member, corpName: corp?.name });
+      return NextResponse.json({
+        success: true,
+        message: `Joined corp!`,
+        member,
+        corpName: corp?.name,
+      });
     } catch (err) {
       return NextResponse.json(
         { success: false, error: err instanceof Error ? err.message : "Failed to join corp" },
@@ -1997,7 +2053,10 @@ export async function POST(request: NextRequest) {
       });
     } catch (err) {
       return NextResponse.json(
-        { success: false, error: err instanceof Error ? err.message : "Failed to distribute payroll" },
+        {
+          success: false,
+          error: err instanceof Error ? err.message : "Failed to distribute payroll",
+        },
         { status: 400 }
       );
     }
@@ -2129,9 +2188,12 @@ export async function POST(request: NextRequest) {
     // Emit event
     const claimerAgent = await getExternalAgent(wallet);
     const posterAgent = await getExternalAgent(task.posterWallet);
-    const posterName = task.posterWallet === "bagsy-internal" ? "Bagsy"
-      : task.posterWallet === "chadghost-internal" ? "ChadGhost"
-      : posterAgent?.name || task.posterWallet.slice(0, 8) + "...";
+    const posterName =
+      task.posterWallet === "bagsy-internal"
+        ? "Bagsy"
+        : task.posterWallet === "chadghost-internal"
+          ? "ChadGhost"
+          : posterAgent?.name || task.posterWallet.slice(0, 8) + "...";
     emitTaskClaimed(
       claimerAgent?.name || wallet.slice(0, 8) + "...",
       posterName,
@@ -2172,7 +2234,8 @@ export async function POST(request: NextRequest) {
     // Emit completion event
     const posterAgent = await getExternalAgent(wallet);
     const claimerAgent = task.claimerWallet ? await getExternalAgent(task.claimerWallet) : null;
-    const claimerName = claimerAgent?.name || (task.claimerWallet ? task.claimerWallet.slice(0, 8) + "..." : "???");
+    const claimerName =
+      claimerAgent?.name || (task.claimerWallet ? task.claimerWallet.slice(0, 8) + "..." : "???");
     emitTaskCompleted(
       claimerName,
       posterAgent?.name || wallet.slice(0, 8) + "...",

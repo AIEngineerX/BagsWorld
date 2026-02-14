@@ -166,13 +166,15 @@ describe("generateTaskResult", () => {
 
   it("returns parsed result with generatedBy: llm", async () => {
     process.env.ANTHROPIC_API_KEY = "sk-test-key";
-    mockFetchResponse([{
-      text: JSON.stringify({
-        narrative: "Analyzed 7 tokens. BAGS leads with 2.3 SOL in 24h fees.",
-        tokensAnalyzed: 7,
-        topEarner: "BAGS",
-      }),
-    }]);
+    mockFetchResponse([
+      {
+        text: JSON.stringify({
+          narrative: "Analyzed 7 tokens. BAGS leads with 2.3 SOL in 24h fees.",
+          tokensAnalyzed: 7,
+          topEarner: "BAGS",
+        }),
+      },
+    ]);
 
     const result = await generateTaskResult(mockOpts);
 

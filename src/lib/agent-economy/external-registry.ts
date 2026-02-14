@@ -285,13 +285,13 @@ function rowToBuilding(row: DbRow, index: number): GameBuilding {
   const health = row.health_override != null ? row.health_override : activityHealth.health;
   const status =
     row.health_override != null
-      ? (health <= 10
-          ? "dormant"
-          : health <= 25
-            ? "critical"
-            : health <= 50
-              ? "warning"
-              : "active")
+      ? health <= 10
+        ? "dormant"
+        : health <= 25
+          ? "critical"
+          : health <= 50
+            ? "warning"
+            : "active"
       : activityHealth.status;
 
   // Link to Moltbook profile if available, otherwise Solscan
@@ -502,9 +502,7 @@ export function getShrinePosition(): { x: number; y: number } {
   };
 }
 
-export async function moveAgentToShrine(
-  wallet: string
-): Promise<{ x: number; y: number } | null> {
+export async function moveAgentToShrine(wallet: string): Promise<{ x: number; y: number } | null> {
   await ensureTable();
   const sql = getDb();
 

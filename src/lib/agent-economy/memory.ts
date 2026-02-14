@@ -94,9 +94,10 @@ export async function recallMemories(opts: {
   return rows.map((r) => ({
     title: String(r.title),
     content: String(r.content),
-    createdAt: r.created_at instanceof Date
-      ? r.created_at.toISOString()
-      : new Date(String(r.created_at)).toISOString(),
+    createdAt:
+      r.created_at instanceof Date
+        ? r.created_at.toISOString()
+        : new Date(String(r.created_at)).toISOString(),
   }));
 }
 

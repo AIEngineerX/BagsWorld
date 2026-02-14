@@ -282,11 +282,11 @@ export async function foundCorp(
     throw new Error("Ticker must be 2-10 uppercase alphanumeric characters");
   }
 
-  const [row] = await sql`
+  const [row] = (await sql`
     INSERT INTO agent_corps (name, ticker, description, ceo_agent_id, max_members)
     VALUES (${name}, ${ticker}, ${description || ""}, ${ceoAgentId}, 5)
     RETURNING *
-  ` as CorpRow[];
+  `) as CorpRow[];
 
   // Add founder as CEO
   await sql`
@@ -323,7 +323,7 @@ export async function joinCorp(
   }
 
   // Check corp exists and has room
-  const [corp] = await sql`SELECT max_members FROM agent_corps WHERE id = ${corpId}` as {
+  const [corp] = (await sql`SELECT max_members FROM agent_corps WHERE id = ${corpId}`) as {
     max_members: number;
   }[];
   if (!corp) throw new Error("Corp not found");
@@ -334,11 +334,11 @@ export async function joinCorp(
     throw new Error("Corp is full");
   }
 
-  const [row] = await sql`
+  const [row] = (await sql`
     INSERT INTO agent_corp_members (corp_id, agent_id, wallet, role)
     VALUES (${corpId}, ${agentId}, ${wallet || null}, 'member')
     RETURNING *
-  ` as MemberRow[];
+  `) as MemberRow[];
 
   return mapMemberRow(row);
 }
@@ -348,9 +348,9 @@ export async function leaveCorp(corpId: string, agentId: string): Promise<void> 
   const sql = getDb();
 
   // CEO cannot leave — must dissolve
-  const [member] = await sql`
+  const [member] = (await sql`
     SELECT role FROM agent_corp_members WHERE corp_id = ${corpId} AND agent_id = ${agentId}
-  ` as { role: string }[];
+  `) as { role: string }[];
   if (!member) throw new Error("Not a member of this corp");
   if (member.role === "ceo") throw new Error("CEO cannot leave — dissolve the corp instead");
 
@@ -361,9 +361,9 @@ export async function dissolveCorp(corpId: string, ceoAgentId: string): Promise<
   await ensureCorpTables();
   const sql = getDb();
 
-  const [corp] = await sql`
+  const [corp] = (await sql`
     SELECT ceo_agent_id, is_founding FROM agent_corps WHERE id = ${corpId}
-  ` as { ceo_agent_id: string; is_founding: boolean }[];
+  `) as { ceo_agent_id: string; is_founding: boolean }[];
 
   if (!corp) throw new Error("Corp not found");
   if (corp.is_founding) throw new Error("Founding corp cannot be dissolved");
@@ -382,7 +382,7 @@ export async function promoteMember(
   const sql = getDb();
 
   // Verify CEO
-  const [corp] = await sql`SELECT ceo_agent_id FROM agent_corps WHERE id = ${corpId}` as {
+  const [corp] = (await sql`SELECT ceo_agent_id FROM agent_corps WHERE id = ${corpId}`) as {
     ceo_agent_id: string;
   }[];
   if (!corp || corp.ceo_agent_id !== ceoAgentId) throw new Error("Only the CEO can promote");
@@ -469,52 +469,247 @@ interface ServiceTaskTemplate {
 }
 
 const EDUCATION_TASKS: ServiceTaskTemplate[] = [
-  { title: "Write fee claiming tutorial", description: "Step-by-step guide for new creators to claim their 1% trading royalties", capability: "content", outputType: "guide", category: "education" },
-  { title: "Create fee calculator example", description: "Show how $100K daily volume = $1,000 daily fees at 1% royalty rate", capability: "analysis", outputType: "tool", category: "education" },
-  { title: "Document fee share configuration", description: "Explain how to set up fee splits with Twitter/GitHub/Kick accounts", capability: "content", outputType: "guide", category: "education" },
-  { title: "Write token naming best practices", description: "Guide on choosing memorable 3-8 char tickers and descriptions", capability: "content", outputType: "guide", category: "education" },
-  { title: "Create launch day checklist", description: "Pre-launch, launch, and post-launch action items for creators", capability: "launch", outputType: "checklist", category: "education" },
-  { title: "Explain bonding curve mechanics", description: "How Meteora DBC pricing works for new Bags.fm creators", capability: "analysis", outputType: "guide", category: "education" },
-  { title: "Write beginner trading guide", description: "How to buy and sell tokens on Bags.fm for first-time users", capability: "trading", outputType: "guide", category: "education" },
-  { title: "Explain slippage and price impact", description: "What slippage means and how to set appropriate limits", capability: "trading", outputType: "guide", category: "education" },
-  { title: "Document BagsWorld zones", description: "Guide to all 7 zones and what you can do in each", capability: "content", outputType: "guide", category: "education" },
-  { title: "Explain token gates", description: "How Casino (1M tokens) and Oracle (2M tokens) gates work", capability: "content", outputType: "guide", category: "education" },
+  {
+    title: "Write fee claiming tutorial",
+    description: "Step-by-step guide for new creators to claim their 1% trading royalties",
+    capability: "content",
+    outputType: "guide",
+    category: "education",
+  },
+  {
+    title: "Create fee calculator example",
+    description: "Show how $100K daily volume = $1,000 daily fees at 1% royalty rate",
+    capability: "analysis",
+    outputType: "tool",
+    category: "education",
+  },
+  {
+    title: "Document fee share configuration",
+    description: "Explain how to set up fee splits with Twitter/GitHub/Kick accounts",
+    capability: "content",
+    outputType: "guide",
+    category: "education",
+  },
+  {
+    title: "Write token naming best practices",
+    description: "Guide on choosing memorable 3-8 char tickers and descriptions",
+    capability: "content",
+    outputType: "guide",
+    category: "education",
+  },
+  {
+    title: "Create launch day checklist",
+    description: "Pre-launch, launch, and post-launch action items for creators",
+    capability: "launch",
+    outputType: "checklist",
+    category: "education",
+  },
+  {
+    title: "Explain bonding curve mechanics",
+    description: "How Meteora DBC pricing works for new Bags.fm creators",
+    capability: "analysis",
+    outputType: "guide",
+    category: "education",
+  },
+  {
+    title: "Write beginner trading guide",
+    description: "How to buy and sell tokens on Bags.fm for first-time users",
+    capability: "trading",
+    outputType: "guide",
+    category: "education",
+  },
+  {
+    title: "Explain slippage and price impact",
+    description: "What slippage means and how to set appropriate limits",
+    capability: "trading",
+    outputType: "guide",
+    category: "education",
+  },
+  {
+    title: "Document BagsWorld zones",
+    description: "Guide to all 7 zones and what you can do in each",
+    capability: "content",
+    outputType: "guide",
+    category: "education",
+  },
+  {
+    title: "Explain token gates",
+    description: "How Casino (1M tokens) and Oracle (2M tokens) gates work",
+    capability: "content",
+    outputType: "guide",
+    category: "education",
+  },
 ];
 
 const INTELLIGENCE_TASKS: ServiceTaskTemplate[] = [
-  { title: "Analyze top fee earners today", description: "Identify tokens generating the most fees in the last 24h", capability: "analysis", outputType: "report", category: "intelligence" },
-  { title: "Find unclaimed fee opportunities", description: "Scan for wallets with significant unclaimed fees", capability: "scouting", outputType: "alert", category: "intelligence" },
-  { title: "Weekly fee revenue report", description: "Compile total platform fee volume and top earners", capability: "analysis", outputType: "report", category: "intelligence" },
-  { title: "Review today's new launches", description: "Quality assessment of tokens launched in the last 24h", capability: "launch", outputType: "review", category: "intelligence" },
-  { title: "Spot promising early-stage tokens", description: "Identify launches with strong initial traction", capability: "alpha", outputType: "alert", category: "intelligence" },
-  { title: "Flag potential low-quality launches", description: "Identify launches missing descriptions, images, or fee config", capability: "scouting", outputType: "alert", category: "intelligence" },
-  { title: "Daily volume leaders report", description: "Top 10 tokens by 24h trading volume with trend analysis", capability: "trading", outputType: "report", category: "intelligence" },
-  { title: "Whale movement tracker", description: "Track large buys/sells across top Bags.fm tokens", capability: "alpha", outputType: "alert", category: "intelligence" },
-  { title: "Price momentum scanner", description: "Tokens showing consistent upward price action", capability: "trading", outputType: "report", category: "intelligence" },
+  {
+    title: "Analyze top fee earners today",
+    description: "Identify tokens generating the most fees in the last 24h",
+    capability: "analysis",
+    outputType: "report",
+    category: "intelligence",
+  },
+  {
+    title: "Find unclaimed fee opportunities",
+    description: "Scan for wallets with significant unclaimed fees",
+    capability: "scouting",
+    outputType: "alert",
+    category: "intelligence",
+  },
+  {
+    title: "Weekly fee revenue report",
+    description: "Compile total platform fee volume and top earners",
+    capability: "analysis",
+    outputType: "report",
+    category: "intelligence",
+  },
+  {
+    title: "Review today's new launches",
+    description: "Quality assessment of tokens launched in the last 24h",
+    capability: "launch",
+    outputType: "review",
+    category: "intelligence",
+  },
+  {
+    title: "Spot promising early-stage tokens",
+    description: "Identify launches with strong initial traction",
+    capability: "alpha",
+    outputType: "alert",
+    category: "intelligence",
+  },
+  {
+    title: "Flag potential low-quality launches",
+    description: "Identify launches missing descriptions, images, or fee config",
+    capability: "scouting",
+    outputType: "alert",
+    category: "intelligence",
+  },
+  {
+    title: "Daily volume leaders report",
+    description: "Top 10 tokens by 24h trading volume with trend analysis",
+    capability: "trading",
+    outputType: "report",
+    category: "intelligence",
+  },
+  {
+    title: "Whale movement tracker",
+    description: "Track large buys/sells across top Bags.fm tokens",
+    capability: "alpha",
+    outputType: "alert",
+    category: "intelligence",
+  },
+  {
+    title: "Price momentum scanner",
+    description: "Tokens showing consistent upward price action",
+    capability: "trading",
+    outputType: "report",
+    category: "intelligence",
+  },
 ];
 
 const ONBOARDING_TASKS: ServiceTaskTemplate[] = [
-  { title: "Agent Onboarding: Claim first fee", description: "Tutorial task — guide an agent through their first fee claim", capability: "content", outputType: "guide", category: "onboarding", level: 1 },
-  { title: "Agent Onboarding: Read market data", description: "Tutorial task — use DexScreener/API to read token prices", capability: "scouting", outputType: "guide", category: "onboarding", level: 1 },
-  { title: "Agent Onboarding: Post to MoltBook", description: "Tutorial task — create first MoltBook post", capability: "content", outputType: "guide", category: "onboarding", level: 1 },
-  { title: "Agent Training: Analyze token health", description: "Evaluate a token's building health using fee data", capability: "analysis", outputType: "report", category: "onboarding", level: 2 },
-  { title: "Agent Training: Scout new launches", description: "Monitor and report on 3 new token launches", capability: "scouting", outputType: "report", category: "onboarding", level: 2 },
-  { title: "Agent Training: Execute test trade", description: "Complete a small simulated trade with proper slippage settings", capability: "trading", outputType: "checklist", category: "onboarding", level: 2 },
-  { title: "Agent Mastery: Launch token review", description: "Review a launch concept for quality and provide feedback", capability: "launch", outputType: "review", category: "onboarding", level: 3 },
-  { title: "Agent Mastery: Market analysis report", description: "Write a comprehensive daily market analysis", capability: "analysis", outputType: "report", category: "onboarding", level: 3 },
-  { title: "Agent Mastery: Strategy development", description: "Develop a trading or content strategy for the ecosystem", capability: "trading", outputType: "report", category: "onboarding", level: 3 },
+  {
+    title: "Agent Onboarding: Claim first fee",
+    description: "Tutorial task — guide an agent through their first fee claim",
+    capability: "content",
+    outputType: "guide",
+    category: "onboarding",
+    level: 1,
+  },
+  {
+    title: "Agent Onboarding: Read market data",
+    description: "Tutorial task — use DexScreener/API to read token prices",
+    capability: "scouting",
+    outputType: "guide",
+    category: "onboarding",
+    level: 1,
+  },
+  {
+    title: "Agent Onboarding: Post to MoltBook",
+    description: "Tutorial task — create first MoltBook post",
+    capability: "content",
+    outputType: "guide",
+    category: "onboarding",
+    level: 1,
+  },
+  {
+    title: "Agent Training: Analyze token health",
+    description: "Evaluate a token's building health using fee data",
+    capability: "analysis",
+    outputType: "report",
+    category: "onboarding",
+    level: 2,
+  },
+  {
+    title: "Agent Training: Scout new launches",
+    description: "Monitor and report on 3 new token launches",
+    capability: "scouting",
+    outputType: "report",
+    category: "onboarding",
+    level: 2,
+  },
+  {
+    title: "Agent Training: Execute test trade",
+    description: "Complete a small simulated trade with proper slippage settings",
+    capability: "trading",
+    outputType: "checklist",
+    category: "onboarding",
+    level: 2,
+  },
+  {
+    title: "Agent Mastery: Launch token review",
+    description: "Review a launch concept for quality and provide feedback",
+    capability: "launch",
+    outputType: "review",
+    category: "onboarding",
+    level: 3,
+  },
+  {
+    title: "Agent Mastery: Market analysis report",
+    description: "Write a comprehensive daily market analysis",
+    capability: "analysis",
+    outputType: "report",
+    category: "onboarding",
+    level: 3,
+  },
+  {
+    title: "Agent Mastery: Strategy development",
+    description: "Develop a trading or content strategy for the ecosystem",
+    capability: "trading",
+    outputType: "report",
+    category: "onboarding",
+    level: 3,
+  },
 ];
 
 const ALL_SERVICE_TASKS = [...EDUCATION_TASKS, ...INTELLIGENCE_TASKS, ...ONBOARDING_TASKS];
 
 // Role → preferred task categories
-const ROLE_TASK_PREFERENCES: Record<CorpRole, { categories: string[]; capabilities: AgentCapability[] }> = {
-  ceo: { categories: ["education", "intelligence"], capabilities: ["content", "launch", "analysis"] },
-  cto: { categories: ["intelligence", "education"], capabilities: ["analysis", "scouting", "trading"] },
+const ROLE_TASK_PREFERENCES: Record<
+  CorpRole,
+  { categories: string[]; capabilities: AgentCapability[] }
+> = {
+  ceo: {
+    categories: ["education", "intelligence"],
+    capabilities: ["content", "launch", "analysis"],
+  },
+  cto: {
+    categories: ["intelligence", "education"],
+    capabilities: ["analysis", "scouting", "trading"],
+  },
   cmo: { categories: ["education", "intelligence"], capabilities: ["content", "alpha", "launch"] },
-  coo: { categories: ["intelligence", "onboarding"], capabilities: ["scouting", "content", "analysis"] },
-  cfo: { categories: ["intelligence", "education"], capabilities: ["analysis", "trading", "alpha"] },
-  member: { categories: ["education", "intelligence"], capabilities: ["content", "scouting", "analysis"] },
+  coo: {
+    categories: ["intelligence", "onboarding"],
+    capabilities: ["scouting", "content", "analysis"],
+  },
+  cfo: {
+    categories: ["intelligence", "education"],
+    capabilities: ["analysis", "trading", "alpha"],
+  },
+  member: {
+    categories: ["education", "intelligence"],
+    capabilities: ["content", "scouting", "analysis"],
+  },
 };
 
 // ============================================================================
@@ -524,11 +719,19 @@ const ROLE_TASK_PREFERENCES: Record<CorpRole, { categories: string[]; capabiliti
 export function generateServiceTask(
   role: CorpRole,
   category?: "education" | "intelligence" | "onboarding"
-): { title: string; description: string; capabilityRequired: AgentCapability; rewardSol: number; outputType: string; category: string } {
+): {
+  title: string;
+  description: string;
+  capabilityRequired: AgentCapability;
+  rewardSol: number;
+  outputType: string;
+  category: string;
+} {
   const prefs = ROLE_TASK_PREFERENCES[role];
 
   // Pick category based on role prefs or override
-  const targetCategory = category || prefs.categories[Math.floor(Math.random() * prefs.categories.length)];
+  const targetCategory =
+    category || prefs.categories[Math.floor(Math.random() * prefs.categories.length)];
 
   // Filter tasks by category and preferred capabilities
   let candidates = ALL_SERVICE_TASKS.filter((t) => t.category === targetCategory);
@@ -539,7 +742,11 @@ export function generateServiceTask(
   const template = candidates[Math.floor(Math.random() * candidates.length)];
 
   // Reward based on category
-  const rewardMap: Record<string, number> = { education: 0.02, intelligence: 0.03, onboarding: 0.015 };
+  const rewardMap: Record<string, number> = {
+    education: 0.02,
+    intelligence: 0.03,
+    onboarding: 0.015,
+  };
   const baseReward = rewardMap[template.category] || 0.02;
   const reward = baseReward + Math.random() * 0.01;
 
@@ -608,7 +815,14 @@ const EDUCATION_RESULTS: Record<string, ResultGenerator> = {
 
 export async function generateServiceResult(
   outputType: string,
-  context?: { agentId: string; agentRole: string; taskTitle: string; taskDescription: string; category?: string; memory?: string[] }
+  context?: {
+    agentId: string;
+    agentRole: string;
+    taskTitle: string;
+    taskDescription: string;
+    category?: string;
+    memory?: string[];
+  }
 ): Promise<Record<string, unknown>> {
   if (context && shouldUseLlm()) {
     const llmResult = await generateTaskResult({
@@ -668,7 +882,7 @@ export async function recordTaskCompletion(
   `;
 
   // Credit CEO share
-  const [corp] = await sql`SELECT ceo_agent_id FROM agent_corps WHERE id = ${corpId}` as {
+  const [corp] = (await sql`SELECT ceo_agent_id FROM agent_corps WHERE id = ${corpId}`) as {
     ceo_agent_id: string;
   }[];
   if (corp) {
@@ -690,15 +904,15 @@ export async function distributePayroll(
   const sql = getDb();
 
   // Only CEO or CFO can distribute
-  const [member] = await sql`
+  const [member] = (await sql`
     SELECT role FROM agent_corp_members WHERE corp_id = ${corpId} AND agent_id = ${requestorAgentId}
-  ` as { role: string }[];
+  `) as { role: string }[];
   if (!member || (member.role !== "ceo" && member.role !== "cfo")) {
     throw new Error("Only CEO or CFO can distribute payroll");
   }
 
   // Check treasury
-  const [corp] = await sql`SELECT treasury_sol FROM agent_corps WHERE id = ${corpId}` as {
+  const [corp] = (await sql`SELECT treasury_sol FROM agent_corps WHERE id = ${corpId}`) as {
     treasury_sol: number;
   }[];
   if (!corp || corp.treasury_sol < 0.05) {
@@ -749,12 +963,48 @@ export async function distributePayroll(
 // ============================================================================
 
 const SERVICE_MISSIONS = [
-  { title: "Education Drive", description: "Complete 5 educational guide tasks", targetType: "tasks_education", targetValue: 5, rewardSol: 0.05 },
-  { title: "Intelligence Week", description: "Produce 8 market analysis reports", targetType: "tasks_intelligence", targetValue: 8, rewardSol: 0.05 },
-  { title: "Onboarding Sprint", description: "Help 3 agents complete onboarding", targetType: "tasks_onboarding", targetValue: 3, rewardSol: 0.03 },
-  { title: "Launch Quality", description: "Review and rate 5 new launches", targetType: "tasks_launch", targetValue: 5, rewardSol: 0.04 },
-  { title: "Fee Awareness", description: "Complete 5 fee-related education or analysis tasks", targetType: "tasks_fees", targetValue: 5, rewardSol: 0.04 },
-  { title: "Full Coverage", description: "Every member produces at least 1 output", targetType: "active_members", targetValue: 8, rewardSol: 0.05 },
+  {
+    title: "Education Drive",
+    description: "Complete 5 educational guide tasks",
+    targetType: "tasks_education",
+    targetValue: 5,
+    rewardSol: 0.05,
+  },
+  {
+    title: "Intelligence Week",
+    description: "Produce 8 market analysis reports",
+    targetType: "tasks_intelligence",
+    targetValue: 8,
+    rewardSol: 0.05,
+  },
+  {
+    title: "Onboarding Sprint",
+    description: "Help 3 agents complete onboarding",
+    targetType: "tasks_onboarding",
+    targetValue: 3,
+    rewardSol: 0.03,
+  },
+  {
+    title: "Launch Quality",
+    description: "Review and rate 5 new launches",
+    targetType: "tasks_launch",
+    targetValue: 5,
+    rewardSol: 0.04,
+  },
+  {
+    title: "Fee Awareness",
+    description: "Complete 5 fee-related education or analysis tasks",
+    targetType: "tasks_fees",
+    targetValue: 5,
+    rewardSol: 0.04,
+  },
+  {
+    title: "Full Coverage",
+    description: "Every member produces at least 1 output",
+    targetType: "active_members",
+    targetValue: 8,
+    rewardSol: 0.05,
+  },
 ];
 
 export async function createMission(
@@ -848,7 +1098,13 @@ export async function getCorpMissions(
 // ============================================================================
 
 export async function getCorpLeaderboard(): Promise<
-  Array<{ name: string; ticker: string; reputationScore: number; totalTasksCompleted: number; memberCount: number }>
+  Array<{
+    name: string;
+    ticker: string;
+    reputationScore: number;
+    totalTasksCompleted: number;
+    memberCount: number;
+  }>
 > {
   await ensureCorpTables();
   const sql = getDb();
@@ -921,9 +1177,8 @@ export function generateCorpTaskBoard(
     });
 
     // If no capability match, fall back to any non-self member
-    const workerPool = candidates.length > 0
-      ? candidates
-      : members.filter((m) => m.agentId !== member.agentId);
+    const workerPool =
+      candidates.length > 0 ? candidates : members.filter((m) => m.agentId !== member.agentId);
     if (workerPool.length === 0) continue;
 
     const worker = workerPool[Math.floor(Math.random() * workerPool.length)];

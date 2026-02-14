@@ -533,9 +533,7 @@ export function AdminConsole() {
   const handleMoveAgent = async (wallet: string, zone: string) => {
     const success = await adminAction("move_agent", { wallet, zone });
     if (success) {
-      setExternalAgents((prev) =>
-        prev.map((a) => (a.wallet === wallet ? { ...a, zone } : a))
-      );
+      setExternalAgents((prev) => prev.map((a) => (a.wallet === wallet ? { ...a, zone } : a)));
     }
   };
 
@@ -1568,9 +1566,7 @@ export function AdminConsole() {
                               {/* Zone Override */}
                               <select
                                 value={agent.zone}
-                                onChange={(e) =>
-                                  handleMoveAgent(agent.wallet, e.target.value)
-                                }
+                                onChange={(e) => handleMoveAgent(agent.wallet, e.target.value)}
                                 className="bg-black/50 border border-gray-700 px-1 py-0.5 font-pixel text-[8px] text-white"
                               >
                                 <option value="moltbook">Moltbook</option>
@@ -1614,9 +1610,7 @@ export function AdminConsole() {
                                   </a>
                                 )}
                                 <button
-                                  onClick={() =>
-                                    handleDeleteAgent(agent.wallet, agent.name)
-                                  }
+                                  onClick={() => handleDeleteAgent(agent.wallet, agent.name)}
                                   className="font-pixel text-[7px] text-red-400 hover:text-red-300 px-1"
                                 >
                                   [DEL]

@@ -165,7 +165,20 @@ export function BuildingModal({
             const d = new Date(time * 1000);
             const hh = d.getUTCHours().toString().padStart(2, "0");
             const mm = d.getUTCMinutes().toString().padStart(2, "0");
-            const mon = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getUTCMonth()];
+            const mon = [
+              "Jan",
+              "Feb",
+              "Mar",
+              "Apr",
+              "May",
+              "Jun",
+              "Jul",
+              "Aug",
+              "Sep",
+              "Oct",
+              "Nov",
+              "Dec",
+            ][d.getUTCMonth()];
             const day = d.getUTCDate();
             if (chartInterval === "5m" || chartInterval === "15m") {
               return `${hh}:${mm}`;
@@ -473,7 +486,9 @@ export function BuildingModal({
               </div>
               <div className="bg-bags-dark p-2 sm:p-3">
                 <div className="font-pixel text-[7px] text-gray-500">
-                  {tokenInfo && tokenInfo.fdv && tokenInfo.fdv !== tokenInfo.marketCap ? "MCAP / FDV" : "MCAP"}
+                  {tokenInfo && tokenInfo.fdv && tokenInfo.fdv !== tokenInfo.marketCap
+                    ? "MCAP / FDV"
+                    : "MCAP"}
                 </div>
                 <div className="font-pixel text-[10px] sm:text-xs text-white">
                   {tokenInfo ? formatMarketCap(tokenInfo.marketCap) : "..."}

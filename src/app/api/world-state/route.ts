@@ -859,8 +859,7 @@ const STARTER_BUILDINGS: RegisteredToken[] = [
     mint: "StarterArcade111111111111111111111111111111",
     name: "Arcade",
     symbol: "ARCADE",
-    description:
-      "Play Metal Bags — a free side-scrolling shooter featuring Ghost, Neo, and CJ!",
+    description: "Play Metal Bags — a free side-scrolling shooter featuring Ghost, Neo, and CJ!",
     imageUrl: "/assets/buildings/arcade.png",
     creator: "BagsWorld",
     createdAt: Date.now() - 86400000 * 7,

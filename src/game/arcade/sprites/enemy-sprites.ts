@@ -18,11 +18,7 @@ function generateSoldierSprites(scene: Phaser.Scene): void {
   const boots = PALETTE.darkGray;
   const weapon = PALETTE.midGray;
 
-  function drawSoldierBase(
-    g: Phaser.GameObjects.Graphics,
-    legOffsetL: number,
-    legOffsetR: number,
-  ) {
+  function drawSoldierBase(g: Phaser.GameObjects.Graphics, legOffsetL: number, legOffsetR: number) {
     // Hood 8x4
     g.fillStyle(body);
     g.fillRect(8, 0, 8, 4);
@@ -246,7 +242,6 @@ function generateSoldierSprites(scene: Phaser.Scene): void {
     g.generateTexture("soldier_die_4", W, H);
     g.destroy();
   }
-
 }
 
 // --- Heavy → "Rogue Bot" (32x32): Bulky robot, no exposed skin ---
@@ -258,11 +253,7 @@ function generateHeavySprites(scene: Phaser.Scene): void {
   const visor = PALETTE.brightRed;
   const boots = PALETTE.darkGray;
 
-  function drawHeavyBase(
-    g: Phaser.GameObjects.Graphics,
-    legOffsetL: number,
-    legOffsetR: number,
-  ) {
+  function drawHeavyBase(g: Phaser.GameObjects.Graphics, legOffsetL: number, legOffsetR: number) {
     // Helmet 10x6
     g.fillStyle(armor);
     g.fillRect(11, 0, 10, 6);
@@ -512,7 +503,6 @@ function generateHeavySprites(scene: Phaser.Scene): void {
     g.generateTexture("heavy_die_4", W, H);
     g.destroy();
   }
-
 }
 
 // --- Turret → "Glitch Turret" (24x24): Brick base instead of sandbags ---
@@ -696,7 +686,6 @@ function generateTurretSprites(scene: Phaser.Scene): void {
     g.generateTexture("turret_die_4", W, H);
     g.destroy();
   }
-
 }
 
 // --- Boss → "Mega Mech" (64x64): Same tank design, BagsWorld palette ---
@@ -710,10 +699,7 @@ function generateBossSprites(scene: Phaser.Scene): void {
   const tread = PALETTE.darkGray;
   const cannon = PALETTE.lightGray;
 
-  function drawBossBase(
-    g: Phaser.GameObjects.Graphics,
-    treadOffset: number,
-  ) {
+  function drawBossBase(g: Phaser.GameObjects.Graphics, treadOffset: number) {
     // Tank treads
     g.fillStyle(tread);
     g.fillRect(4, 48, 56, 14);
@@ -880,5 +866,4 @@ function generateBossSprites(scene: Phaser.Scene): void {
     g.generateTexture("boss_shoot_2", W, H);
     g.destroy();
   }
-
 }
