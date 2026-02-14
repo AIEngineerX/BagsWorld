@@ -318,9 +318,9 @@ export function QuestTracker() {
   if (showComplete) {
     return (
       <div
-        className="fixed sm:bottom-10 left-3 z-[55]"
+        className="fixed sm:bottom-10 left-3 z-[48]"
         style={{
-          bottom: "calc(6rem + env(safe-area-inset-bottom, 0px))",
+          bottom: "calc(7rem + env(safe-area-inset-bottom, 0px))",
           animation: "quest-ribbon-in 0.3s ease-out forwards",
         }}
       >
@@ -354,9 +354,9 @@ export function QuestTracker() {
     return (
       <button
         onClick={() => setMinimized(false)}
-        className="fixed sm:bottom-10 left-3 z-[55] bg-black/85 backdrop-blur-sm border border-amber-500/40 rounded-full w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center hover:border-amber-500/70 transition-all"
+        className="fixed sm:bottom-10 left-3 z-[48] bg-black/85 backdrop-blur-sm border border-amber-500/40 rounded-full w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center hover:border-amber-500/70 transition-all"
         style={{
-          bottom: "calc(6rem + env(safe-area-inset-bottom, 0px))",
+          bottom: "calc(7rem + env(safe-area-inset-bottom, 0px))",
           animation: "quest-pulse 2s ease-in-out infinite",
         }}
         aria-label="Expand quest"
@@ -379,7 +379,7 @@ export function QuestTracker() {
 
   // ── Active quest ribbon ────────────────────────────────────────
   return (
-    <div className="fixed bottom-12 sm:bottom-10 left-4 z-[55]" style={{ maxWidth: "18rem" }}>
+    <div className="fixed bottom-28 sm:bottom-10 left-4 z-[48]" style={{ maxWidth: "18rem" }}>
       {/* Dialogue bubble (above ribbon) */}
       {dialogueNpc && dialogueText && (
         <div
