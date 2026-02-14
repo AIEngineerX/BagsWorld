@@ -88,18 +88,21 @@ export function ArcadeModal({ onClose }: ArcadeModalProps) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative w-full max-w-4xl mx-4">
+      <div className="relative w-full max-w-4xl mx-4 pt-14 sm:pt-0">
         <button
           onClick={onClose}
-          className="absolute -top-12 right-0 text-gray-400 hover:text-white font-pixel text-sm z-10 min-w-[44px] min-h-[44px] flex items-center justify-center"
+          className="absolute top-0 right-0 sm:-top-12 text-gray-400 hover:text-white font-pixel text-sm z-10 min-w-[44px] min-h-[44px] flex items-center justify-center"
         >
           [X] CLOSE
         </button>
 
         <div className="text-center mb-2">
           <h2 className="font-pixel text-lg text-bags-green">METAL BAGS</h2>
-          <p className="font-pixel text-[8px] text-gray-500">
+          <p className="font-pixel text-[8px] text-gray-500 hidden sm:block">
             Arrow Keys: Move &nbsp; Z: Shoot &nbsp; X: Jump &nbsp; C: Grenade
+          </p>
+          <p className="font-pixel text-[8px] text-gray-500 sm:hidden">
+            Tap to play
           </p>
         </div>
 

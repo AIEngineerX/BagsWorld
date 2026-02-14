@@ -22,7 +22,7 @@ export function DungeonModal({ onClose }: DungeonModalProps) {
     >
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 font-pixel text-xs text-gray-400 hover:text-red-400 border border-gray-600 hover:border-red-500/50 px-3 py-2 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors"
+        className="absolute top-14 right-4 sm:top-4 font-pixel text-xs text-gray-400 hover:text-red-400 border border-gray-600 hover:border-red-500/50 px-3 py-2 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors"
         title="Close (ESC)"
       >
         [X] CLOSE

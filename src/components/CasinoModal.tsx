@@ -590,7 +590,16 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
   // Loading state
   if (ageVerified === null) {
     return (
-      <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50">
+      <div
+        className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50"
+        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-14 right-4 sm:top-4 font-pixel text-xs text-gray-400 hover:text-white min-w-[44px] min-h-[44px] flex items-center justify-center"
+        >
+          [X]
+        </button>
         <div className="font-pixel text-red-400 animate-pulse">Loading...</div>
       </div>
     );
@@ -969,7 +978,16 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
   // Token gate - checking
   if (isCheckingAccess || hasAccess === null) {
     return (
-      <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50">
+      <div
+        className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50"
+        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-14 right-4 sm:top-4 font-pixel text-xs text-gray-400 hover:text-white min-w-[44px] min-h-[44px] flex items-center justify-center"
+        >
+          [X]
+        </button>
         <style jsx global>
           {modalStyles}
         </style>
