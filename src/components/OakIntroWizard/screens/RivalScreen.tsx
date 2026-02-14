@@ -5,7 +5,7 @@ import type { ScreenProps, FeeShareConfig } from "../types";
 import { DIALOGUE } from "../constants";
 import { DialogueBox } from "../DialogueBox";
 
-type SplitPreset = "100" | "70_30" | "50_50";
+type SplitPreset = "100" | "70_30" | "50_50" | "custom";
 
 const PROVIDERS = [
   { value: "twitter", label: "Twitter / X" },
@@ -16,7 +16,7 @@ const PROVIDERS = [
   { value: "instagram", label: "Instagram" },
 ];
 
-export function RivalScreen({ state, dispatch, onAdvance, onSkip }: ScreenProps) {
+export function RivalScreen({ state, dispatch, onAdvance }: ScreenProps) {
   const isIntro = state.currentScreen === "rival_intro";
 
   // Bagsy bounce-in animation
@@ -26,6 +26,7 @@ export function RivalScreen({ state, dispatch, onAdvance, onSkip }: ScreenProps)
   const [provider, setProvider] = useState("twitter");
   const [username, setUsername] = useState("");
   const [splitPreset, setSplitPreset] = useState<SplitPreset>("100");
+  const [customSelfPct, setCustomSelfPct] = useState(80);
 
   useEffect(() => {
     if (isIntro) {
@@ -35,50 +36,61 @@ export function RivalScreen({ state, dispatch, onAdvance, onSkip }: ScreenProps)
   }, [isIntro]);
 
   const handleSkip = () => {
-    // 100% to self
+    // 100% to self — skip the fee claimer, advance to next screen
     const shares: FeeShareConfig[] = [
       { provider: "self", username: state.creatorName || "creator", bps: 10000 },
     ];
     dispatch({ type: "SET_FEE_SHARES", shares });
-    onSkip();
+    onAdvance();
   };
 
   const handleConfirm = () => {
     const shares: FeeShareConfig[] = [];
 
-    if (splitPreset === "100") {
+    const selfPct =
+      splitPreset === "100"
+        ? 100
+        : splitPreset === "70_30"
+          ? 70
+          : splitPreset === "50_50"
+            ? 50
+            : customSelfPct;
+
+    const selfBps = selfPct * 100;
+    const claimerBps = 10000 - selfBps;
+
+    if (claimerBps === 0 || !username.trim()) {
+      // 100% to self
       shares.push({
         provider: "self",
         username: state.creatorName || "creator",
         bps: 10000,
       });
     } else {
-      const selfBps = splitPreset === "70_30" ? 7000 : 5000;
-      const claimerBps = splitPreset === "70_30" ? 3000 : 5000;
-
       shares.push({
         provider: "self",
         username: state.creatorName || "creator",
         bps: selfBps,
       });
-
-      if (username.trim()) {
-        shares.push({
-          provider,
-          username: username.trim().replace(/^@/, ""),
-          bps: claimerBps,
-        });
-      } else {
-        // No username entered, give all to self
-        shares[0].bps = 10000;
-      }
+      shares.push({
+        provider,
+        username: username.trim().replace(/^@/, ""),
+        bps: claimerBps,
+      });
     }
 
     dispatch({ type: "SET_FEE_SHARES", shares });
     onAdvance();
   };
 
-  const selfPercentage = splitPreset === "100" ? 100 : splitPreset === "70_30" ? 70 : 50;
+  const selfPercentage =
+    splitPreset === "100"
+      ? 100
+      : splitPreset === "70_30"
+        ? 70
+        : splitPreset === "50_50"
+          ? 50
+          : customSelfPct;
   const claimerPercentage = 100 - selfPercentage;
 
   // --- Bagsy intro phase ---
@@ -92,9 +104,24 @@ export function RivalScreen({ state, dispatch, onAdvance, onSkip }: ScreenProps)
       >
         <div className="absolute inset-0 bg-gradient-to-b from-black via-gray-900 to-gray-800" />
 
-        {/* Bagsy bouncing in */}
+        {/* Spotlight glow behind Bagsy */}
         <div
-          className="relative z-[5] mt-[20%] sm:mt-[15%]"
+          className="absolute z-[3]"
+          style={{
+            top: "12%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 180,
+            height: 180,
+            opacity: entered ? 0.25 : 0,
+            transition: "opacity 0.8s ease-out 0.6s",
+            background: "radial-gradient(circle, rgba(168,85,247,0.5) 0%, transparent 70%)",
+          }}
+        />
+
+        {/* Bagsy bouncing in from above */}
+        <div
+          className="relative z-[5] mt-[15%] sm:mt-[12%]"
           style={{
             transform: entered ? "translateY(0) scale(1)" : "translateY(-100vh) scale(0.5)",
             transition: "transform 1.0s cubic-bezier(0.34, 1.56, 0.64, 1)",
@@ -120,21 +147,20 @@ export function RivalScreen({ state, dispatch, onAdvance, onSkip }: ScreenProps)
   // --- Fee claimer setup phase ---
   return (
     <div
-      className="absolute inset-0 bg-black flex flex-col items-center px-4 pt-6 overflow-y-auto"
+      className="absolute inset-0 bg-black flex flex-col items-center px-4 pt-4 overflow-y-auto"
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
       role="presentation"
     >
-      <h2 className="font-pixel text-[11px] sm:text-sm text-white mb-1">Add a fee claimer</h2>
-      <p className="font-pixel text-[7px] text-gray-500 mb-4">or keep 100% for yourself</p>
+      <h2 className="font-pixel text-[11px] sm:text-sm text-white mb-0.5">Add a fee claimer</h2>
+      <p className="font-pixel text-[7px] text-gray-500 mb-3">or keep 100% for yourself</p>
 
-      {/* Provider select */}
-      <div className="w-full max-w-[300px] mb-3">
-        <label className="font-pixel text-[9px] text-gray-400 mb-1 block">Platform</label>
+      {/* Provider + Username inline row */}
+      <div className="w-full max-w-[300px] mb-1 flex gap-2">
         <select
           value={provider}
           onChange={(e) => setProvider(e.target.value)}
-          className="w-full bg-gray-800 border border-gray-600 text-white font-pixel text-[10px] px-3 py-2 rounded focus:border-bags-green focus:outline-none"
+          className="w-[110px] flex-shrink-0 bg-gray-800 border border-gray-600 text-white font-pixel text-[9px] px-2 py-1.5 rounded focus:border-bags-green focus:outline-none"
         >
           {PROVIDERS.map((p) => (
             <option key={p.value} value={p.value}>
@@ -142,39 +168,35 @@ export function RivalScreen({ state, dispatch, onAdvance, onSkip }: ScreenProps)
             </option>
           ))}
         </select>
-      </div>
-
-      {/* Username input */}
-      <div className="w-full max-w-[300px] mb-4">
-        <label className="font-pixel text-[9px] text-gray-400 mb-1 block">Username</label>
         <input
           type="text"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           placeholder="@username"
-          className="w-full bg-gray-800 border border-gray-600 text-white font-pixel text-[10px] px-3 py-2 rounded focus:border-bags-green focus:outline-none placeholder:text-gray-600"
+          className="flex-1 min-w-0 bg-gray-800 border border-gray-600 text-white font-pixel text-[9px] px-2 py-1.5 rounded focus:border-bags-green focus:outline-none placeholder:text-gray-600"
           onKeyDown={(e) => e.stopPropagation()}
         />
-        <p className="font-pixel text-[7px] text-gray-600 mt-1">
-          They verify their account on Bags to claim earnings
-        </p>
       </div>
+      <p className="font-pixel text-[7px] text-gray-600 mb-3 w-full max-w-[300px]">
+        They verify their account on Bags to claim earnings
+      </p>
 
-      {/* BPS split presets */}
-      <div className="w-full max-w-[300px] mb-4">
-        <label className="font-pixel text-[9px] text-gray-400 mb-2 block">Fee Split</label>
-        <div className="flex gap-2">
+      {/* BPS split presets + Custom */}
+      <div className="w-full max-w-[300px] mb-2">
+        <label className="font-pixel text-[8px] text-gray-400 mb-1 block">Fee Split</label>
+        <div className="flex gap-1.5">
           {(
             [
-              { key: "100", label: "100% Me" },
-              { key: "70_30", label: "70 / 30" },
-              { key: "50_50", label: "50 / 50" },
+              { key: "100", label: "100%" },
+              { key: "70_30", label: "70/30" },
+              { key: "50_50", label: "50/50" },
+              { key: "custom", label: "Custom" },
             ] as const
           ).map(({ key, label }) => (
             <button
               key={key}
               type="button"
-              className={`flex-1 font-pixel text-[9px] py-2 border rounded cursor-pointer transition-colors ${splitPreset === key ? "bg-bags-green text-black border-bags-green" : "bg-gray-800 text-gray-400 border-gray-600 hover:border-gray-400"}`}
+              className={`flex-1 font-pixel text-[8px] py-1.5 border rounded cursor-pointer transition-colors ${splitPreset === key ? "bg-bags-green text-black border-bags-green" : "bg-gray-800 text-gray-400 border-gray-600 hover:border-gray-400"}`}
               onClick={() => setSplitPreset(key)}
             >
               {label}
@@ -183,33 +205,60 @@ export function RivalScreen({ state, dispatch, onAdvance, onSkip }: ScreenProps)
         </div>
       </div>
 
+      {/* Custom slider — only visible when Custom selected */}
+      {splitPreset === "custom" && (
+        <div className="w-full max-w-[300px] mb-2">
+          <div className="flex items-center gap-2">
+            <span className="font-pixel text-[7px] text-bags-green w-8 text-right">
+              {customSelfPct}%
+            </span>
+            <input
+              type="range"
+              min={1}
+              max={99}
+              value={customSelfPct}
+              onChange={(e) => setCustomSelfPct(Number(e.target.value))}
+              className="flex-1 h-1.5 appearance-none bg-gray-700 rounded-full outline-none accent-green-500"
+              style={{ accentColor: "#22C55E" }}
+            />
+            <span className="font-pixel text-[7px] text-purple-400 w-8">
+              {100 - customSelfPct}%
+            </span>
+          </div>
+          <div className="flex justify-between font-pixel text-[6px] text-gray-600 mt-0.5 px-8">
+            <span>You</span>
+            <span>Claimer</span>
+          </div>
+        </div>
+      )}
+
       {/* Visual split bar */}
-      <div className="w-full max-w-[300px] mb-4">
-        <div className="flex h-6 rounded overflow-hidden border border-gray-600">
+      <div className="w-full max-w-[300px] mb-2">
+        <div className="flex h-5 rounded overflow-hidden border border-gray-600">
           <div
-            className="bg-bags-green flex items-center justify-center font-pixel text-[8px] text-black transition-all duration-300"
+            className="bg-bags-green flex items-center justify-center font-pixel text-[7px] text-black transition-all duration-300"
             style={{ width: `${selfPercentage}%` }}
           >
-            YOU {selfPercentage}%
+            {selfPercentage >= 20 ? `YOU ${selfPercentage}%` : ""}
           </div>
           {claimerPercentage > 0 && (
             <div
-              className="bg-purple-600 flex items-center justify-center font-pixel text-[8px] text-white transition-all duration-300"
+              className="bg-purple-600 flex items-center justify-center font-pixel text-[7px] text-white transition-all duration-300"
               style={{ width: `${claimerPercentage}%` }}
             >
-              CLAIMER {claimerPercentage}%
+              {claimerPercentage >= 20 ? `CLAIMER ${claimerPercentage}%` : ""}
             </div>
           )}
         </div>
       </div>
 
       {/* Permanent warning */}
-      <p className="font-pixel text-[8px] text-bags-gold text-center mb-3 max-w-[300px]">
+      <p className="font-pixel text-[7px] text-bags-gold text-center mb-2 max-w-[300px]">
         Fee shares are locked permanently at launch.
       </p>
 
       {/* Action buttons */}
-      <div className="flex gap-3 mt-2">
+      <div className="flex gap-3">
         <button
           type="button"
           className="font-pixel text-[10px] text-gray-500 hover:text-gray-300 px-4 py-2 border border-gray-700 hover:border-gray-500 rounded cursor-pointer transition-colors"

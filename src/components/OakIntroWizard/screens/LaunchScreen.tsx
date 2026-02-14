@@ -91,11 +91,9 @@ function WalletConnectView({ onAdvance }: Pick<ScreenProps, "onAdvance">) {
 function LaunchReviewView({
   state,
   dispatch,
-  onAdvance,
-}: Pick<ScreenProps, "state" | "dispatch" | "onAdvance">) {
+}: Pick<ScreenProps, "state" | "dispatch">) {
   const handleLaunch = () => {
     dispatch({ type: "SET_SCREEN", screen: "launching" });
-    onAdvance();
   };
 
   return (
@@ -139,6 +137,22 @@ function LaunchReviewView({
             </p>
           </div>
         </div>
+
+        {/* Social links if set */}
+        {(state.tokenTwitter || state.tokenWebsite) && (
+          <div className="mt-2 pt-2 border-t border-gray-700 space-y-0.5">
+            {state.tokenTwitter && (
+              <p className="font-pixel text-[7px] text-gray-400 truncate">
+                X: <span className="text-gray-300">{state.tokenTwitter}</span>
+              </p>
+            )}
+            {state.tokenWebsite && (
+              <p className="font-pixel text-[7px] text-gray-400 truncate">
+                Web: <span className="text-gray-300">{state.tokenWebsite}</span>
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Fee share breakdown */}

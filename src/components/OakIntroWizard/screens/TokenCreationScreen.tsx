@@ -6,7 +6,49 @@ import { ART_STYLES, DIALOGUE } from "../constants";
 import { DialogueBox } from "../DialogueBox";
 import { OakSprite } from "../PixelSprites";
 
-/* ─── Sub-screen: Token Concept ─── */
+/** Convert a File to a base64 data URL string */
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/** Upload + auto-resize an image via the oak-generate API */
+async function uploadAndResize(
+  file: File,
+  width: number,
+  height: number
+): Promise<string> {
+  const base64 = await fileToBase64(file);
+
+  try {
+    const res = await fetch("/api/oak-generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "resize-image",
+        imageData: base64,
+        width,
+        height,
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.imageUrl) return data.imageUrl;
+    }
+  } catch {
+    // Resize failed — fall back to raw file
+  }
+
+  // Fallback: return the raw base64 data URL
+  return base64;
+}
+
+/* ─── Sub-screen: Token Concept — choose AI or Custom ─── */
 function TokenConceptView({
   state,
   dispatch,
@@ -18,8 +60,12 @@ function TokenConceptView({
   const handleSubmit = () => {
     if (concept.trim().length >= 3) {
       dispatch({ type: "SET_TOKEN_CONCEPT", concept: concept.trim() });
-      onAdvance();
+      onAdvance(); // → token_style (AI path)
     }
+  };
+
+  const handleCustom = () => {
+    dispatch({ type: "SET_SCREEN", screen: "token_custom" });
   };
 
   return (
@@ -47,13 +93,13 @@ function TokenConceptView({
         <div className="absolute bottom-0 left-0 right-0 p-3 z-10">
           <div className="bg-black/95 border-2 border-white rounded-lg p-3 mx-2 mb-2">
             <label className="font-pixel text-[9px] text-bags-gold mb-2 block">
-              Describe your token idea...
+              Describe your token idea and I&apos;ll generate everything...
             </label>
             <textarea
               value={concept}
               onChange={(e) => setConcept(e.target.value)}
               placeholder="A cosmic cat exploring galaxies..."
-              className="w-full bg-gray-900 border border-gray-600 text-white font-pixel text-[10px] px-3 py-2 rounded resize-none h-16 focus:border-bags-green focus:outline-none placeholder:text-gray-600"
+              className="w-full bg-gray-900 border border-gray-600 text-white font-pixel text-[10px] px-3 py-2 rounded resize-none h-14 focus:border-bags-green focus:outline-none placeholder:text-gray-600"
               onKeyDown={(e) => {
                 e.stopPropagation();
                 if (e.code === "Enter" && !e.shiftKey) {
@@ -63,14 +109,23 @@ function TokenConceptView({
               }}
               autoFocus
             />
-            <button
-              type="button"
-              className={`mt-2 w-full font-pixel text-[10px] py-2 rounded cursor-pointer transition-colors ${concept.trim().length >= 3 ? "bg-bags-green text-black hover:bg-green-400" : "bg-gray-700 text-gray-500 cursor-not-allowed"}`}
-              onClick={handleSubmit}
-              disabled={concept.trim().length < 3}
-            >
-              [CONTINUE]
-            </button>
+            <div className="flex gap-2 mt-2">
+              <button
+                type="button"
+                className={`flex-1 font-pixel text-[10px] py-2 rounded cursor-pointer transition-colors ${concept.trim().length >= 3 ? "bg-bags-green text-black hover:bg-green-400" : "bg-gray-700 text-gray-500 cursor-not-allowed"}`}
+                onClick={handleSubmit}
+                disabled={concept.trim().length < 3}
+              >
+                [AI GENERATE]
+              </button>
+              <button
+                type="button"
+                className="flex-1 font-pixel text-[10px] py-2 rounded cursor-pointer transition-colors bg-gray-800 text-gray-300 border border-gray-600 hover:border-gray-400 hover:text-white"
+                onClick={handleCustom}
+              >
+                [DO IT MYSELF]
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -78,9 +133,211 @@ function TokenConceptView({
   );
 }
 
+/* ─── Sub-screen: Custom Token Creation (manual everything) ─── */
+function TokenCustomView({
+  state,
+  dispatch,
+}: Pick<ScreenProps, "state" | "dispatch">) {
+  const [name, setName] = useState(state.tokenName || "");
+  const [symbol, setSymbol] = useState(state.tokenSymbol || "");
+  const [description, setDescription] = useState(state.tokenDescription || "");
+  const [twitter, setTwitter] = useState(state.tokenTwitter || "");
+  const [website, setWebsite] = useState(state.tokenWebsite || "");
+  const [logoPreview, setLogoPreview] = useState<string | null>(state.tokenImageUrl);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(state.tokenBannerUrl);
+  const [resizingLogo, setResizingLogo] = useState(false);
+  const [resizingBanner, setResizingBanner] = useState(false);
+
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+
+  const canContinue = name.trim().length >= 1 && symbol.trim().length >= 1 && logoPreview;
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setResizingLogo(true);
+    const resized = await uploadAndResize(file, 512, 512);
+    setLogoPreview(resized);
+    dispatch({ type: "SET_TOKEN_IMAGE", url: resized });
+    setResizingLogo(false);
+  };
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setResizingBanner(true);
+    const resized = await uploadAndResize(file, 600, 200);
+    setBannerPreview(resized);
+    dispatch({ type: "SET_TOKEN_BANNER", url: resized });
+    setResizingBanner(false);
+  };
+
+  const handleContinue = () => {
+    dispatch({
+      type: "SET_TOKEN_DATA",
+      name: name.trim(),
+      symbol: symbol.trim().toUpperCase(),
+      description: description.trim(),
+    });
+    dispatch({ type: "SET_TOKEN_TWITTER", twitter: twitter.trim() });
+    dispatch({ type: "SET_TOKEN_WEBSITE", website: website.trim() });
+    // Skip AI screens, go straight to education
+    dispatch({ type: "SET_SCREEN", screen: "education_fees" });
+  };
+
+  return (
+    <div
+      className="absolute inset-0 bg-black flex flex-col items-center px-4 pt-3 overflow-y-auto"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      role="presentation"
+    >
+      <h2 className="font-pixel text-[11px] sm:text-sm text-white mb-0.5">Create your TOKEN</h2>
+      <p className="font-pixel text-[7px] text-gray-500 mb-2">Fill in the details below</p>
+
+      <div className="w-full max-w-[320px] space-y-2">
+        {/* Name + Symbol row */}
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <label className="font-pixel text-[7px] text-gray-400 mb-0.5 block">Token Name *</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="CoolCat"
+              maxLength={32}
+              className="w-full bg-gray-800 border border-gray-600 text-white font-pixel text-[9px] px-2 py-1.5 rounded focus:border-bags-green focus:outline-none placeholder:text-gray-600"
+              onKeyDown={(e) => e.stopPropagation()}
+            />
+          </div>
+          <div className="w-[90px] flex-shrink-0">
+            <label className="font-pixel text-[7px] text-gray-400 mb-0.5 block">Ticker *</label>
+            <input
+              type="text"
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+              placeholder="$COOL"
+              maxLength={10}
+              className="w-full bg-gray-800 border border-gray-600 text-white font-pixel text-[9px] px-2 py-1.5 rounded focus:border-bags-green focus:outline-none placeholder:text-gray-600"
+              onKeyDown={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+
+        {/* Description */}
+        <div>
+          <label className="font-pixel text-[7px] text-gray-400 mb-0.5 block">Description</label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="A cool cat token for the community..."
+            maxLength={200}
+            className="w-full bg-gray-800 border border-gray-600 text-white font-pixel text-[9px] px-2 py-1.5 rounded resize-none h-12 focus:border-bags-green focus:outline-none placeholder:text-gray-600"
+            onKeyDown={(e) => e.stopPropagation()}
+          />
+        </div>
+
+        {/* Logo + Banner uploads */}
+        <div className="flex gap-2">
+          {/* Logo */}
+          <div className="flex-1">
+            <label className="font-pixel text-[7px] text-gray-400 mb-0.5 block">Logo (512x512) *</label>
+            <button
+              type="button"
+              className="w-full h-16 bg-gray-800 border border-dashed border-gray-600 rounded flex items-center justify-center cursor-pointer hover:border-bags-green transition-colors overflow-hidden"
+              onClick={() => logoInputRef.current?.click()}
+            >
+              {resizingLogo ? (
+                <span className="font-pixel text-[7px] text-bags-gold animate-pulse">Resizing...</span>
+              ) : logoPreview ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
+              ) : (
+                <span className="font-pixel text-[7px] text-gray-500">Upload logo</span>
+              )}
+            </button>
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleLogoUpload}
+              className="hidden"
+            />
+          </div>
+
+          {/* Banner */}
+          <div className="flex-1">
+            <label className="font-pixel text-[7px] text-gray-400 mb-0.5 block">Banner (600x200)</label>
+            <button
+              type="button"
+              className="w-full h-16 bg-gray-800 border border-dashed border-gray-600 rounded flex items-center justify-center cursor-pointer hover:border-bags-green transition-colors overflow-hidden"
+              onClick={() => bannerInputRef.current?.click()}
+            >
+              {resizingBanner ? (
+                <span className="font-pixel text-[7px] text-bags-gold animate-pulse">Resizing...</span>
+              ) : bannerPreview ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={bannerPreview} alt="Banner" className="w-full h-full object-cover" />
+              ) : (
+                <span className="font-pixel text-[7px] text-gray-500">Upload banner</span>
+              )}
+            </button>
+            <input
+              ref={bannerInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleBannerUpload}
+              className="hidden"
+            />
+          </div>
+        </div>
+        <p className="font-pixel text-[6px] text-gray-600">
+          Images auto-resize to correct dimensions
+        </p>
+
+        {/* X link */}
+        <div>
+          <label className="font-pixel text-[7px] text-gray-400 mb-0.5 block">X / Twitter link</label>
+          <input
+            type="text"
+            value={twitter}
+            onChange={(e) => setTwitter(e.target.value)}
+            placeholder="https://x.com/yourtoken"
+            className="w-full bg-gray-800 border border-gray-600 text-white font-pixel text-[9px] px-2 py-1.5 rounded focus:border-bags-green focus:outline-none placeholder:text-gray-600"
+            onKeyDown={(e) => e.stopPropagation()}
+          />
+        </div>
+
+        {/* Website */}
+        <div>
+          <label className="font-pixel text-[7px] text-gray-400 mb-0.5 block">Website</label>
+          <input
+            type="text"
+            value={website}
+            onChange={(e) => setWebsite(e.target.value)}
+            placeholder="https://yourtoken.com"
+            className="w-full bg-gray-800 border border-gray-600 text-white font-pixel text-[9px] px-2 py-1.5 rounded focus:border-bags-green focus:outline-none placeholder:text-gray-600"
+            onKeyDown={(e) => e.stopPropagation()}
+          />
+        </div>
+      </div>
+
+      {/* Continue button */}
+      <button
+        type="button"
+        className={`mt-3 mb-4 font-pixel text-[10px] px-8 py-2 rounded cursor-pointer transition-colors ${canContinue ? "bg-bags-green text-black hover:bg-green-400" : "bg-gray-700 text-gray-500 cursor-not-allowed"}`}
+        onClick={handleContinue}
+        disabled={!canContinue}
+      >
+        [CONTINUE]
+      </button>
+    </div>
+  );
+}
+
 /* ─── Sub-screen: Art Style Picker ─── */
 function TokenStyleView({
-  state,
   dispatch,
   onAdvance,
 }: Pick<ScreenProps, "state" | "dispatch" | "onAdvance">) {
@@ -266,7 +523,7 @@ function TokenNamesView({
   );
 }
 
-/* ─── Sub-screen: Token Image ─── */
+/* ─── Sub-screen: Token Image (AI path) — includes X/website fields ─── */
 function TokenImageView({
   state,
   dispatch,
@@ -275,6 +532,9 @@ function TokenImageView({
   const [loading, setLoading] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [twitter, setTwitter] = useState(state.tokenTwitter || "");
+  const [website, setWebsite] = useState(state.tokenWebsite || "");
+  const [resizing, setResizing] = useState(false);
   const fetchedRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -334,12 +594,14 @@ function TokenImageView({
     fetchImage();
   }, [state.tokenImageUrl, fetchImage]);
 
-  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    dispatch({ type: "SET_TOKEN_IMAGE", url });
+    setResizing(true);
+    const resized = await uploadAndResize(file, 512, 512);
+    dispatch({ type: "SET_TOKEN_IMAGE", url: resized });
     setRevealed(true);
+    setResizing(false);
   };
 
   const handleRegenerate = () => {
@@ -349,22 +611,28 @@ function TokenImageView({
     fetchImage();
   };
 
+  const handleContinue = () => {
+    dispatch({ type: "SET_TOKEN_TWITTER", twitter: twitter.trim() });
+    dispatch({ type: "SET_TOKEN_WEBSITE", website: website.trim() });
+    onAdvance();
+  };
+
   return (
     <div
-      className="absolute inset-0 bg-black flex flex-col items-center justify-center px-4"
+      className="absolute inset-0 bg-black flex flex-col items-center px-4 pt-4 overflow-y-auto"
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
       role="presentation"
     >
-      {loading ? (
-        <div className="flex flex-col items-center gap-3">
+      {loading || resizing ? (
+        <div className="flex flex-col items-center justify-center flex-1 gap-3">
           <div className="w-24 h-24 rounded-full border-2 border-bags-green border-dashed animate-spin" />
           <p className="font-pixel text-[10px] text-bags-gold animate-pulse">
-            Drawing your {state.tokenName || "TOKEN"}...
+            {resizing ? "Resizing image..." : `Drawing your ${state.tokenName || "TOKEN"}...`}
           </p>
         </div>
       ) : error ? (
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center justify-center flex-1 gap-3">
           <p className="font-pixel text-[10px] text-red-400">{error}</p>
           <button
             type="button"
@@ -376,12 +644,12 @@ function TokenImageView({
         </div>
       ) : (
         <>
-          <h2 className="font-pixel text-[11px] sm:text-sm text-white mb-4">
+          <h2 className="font-pixel text-[11px] sm:text-sm text-white mb-2">
             Your {state.tokenName || "TOKEN"}!
           </h2>
 
           {/* Image with circle reveal */}
-          <div className="relative w-32 h-32 mb-4">
+          <div className="relative w-24 h-24 mb-2">
             {state.tokenImageUrl && (
               <div
                 className="w-full h-full rounded-full overflow-hidden border-2 border-bags-green transition-all duration-700"
@@ -400,34 +668,62 @@ function TokenImageView({
             )}
           </div>
 
-          <p className="font-pixel text-[10px] text-bags-gold mb-4">
+          <p className="font-pixel text-[10px] text-bags-gold mb-2">
             {state.tokenName} <span className="text-gray-500">(${state.tokenSymbol})</span>
           </p>
 
-          {/* Action buttons */}
-          <div className="flex flex-wrap gap-2 justify-center">
+          {/* Image action buttons */}
+          <div className="flex flex-wrap gap-2 justify-center mb-3">
             <button
               type="button"
-              className="font-pixel text-[9px] text-black bg-bags-green hover:bg-green-400 px-4 py-2 rounded cursor-pointer transition-colors"
-              onClick={onAdvance}
-            >
-              [USE THIS]
-            </button>
-            <button
-              type="button"
-              className="font-pixel text-[9px] text-bags-green border border-bags-green px-4 py-2 rounded cursor-pointer hover:bg-bags-green hover:text-black transition-colors"
+              className="font-pixel text-[8px] text-bags-green border border-bags-green px-3 py-1.5 rounded cursor-pointer hover:bg-bags-green hover:text-black transition-colors"
               onClick={handleRegenerate}
             >
               [REGENERATE]
             </button>
             <button
               type="button"
-              className="font-pixel text-[9px] text-gray-400 border border-gray-600 px-4 py-2 rounded cursor-pointer hover:border-gray-400 hover:text-gray-300 transition-colors"
+              className="font-pixel text-[8px] text-gray-400 border border-gray-600 px-3 py-1.5 rounded cursor-pointer hover:border-gray-400 hover:text-gray-300 transition-colors"
               onClick={() => fileInputRef.current?.click()}
             >
               [UPLOAD OWN]
             </button>
           </div>
+
+          {/* Optional social links */}
+          <div className="w-full max-w-[300px] space-y-1.5 mb-3">
+            <div>
+              <label className="font-pixel text-[7px] text-gray-400 mb-0.5 block">X / Twitter link (optional)</label>
+              <input
+                type="text"
+                value={twitter}
+                onChange={(e) => setTwitter(e.target.value)}
+                placeholder="https://x.com/yourtoken"
+                className="w-full bg-gray-800 border border-gray-600 text-white font-pixel text-[9px] px-2 py-1.5 rounded focus:border-bags-green focus:outline-none placeholder:text-gray-600"
+                onKeyDown={(e) => e.stopPropagation()}
+              />
+            </div>
+            <div>
+              <label className="font-pixel text-[7px] text-gray-400 mb-0.5 block">Website (optional)</label>
+              <input
+                type="text"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                placeholder="https://yourtoken.com"
+                className="w-full bg-gray-800 border border-gray-600 text-white font-pixel text-[9px] px-2 py-1.5 rounded focus:border-bags-green focus:outline-none placeholder:text-gray-600"
+                onKeyDown={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
+
+          {/* Continue button */}
+          <button
+            type="button"
+            className="font-pixel text-[10px] text-black bg-bags-green hover:bg-green-400 px-6 py-2 rounded cursor-pointer transition-colors mb-4"
+            onClick={handleContinue}
+          >
+            [CONTINUE]
+          </button>
 
           {/* Hidden file input */}
           <input
@@ -450,6 +746,8 @@ export function TokenCreationScreen(props: ScreenProps) {
   switch (state.currentScreen) {
     case "token_concept":
       return <TokenConceptView {...props} />;
+    case "token_custom":
+      return <TokenCustomView {...props} />;
     case "token_style":
       return <TokenStyleView {...props} />;
     case "token_names":

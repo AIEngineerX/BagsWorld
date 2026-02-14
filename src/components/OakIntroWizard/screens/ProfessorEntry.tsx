@@ -9,13 +9,16 @@ import { OakSprite } from "../PixelSprites";
 export function ProfessorEntry({ onAdvance }: ScreenProps) {
   const [entered, setEntered] = useState(false);
   const [showDialogue, setShowDialogue] = useState(false);
+  const [fadeIn, setFadeIn] = useState(false);
 
-  // Trigger slide-up after mount
+  // Fade from black, then slide Oak in
   useEffect(() => {
-    const enterTimer = requestAnimationFrame(() => {
-      setEntered(true);
-    });
-    return () => cancelAnimationFrame(enterTimer);
+    const fadeTimer = requestAnimationFrame(() => setFadeIn(true));
+    const enterTimer = setTimeout(() => setEntered(true), 300);
+    return () => {
+      cancelAnimationFrame(fadeTimer);
+      clearTimeout(enterTimer);
+    };
   }, []);
 
   // Show dialogue after sprite finishes sliding in
@@ -33,13 +36,30 @@ export function ProfessorEntry({ onAdvance }: ScreenProps) {
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
       role="presentation"
+      style={{
+        opacity: fadeIn ? 1 : 0,
+        transition: "opacity 0.4s ease-out",
+      }}
     >
       {/* Lab background gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-black via-gray-900 to-gray-800" />
 
-      {/* Professor Oak sliding up */}
+      {/* Subtle spotlight behind Oak */}
       <div
-        className="relative z-[5] mt-[20%] sm:mt-[15%]"
+        className="absolute z-[3] opacity-20"
+        style={{
+          top: "15%",
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: 200,
+          height: 200,
+          background: "radial-gradient(circle, rgba(34,197,94,0.4) 0%, transparent 70%)",
+        }}
+      />
+
+      {/* Professor Oak sliding up — positioned higher in frame */}
+      <div
+        className="relative z-[5] mt-[15%] sm:mt-[12%]"
         style={{
           transform: entered ? "translateY(0)" : "translateY(100vh)",
           transition: "transform 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
