@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ScreenProps } from "../types";
 import { IntroMusic } from "../introMusic";
 
@@ -118,10 +118,24 @@ export function TitleScreen({ onAdvance }: ScreenProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onAdvance]);
 
-  const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  // Use a ref to prevent double-advance from both touchend and click
+  const advancedRef = useRef(false);
+
+  const doAdvance = useCallback(() => {
+    if (advancedRef.current) return;
+    advancedRef.current = true;
     musicRef.current?.stop();
     onAdvance();
+  }, [onAdvance]);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    doAdvance();
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.stopPropagation();
+    doAdvance();
   };
 
   return (
@@ -129,6 +143,7 @@ export function TitleScreen({ onAdvance }: ScreenProps) {
     <div
       className="absolute inset-0 bg-black overflow-hidden cursor-pointer select-none"
       onClick={handleClick}
+      onTouchEnd={handleTouchEnd}
     >
       {/* ── Deep space gradient ── */}
       <div
