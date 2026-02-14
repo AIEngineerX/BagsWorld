@@ -91,7 +91,7 @@ export function ArcadeModal({ onClose }: ArcadeModalProps) {
       <div className="relative w-full max-w-4xl mx-4">
         <button
           onClick={onClose}
-          className="absolute -top-10 right-0 text-gray-400 hover:text-white font-pixel text-sm z-10"
+          className="absolute -top-12 right-0 text-gray-400 hover:text-white font-pixel text-sm z-10 min-w-[44px] min-h-[44px] flex items-center justify-center"
         >
           [X] CLOSE
         </button>

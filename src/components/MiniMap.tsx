@@ -132,7 +132,12 @@ const LOCATIONS: Record<
   ],
   dungeon: [{ id: "entrance", name: "Dungeon Gate", desc: "Enter MMORPG", event: null }],
   ascension: [
-    { id: "hall", name: "Hall of Records", desc: "Leaderboard", event: "bagsworld-ascension-click" },
+    {
+      id: "hall",
+      name: "Hall of Records",
+      desc: "Leaderboard",
+      event: "bagsworld-ascension-click",
+    },
     { id: "spire", name: "Ascension Spire", desc: "Summon Trial", event: null },
     { id: "shrine", name: "Blessing Shrine", desc: "Bless Agents", event: null },
   ],
@@ -346,7 +351,7 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
 
       {/* === Expanded: World Map Panel === */}
       {isOpen && (
-        <div className="w-[272px] bg-bags-dark border-2 border-red-500 rounded-xl shadow-2xl shadow-black/60 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="w-[min(272px,calc(100vw-2rem))] bg-bags-dark border-2 border-red-500 rounded-xl shadow-2xl shadow-black/60 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
           {/* Header — draggable */}
           <div
             onPointerDown={handleDragPointerDown}
