@@ -124,7 +124,12 @@ function TaskCard({ task }: { task: AgentTask }) {
       {/* Poster / Claimer info */}
       <div className="mt-2 pt-2 border-t border-amber-800/30 flex items-center justify-between text-xs text-amber-400/60">
         <span>
-          By: {task.posterWallet === "bagsy-internal" ? "Bagsy" : task.posterWallet === "chadghost-internal" ? "ChadGhost" : `${task.posterWallet.slice(0, 6)}...${task.posterWallet.slice(-4)}`}
+          By:{" "}
+          {task.posterWallet === "bagsy-internal"
+            ? "Bagsy"
+            : task.posterWallet === "chadghost-internal"
+              ? "ChadGhost"
+              : `${task.posterWallet.slice(0, 6)}...${task.posterWallet.slice(-4)}`}
         </span>
         {task.claimerWallet && (
           <span className="text-yellow-400/70">
@@ -175,7 +180,10 @@ function StatsPanel({ stats }: { stats: TaskStats }) {
     <>
       <div className="grid grid-cols-2 gap-3">
         {statItems.map((item) => (
-          <div key={item.label} className="bg-amber-900/20 border border-amber-700/20 rounded-lg p-3">
+          <div
+            key={item.label}
+            className="bg-amber-900/20 border border-amber-700/20 rounded-lg p-3"
+          >
             <div className="text-xs text-amber-400/60 mb-1">{item.label}</div>
             <div className={`text-lg font-bold ${item.color}`}>{item.value}</div>
           </div>
@@ -242,8 +250,15 @@ export function BountyBoardModal({ onClose }: BountyBoardModalProps) {
   }, [fetchTasks, fetchStats]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="relative bg-gradient-to-b from-amber-950/95 to-stone-950/95 border border-amber-700/50 rounded-xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl shadow-amber-900/30">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="relative bg-gradient-to-b from-amber-950/95 to-stone-950/95 border border-amber-700/50 rounded-t-xl sm:rounded-xl w-full max-w-lg max-h-[80vh] sm:max-h-[85vh] flex flex-col shadow-2xl shadow-amber-900/30">
+        {/* Mobile drag handle */}
+        <div className="sm:hidden flex justify-center pt-2 pb-1">
+          <div className="w-10 h-1 rounded-full bg-white/30" />
+        </div>
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-amber-800/30">
           <div>
@@ -255,7 +270,7 @@ export function BountyBoardModal({ onClose }: BountyBoardModalProps) {
           </div>
           <button
             onClick={onClose}
-            className="text-amber-400/60 hover:text-amber-200 text-xl leading-none p-1"
+            className="text-amber-400/60 hover:text-amber-200 text-xl leading-none w-11 h-11 flex items-center justify-center"
           >
             {"\u2715"}
           </button>
