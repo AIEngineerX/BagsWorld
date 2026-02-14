@@ -437,16 +437,17 @@ body {
   overscroll-behavior-y: contain;
 }
 
-/* Game canvas touch handling - allow all touch interactions */
+/* Game canvas touch handling - manipulation prevents double-tap zoom and pinch zoom
+   while still allowing Phaser to receive touch/pointer events */
 .game-canvas-wrapper {
-  touch-action: auto;
+  touch-action: manipulation;
   -webkit-touch-callout: none;
   overscroll-behavior: contain;
 }
 
 /* Ensure Phaser canvas can receive touch events */
 .game-canvas-wrapper canvas {
-  touch-action: auto;
+  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 

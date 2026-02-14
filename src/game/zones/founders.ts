@@ -132,7 +132,10 @@ function createFoundersDecorations(scene: WorldScene): void {
 
     // Make building interactive
     sprite.setInteractive({ useHandCursor: true });
-    sprite.on("pointerdown", () => showFoundersPopup(scene, b.type));
+    sprite.on("pointerup", () => {
+      if ((scene as any).wasDragGesture) return;
+      showFoundersPopup(scene, b.type);
+    });
     sprite.on("pointerover", () => {
       sprite.setTint(0xdddddd);
       scene.tweens.add({
@@ -187,7 +190,8 @@ function createFoundersDecorations(scene: WorldScene): void {
   incineratorSprite.setDepth(4.6);
 
   incineratorSprite.setInteractive({ useHandCursor: true });
-  incineratorSprite.on("pointerdown", () => {
+  incineratorSprite.on("pointerup", () => {
+    if ((scene as any).wasDragGesture) return;
     window.dispatchEvent(new CustomEvent("bagsworld-incinerator-click"));
   });
   incineratorSprite.on("pointerover", () => {
@@ -400,7 +404,10 @@ function createFoundersDecorations(scene: WorldScene): void {
 
     // Make Pokemon interactive
     sprite.setInteractive({ useHandCursor: true });
-    sprite.on("pointerdown", () => scene.petPokemon(config.type));
+    sprite.on("pointerup", () => {
+      if ((scene as any).wasDragGesture) return;
+      scene.petPokemon(config.type);
+    });
     sprite.on("pointerover", () => sprite.setTint(0xffffcc));
     sprite.on("pointerout", () => sprite.clearTint());
 

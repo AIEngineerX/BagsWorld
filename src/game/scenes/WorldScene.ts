@@ -184,6 +184,10 @@ export class WorldScene extends Phaser.Scene {
   public worldStateVersion = 0;
   public skylineSprites: Phaser.GameObjects.Sprite[] = [];
   public distantSkylineGfx: (Phaser.GameObjects.Graphics | Phaser.GameObjects.Rectangle)[] = []; // Persistent background skyline (not animated in transitions)
+  private skylineHazeLayer: Phaser.GameObjects.Graphics | null = null; // Horizon haze (time-aware)
+  private skylineWindowsLayer: Phaser.GameObjects.Graphics | null = null; // Building window lights
+  private skylineGlowLayer: Phaser.GameObjects.Graphics | null = null; // Window glow spots
+  private skylineFlickerRects: Phaser.GameObjects.Rectangle[] = []; // Animated window flickers
   private academyBuildings: Phaser.GameObjects.Sprite[] = []; // Academy building sprites
   public billboardTimer: Phaser.Time.TimerEvent | null = null;
   public trafficTimers: Phaser.Time.TimerEvent[] = [];
@@ -245,6 +249,11 @@ export class WorldScene extends Phaser.Scene {
   > = new Map();
 
   public isMobile = false;
+
+  // Drag detection: prevents accidental taps when scrolling on mobile
+  private touchStartPos: { x: number; y: number } | null = null;
+  private wasDragGesture = false;
+  private static readonly TAP_DISTANCE_THRESHOLD = 12; // pixels
 
   constructor() {
     super({ key: "WorldScene" });
@@ -1166,6 +1175,12 @@ export class WorldScene extends Phaser.Scene {
     let cameraStartX = 0;
     let cameraStartY = 0;
 
+    // Track touch start for tap-vs-drag detection (prevents accidental clicks)
+    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      this.touchStartPos = { x: pointer.x, y: pointer.y };
+      this.wasDragGesture = false;
+    });
+
     // Handle pointer down - start drag
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       // Only start drag if not clicking on a character/building
@@ -1179,8 +1194,19 @@ export class WorldScene extends Phaser.Scene {
       }
     });
 
-    // Handle pointer move - pan camera
+    // Handle pointer move - pan camera + mark drag gesture
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
+      // Mark as drag if finger moved beyond threshold (prevents accidental taps)
+      if (this.touchStartPos && pointer.isDown && !this.wasDragGesture) {
+        const dist = Phaser.Math.Distance.Between(
+          this.touchStartPos.x, this.touchStartPos.y,
+          pointer.x, pointer.y
+        );
+        if (dist > WorldScene.TAP_DISTANCE_THRESHOLD) {
+          this.wasDragGesture = true;
+        }
+      }
+
       if (!isDragging || !pointer.isDown) return;
 
       const deltaX = dragStartX - pointer.x;
@@ -2730,6 +2756,9 @@ export class WorldScene extends Phaser.Scene {
     // Add distant city skyline silhouette
     this.createDistantSkyline();
 
+    // Initialize skyline to night mode (matches drawSkyGradient("night") above)
+    this.updateSkylineForTime("night");
+
     // Add pixel-correct stars (rectangles instead of circles)
     this.stars = [];
     const starCount = Math.round(50 * SCALE);
@@ -2737,16 +2766,26 @@ export class WorldScene extends Phaser.Scene {
       const roll = Math.random();
       // Pixel sizes: 1x1 (55%), 2x1 (17%), 1x2 (17%), 2x2 (11%)
       let sw: number, sh: number;
-      if (roll < 0.55) { sw = 1; sh = 1; }
-      else if (roll < 0.72) { sw = 2; sh = 1; }
-      else if (roll < 0.89) { sw = 1; sh = 2; }
-      else { sw = 2; sh = 2; }
+      if (roll < 0.55) {
+        sw = 1;
+        sh = 1;
+      } else if (roll < 0.72) {
+        sw = 2;
+        sh = 1;
+      } else if (roll < 0.89) {
+        sw = 1;
+        sh = 2;
+      } else {
+        sw = 2;
+        sh = 2;
+      }
 
       // Color variation: 80% white, 12% warm, 8% cool
       const colorRoll = Math.random();
       let color = 0xffffff;
-      if (colorRoll > 0.92) color = 0xddddff; // cool tint
-      else if (colorRoll > 0.80) color = 0xffeedd; // warm tint
+      if (colorRoll > 0.92)
+        color = 0xddddff; // cool tint
+      else if (colorRoll > 0.8) color = 0xffeedd; // warm tint
 
       const star = this.add.rectangle(
         Math.random() * GAME_WIDTH,
@@ -2789,49 +2828,53 @@ export class WorldScene extends Phaser.Scene {
     // Color palettes per time state
     const palettes: Record<string, { pos: number; color: number }[]> = {
       day: [
-        { pos: 0.0, color: 0x1560bd },  // deep blue zenith
+        { pos: 0.0, color: 0x1560bd }, // deep blue zenith
         { pos: 0.2, color: 0x1e7ad8 },
-        { pos: 0.4, color: 0x1e90ff },  // dodger blue
+        { pos: 0.4, color: 0x1e90ff }, // dodger blue
         { pos: 0.6, color: 0x5dade2 },
-        { pos: 0.8, color: 0x87ceeb },  // sky blue
-        { pos: 1.0, color: 0xb8dff0 },  // pale horizon
+        { pos: 0.8, color: 0x87ceeb }, // sky blue
+        { pos: 1.0, color: 0xb8dff0 }, // pale horizon
       ],
       night: [
-        { pos: 0.0, color: 0x070b14 },  // near-black
-        { pos: 0.15, color: 0x0a1128 },
-        { pos: 0.35, color: 0x0f172a }, // dark navy
-        { pos: 0.55, color: 0x162033 },
-        { pos: 0.75, color: 0x1e293b }, // slate
-        { pos: 0.9, color: 0x273548 },
-        { pos: 1.0, color: 0x2d3f55 },  // faint city-glow horizon
+        { pos: 0.0, color: 0x050810 }, // deep black
+        { pos: 0.15, color: 0x080e20 },
+        { pos: 0.35, color: 0x0b1424 }, // dark navy
+        { pos: 0.55, color: 0x10182a },
+        { pos: 0.75, color: 0x141e30 }, // dark slate
+        { pos: 0.9, color: 0x182438 },
+        { pos: 1.0, color: 0x1c2a40 }, // muted horizon
       ],
       dusk: [
-        { pos: 0.0, color: 0x1a0a3e },  // deep purple
+        { pos: 0.0, color: 0x1a0a3e }, // deep purple
         { pos: 0.15, color: 0x2d1066 },
-        { pos: 0.3, color: 0x5b2180 },  // violet
-        { pos: 0.45, color: 0x8b3a62 },  // magenta transition
-        { pos: 0.6, color: 0xc75030 },  // orange
+        { pos: 0.3, color: 0x5b2180 }, // violet
+        { pos: 0.45, color: 0x8b3a62 }, // magenta transition
+        { pos: 0.6, color: 0xc75030 }, // orange
         { pos: 0.75, color: 0xe87840 },
-        { pos: 0.9, color: 0xf5a060 },  // peach
-        { pos: 1.0, color: 0xfcc89b },  // peach horizon
+        { pos: 0.9, color: 0xf5a060 }, // peach
+        { pos: 1.0, color: 0xfcc89b }, // peach horizon
       ],
       dawn: [
-        { pos: 0.0, color: 0x0e1a3a },  // pre-dawn blue
+        { pos: 0.0, color: 0x0e1a3a }, // pre-dawn blue
         { pos: 0.2, color: 0x1a2855 },
         { pos: 0.35, color: 0x2a3a6a }, // transition blue
-        { pos: 0.5, color: 0x5a4a60 },  // purple-blue transition
+        { pos: 0.5, color: 0x5a4a60 }, // purple-blue transition
         { pos: 0.65, color: 0xb87030 }, // gold
         { pos: 0.8, color: 0xe8a050 },
-        { pos: 0.9, color: 0xf5c080 },  // peach
-        { pos: 1.0, color: 0xfde0b0 },  // peach horizon
+        { pos: 0.9, color: 0xf5c080 }, // peach
+        { pos: 1.0, color: 0xfde0b0 }, // peach horizon
       ],
     };
 
     const stops = palettes[timeState];
 
     const lerpColor = (c1: number, c2: number, t: number): number => {
-      const r1 = (c1 >> 16) & 0xff, g1 = (c1 >> 8) & 0xff, b1 = c1 & 0xff;
-      const r2 = (c2 >> 16) & 0xff, g2 = (c2 >> 8) & 0xff, b2 = c2 & 0xff;
+      const r1 = (c1 >> 16) & 0xff,
+        g1 = (c1 >> 8) & 0xff,
+        b1 = c1 & 0xff;
+      const r2 = (c2 >> 16) & 0xff,
+        g2 = (c2 >> 8) & 0xff,
+        b2 = c2 & 0xff;
       return (
         (Math.round(r1 + (r2 - r1) * t) << 16) |
         (Math.round(g1 + (g2 - g1) * t) << 8) |
@@ -2911,6 +2954,76 @@ export class WorldScene extends Phaser.Scene {
 
     // Update ground transition
     this.drawGroundTransition(timeState);
+
+    // Update skyline brightness for time of day
+    this.updateSkylineForTime(timeState);
+  }
+
+  /**
+   * Adjust distant skyline elements based on time of day.
+   * During day/dawn: haze hidden, windows dimmed.
+   * During night/dusk: haze hidden, windows bright.
+   */
+  private updateSkylineForTime(timeState: "day" | "night" | "dusk" | "dawn"): void {
+    // Haze: only visible during day (creates atmospheric depth)
+    // Hidden at night/dusk/dawn to prevent warm glow bleeding through
+    const hazeAlpha: Record<string, number> = {
+      day: 1,
+      dawn: 0.4,
+      dusk: 0.2,
+      night: 0,
+    };
+    if (this.skylineHazeLayer) {
+      this.tweens.add({
+        targets: this.skylineHazeLayer,
+        alpha: hazeAlpha[timeState],
+        duration: 2000,
+        ease: "Sine.easeInOut",
+      });
+    }
+
+    // Window lights: brighter at night (building lights on), dimmer during day
+    const windowAlpha: Record<string, number> = {
+      day: 0.15,
+      dawn: 0.4,
+      dusk: 0.7,
+      night: 0.6,
+    };
+    if (this.skylineWindowsLayer) {
+      this.tweens.add({
+        targets: this.skylineWindowsLayer,
+        alpha: windowAlpha[timeState],
+        duration: 2000,
+        ease: "Sine.easeInOut",
+      });
+    }
+
+    // Window glow: only visible at night/dusk
+    const glowAlpha: Record<string, number> = {
+      day: 0,
+      dawn: 0.2,
+      dusk: 0.6,
+      night: 0.5,
+    };
+    if (this.skylineGlowLayer) {
+      this.tweens.add({
+        targets: this.skylineGlowLayer,
+        alpha: glowAlpha[timeState],
+        duration: 2000,
+        ease: "Sine.easeInOut",
+      });
+    }
+
+    // Flicker rects: match window visibility
+    const flickerAlpha = windowAlpha[timeState];
+    this.skylineFlickerRects.forEach((rect) => {
+      this.tweens.add({
+        targets: rect,
+        alpha: timeState === "day" ? 0 : flickerAlpha * (rect.alpha > 0 ? 1 : 0.5),
+        duration: 2000,
+        ease: "Sine.easeInOut",
+      });
+    });
   }
 
   private createSkyClouds(): void {
@@ -2992,17 +3105,21 @@ export class WorldScene extends Phaser.Scene {
 
     // Sky-side color per time state (blends into grass green at bottom)
     const skyColors: Record<string, number> = {
-      day: 0xb8dff0,    // pale blue horizon
-      night: 0x1e293b,  // slate
-      dusk: 0xfcc89b,   // peach
-      dawn: 0xfde0b0,   // warm peach
+      day: 0xb8dff0, // pale blue horizon
+      night: 0x1c2a40, // muted dark horizon (matches night palette bottom)
+      dusk: 0xfcc89b, // peach
+      dawn: 0xfde0b0, // warm peach
     };
     const grassColor = 0x1a472a; // matches grass base
     const skyC = skyColors[timeState];
 
     const lerpC = (c1: number, c2: number, t: number): number => {
-      const r1 = (c1 >> 16) & 0xff, g1 = (c1 >> 8) & 0xff, b1 = c1 & 0xff;
-      const r2 = (c2 >> 16) & 0xff, g2 = (c2 >> 8) & 0xff, b2 = c2 & 0xff;
+      const r1 = (c1 >> 16) & 0xff,
+        g1 = (c1 >> 8) & 0xff,
+        b1 = c1 & 0xff;
+      const r2 = (c2 >> 16) & 0xff,
+        g2 = (c2 >> 8) & 0xff,
+        b2 = c2 & 0xff;
       return (
         (Math.round(r1 + (r2 - r1) * t) << 16) |
         (Math.round(g1 + (g2 - g1) * t) << 8) |
@@ -3307,14 +3424,17 @@ export class WorldScene extends Phaser.Scene {
     const hazeLayer = this.add.graphics();
     hazeLayer.setDepth(-2.5);
     this.distantSkylineGfx.push(hazeLayer);
+    this.skylineHazeLayer = hazeLayer;
 
     // Gradient haze from horizon upward (gives depth)
+    // Starts hidden — updateSkylineForTime() sets correct alpha based on time
     for (let i = 0; i < 8; i++) {
       const alpha = 0.15 - i * 0.015;
       const y = groundLevel - Math.round(i * 12 * SCALE);
       hazeLayer.fillStyle(0x87ceeb, Math.max(0, alpha)); // Sky blue haze
       hazeLayer.fillRect(0, y, GAME_WIDTH, Math.round(15 * SCALE));
     }
+    hazeLayer.setAlpha(0); // Hidden until updateSkylineForTime is called
 
     // === LAYER 2: Far distant buildings (very faded, smaller) ===
     const farSkyline = this.add.graphics();
@@ -3590,6 +3710,7 @@ export class WorldScene extends Phaser.Scene {
     const windowsLayer = this.add.graphics();
     windowsLayer.setDepth(-1.6);
     this.distantSkylineGfx.push(windowsLayer);
+    this.skylineWindowsLayer = windowsLayer;
 
     // Window definitions: x, y, brightness (0.15-0.4)
     const windows = [
@@ -3658,6 +3779,7 @@ export class WorldScene extends Phaser.Scene {
     const glowLayer = this.add.graphics();
     glowLayer.setDepth(-1.65);
     this.distantSkylineGfx.push(glowLayer);
+    this.skylineGlowLayer = glowLayer;
 
     // Add small glow spots beneath brightest windows
     const brightWindows = windows.filter((w) => w.b >= 0.35);
@@ -3686,6 +3808,7 @@ export class WorldScene extends Phaser.Scene {
       flickerRects.push(rect);
       this.distantSkylineGfx.push(rect);
     });
+    this.skylineFlickerRects = flickerRects;
 
     // Timer: every 3.5s randomly flicker 2-3 windows
     this.time.addEvent({
@@ -5903,7 +6026,10 @@ export class WorldScene extends Phaser.Scene {
       this.scheduleHideTooltip();
       this.input.setDefaultCursor("default");
     });
-    sprite.on("pointerdown", () => {
+    sprite.on("pointerup", () => {
+      // Skip if this was a drag/scroll gesture (prevents accidental taps on mobile)
+      if (this.wasDragGesture) return;
+
       if (isOpenClaw) {
         // Click directly opens the agent's profile page
         if (character.profileUrl) {
@@ -6596,7 +6722,10 @@ export class WorldScene extends Phaser.Scene {
       this.hideTooltip();
       this.input.setDefaultCursor("default");
     });
-    container.on("pointerdown", () => {
+    container.on("pointerup", () => {
+      // Skip if this was a drag/scroll gesture (prevents accidental taps on mobile)
+      if (this.wasDragGesture) return;
+
       // If a zone decoration (MoltBook HQ, Agent Hut, Molt Bar, Bounty Board)
       // already handled this click, skip the building handler to avoid
       // opening a BuildingModal on top of the zone's custom modal.
@@ -7621,7 +7750,8 @@ export class WorldScene extends Phaser.Scene {
         // Re-schedule hide after leaving the button
         this.scheduleHideTooltip();
       });
-      btnBg.on("pointerdown", () => {
+      btnBg.on("pointerup", () => {
+        if (this.wasDragGesture) return;
         window.open(character.profileUrl, "_blank");
       });
       tooltipElements.push(btnBg, btnText);
