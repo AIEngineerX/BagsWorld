@@ -364,7 +364,7 @@ export function EnterWorldButton({ className = "" }: EnterWorldButtonProps) {
       {/* Meme Sprite Selector Modal */}
       {showSelector && (
         <div
-          className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/95 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
           onClick={(e) => e.target === e.currentTarget && setShowSelector(false)}
         >
           {/* Scanline overlay */}
@@ -376,7 +376,11 @@ export function EnterWorldButton({ className = "" }: EnterWorldButtonProps) {
             }}
           />
 
-          <div className="relative bg-gradient-to-b from-gray-900 via-gray-900 to-black border-2 border-green-500/80 rounded-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-[0_0_40px_rgba(74,222,128,0.15),inset_0_1px_0_rgba(74,222,128,0.1)]">
+          <div className="relative bg-gradient-to-b from-gray-900 via-gray-900 to-black border-2 border-green-500/80 rounded-t-xl sm:rounded-lg p-6 max-w-lg w-full max-h-[80vh] sm:max-h-[90vh] overflow-y-auto shadow-[0_0_40px_rgba(74,222,128,0.15),inset_0_1px_0_rgba(74,222,128,0.1)]">
+            {/* Mobile drag handle */}
+            <div className="sm:hidden flex justify-center -mt-4 mb-2">
+              <div className="w-10 h-1 rounded-full bg-white/30" />
+            </div>
             {/* Floating pixels background */}
             <FloatingPixels />
 

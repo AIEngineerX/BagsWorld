@@ -295,13 +295,17 @@ export function PartnerClaimButton() {
       {/* Claim Modal */}
       {showModal && (
         <div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4"
+          className="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-[100] p-0 sm:p-4"
           onClick={(e) => e.target === e.currentTarget && !isLoading && resetModal()}
         >
           <div
-            className="bg-bags-dark border-4 border-bags-gold w-full max-w-md"
+            className="bg-bags-dark border-4 border-bags-gold w-full max-w-md max-h-[80vh] sm:max-h-[90vh] overflow-y-auto rounded-t-xl sm:rounded-xl"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Mobile drag handle */}
+            <div className="sm:hidden flex justify-center pt-2 pb-1">
+              <div className="w-10 h-1 rounded-full bg-white/30" />
+            </div>
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b-4 border-bags-gold">
               <div>
@@ -313,7 +317,7 @@ export function PartnerClaimButton() {
               {!isLoading && (
                 <button
                   onClick={resetModal}
-                  className="font-pixel text-xs text-gray-400 hover:text-white"
+                  className="font-pixel text-xs text-gray-400 hover:text-white w-11 h-11 flex items-center justify-center"
                 >
                   [X]
                 </button>

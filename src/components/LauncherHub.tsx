@@ -116,14 +116,18 @@ export function LauncherHub({ onClose }: LauncherHubProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/90 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
       onClick={handleBackdropClick}
     >
-      <div className="bg-black border-2 border-bags-green w-full max-w-sm max-h-[80vh] flex flex-col">
+      <div className="bg-black border-2 border-bags-green w-full max-w-sm max-h-[80vh] flex flex-col rounded-t-xl sm:rounded-none">
+        {/* Mobile drag handle */}
+        <div className="sm:hidden flex justify-center pt-2 pb-1">
+          <div className="w-10 h-1 rounded-full bg-white/30" />
+        </div>
         {/* Header */}
         <div className="bg-bags-green px-3 py-2 flex justify-between items-center">
           <span className="font-pixel text-black text-xs">LAUNCHERS</span>
-          <button onClick={onClose} className="font-pixel text-black hover:text-red-800 text-xs">
+          <button onClick={onClose} className="font-pixel text-black hover:text-red-800 text-xs w-11 h-11 flex items-center justify-center -mr-2">
             [X]
           </button>
         </div>
