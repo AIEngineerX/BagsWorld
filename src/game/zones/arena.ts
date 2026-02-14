@@ -440,7 +440,8 @@ function createArenaDecorations(scene: WorldScene): void {
   infoBtn.setInteractive({ useHandCursor: true });
   infoBtn.on("pointerover", () => infoBtn.setFillStyle(0xef4444));
   infoBtn.on("pointerout", () => infoBtn.setFillStyle(0xdc2626));
-  infoBtn.on("pointerdown", () => {
+  infoBtn.on("pointerup", () => {
+    if ((scene as any).wasDragGesture) return;
     window.dispatchEvent(new CustomEvent("bagsworld-arena-click"));
   });
   scene.arenaElements.push(infoBtn);
@@ -669,10 +670,7 @@ export function disconnectArena(scene: WorldScene): void {
 /**
  * Play a fight replay through the existing animation pipeline
  */
-function playReplay(
-  scene: WorldScene,
-  replay: import("@/lib/arena-types").FightReplay
-): void {
+function playReplay(scene: WorldScene, replay: import("@/lib/arena-types").FightReplay): void {
   // Stop any current replay
   stopReplay(scene);
 
@@ -835,7 +833,10 @@ async function fetchLatestReplay(scene: WorldScene): Promise<void> {
       playReplay(scene, data.replay);
     }
   } catch (err) {
-    console.warn("[Arena] Failed to fetch latest replay:", err instanceof Error ? err.message : err);
+    console.warn(
+      "[Arena] Failed to fetch latest replay:",
+      err instanceof Error ? err.message : err
+    );
   }
 }
 
@@ -883,10 +884,7 @@ function startArenaStatusPolling(scene: WorldScene): void {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ action: "poll" }),
           }).catch((err) =>
-            console.warn(
-              "[Arena] MoltBook poll failed:",
-              err instanceof Error ? err.message : err
-            )
+            console.warn("[Arena] MoltBook poll failed:", err instanceof Error ? err.message : err)
           );
         }
       } catch (err) {
@@ -1003,7 +1001,8 @@ function createArenaHowToPanel(scene: WorldScene, cx: number, cy: number, s: num
     btnBg.setFillStyle(0x22c55e);
     btnText.setColor("#000000");
   });
-  btnBg.on("pointerdown", () => {
+  btnBg.on("pointerup", () => {
+    if ((scene as any).wasDragGesture) return;
     // Open the ArenaModal
     window.dispatchEvent(new CustomEvent("bagsworld-arena-click"));
   });
@@ -2317,4 +2316,3 @@ function playArenaConfetti(scene: WorldScene): void {
     });
   }
 }
-

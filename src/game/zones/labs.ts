@@ -119,7 +119,10 @@ function createLabsDecorations(scene: WorldScene): void {
     Phaser.Geom.Rectangle.Contains
   );
   hqSprite.input!.cursor = "pointer";
-  hqSprite.on("pointerdown", () => showLabsPopup(scene, "corp"));
+  hqSprite.on("pointerup", () => {
+    if ((scene as any).wasDragGesture) return;
+    showLabsPopup(scene, "corp");
+  });
   hqSprite.on("pointerover", () => {
     hqSprite.setTint(0xbbf7d0); // Light green tint on hover
     scene.tweens.add({
@@ -155,7 +158,10 @@ function createLabsDecorations(scene: WorldScene): void {
   labelBg.setDepth(6);
   labelBg.setStrokeStyle(1, 0x4ade80);
   labelBg.setInteractive({ useHandCursor: true });
-  labelBg.on("pointerdown", () => showLabsPopup(scene, "corp"));
+  labelBg.on("pointerup", () => {
+    if ((scene as any).wasDragGesture) return;
+    showLabsPopup(scene, "corp");
+  });
   scene.labsElements.push(labelBg);
 
   const label = scene.add.text(hqX, pathLevel + Math.round(18 * s), "BAGS.FM\nHQ", {
@@ -261,4 +267,3 @@ function createLabsDecorations(scene: WorldScene): void {
 function showLabsPopup(scene: WorldScene, type: string): void {
   window.dispatchEvent(new CustomEvent(`bagsworld-${type}-click`));
 }
-

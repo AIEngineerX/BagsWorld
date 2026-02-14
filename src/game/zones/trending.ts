@@ -150,7 +150,8 @@ function createTrendingDecorations(scene: WorldScene): void {
   });
 
   // Click handler — enter dungeon zone with vertical descent
-  tunnel.on("pointerdown", () => {
+  tunnel.on("pointerup", () => {
+    if ((scene as any).wasDragGesture) return;
     window.dispatchEvent(new CustomEvent("bagsworld-zone-change", { detail: { zone: "dungeon" } }));
     // Sync React store via custom event
     window.dispatchEvent(
@@ -259,13 +260,21 @@ function createCityStreetElements(scene: WorldScene): void {
   // --- Marquee chase lights (cycling neon bulbs around the sign) ---
   // Create 8 small circles that cycle colors in a chase pattern
   const chaseLights: Phaser.GameObjects.Arc[] = [];
-  const chaseColors = [0x4ade80, 0xa855f7, 0xfbbf24, 0x4ade80, 0xa855f7, 0xfbbf24, 0x4ade80, 0xa855f7];
+  const chaseColors = [
+    0x4ade80, 0xa855f7, 0xfbbf24, 0x4ade80, 0xa855f7, 0xfbbf24, 0x4ade80, 0xa855f7,
+  ];
   const marqueeCenterY = arcadeY - Math.round(185 * SCALE); // top of marquee area
   const marqueeSpread = Math.round(36 * SCALE);
 
   for (let i = 0; i < 8; i++) {
     const lx = arcadeX - marqueeSpread + i * Math.round(10 * SCALE);
-    const light = scene.add.circle(lx, marqueeCenterY, Math.round(2.5 * SCALE), chaseColors[i], 0.7);
+    const light = scene.add.circle(
+      lx,
+      marqueeCenterY,
+      Math.round(2.5 * SCALE),
+      chaseColors[i],
+      0.7
+    );
     light.setDepth(6);
     scene.trendingElements.push(light);
     chaseLights.push(light);
@@ -432,7 +441,8 @@ function createCityStreetElements(scene: WorldScene): void {
     repeat: -1,
   });
 
-  arcadeBuilding.on("pointerdown", () => {
+  arcadeBuilding.on("pointerup", () => {
+    if ((scene as any).wasDragGesture) return;
     window.dispatchEvent(new CustomEvent("bagsworld-arcade-click"));
   });
 

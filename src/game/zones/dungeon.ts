@@ -375,9 +375,12 @@ function createDungeonDecorations(scene: WorldScene): void {
   });
 
   // Interactive — single handler for both entrance and text
-  const openDungeon = () => window.dispatchEvent(new CustomEvent("bagsworld-open-dungeon"));
-  entrance.setInteractive({ useHandCursor: true }).on("pointerdown", openDungeon);
-  enterText.setInteractive({ useHandCursor: true }).on("pointerdown", openDungeon);
+  const openDungeon = () => {
+    if ((scene as any).wasDragGesture) return;
+    window.dispatchEvent(new CustomEvent("bagsworld-open-dungeon"));
+  };
+  entrance.setInteractive({ useHandCursor: true }).on("pointerup", openDungeon);
+  enterText.setInteractive({ useHandCursor: true }).on("pointerup", openDungeon);
 
   // === DUST MOTES (depth 8) ===
   for (let i = 0; i < 15; i++) {
