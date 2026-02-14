@@ -175,19 +175,24 @@ export function AscensionModal({ onClose }: { onClose: () => void }) {
   const sorted = sortEntries(entries, sortKey, sortAsc);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="relative bg-gradient-to-b from-gray-900/95 to-gray-950/95 border border-amber-700/50 rounded-xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl shadow-amber-900/30">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="relative bg-gradient-to-b from-gray-900/95 to-gray-950/95 border border-amber-700/50 rounded-t-xl sm:rounded-xl w-full max-w-2xl max-h-[80vh] sm:max-h-[85vh] flex flex-col shadow-2xl shadow-amber-900/30">
+        {/* Mobile drag handle */}
+        <div className="sm:hidden flex justify-center pt-2 pb-1">
+          <div className="w-10 h-1 rounded-full bg-white/30" />
+        </div>
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-amber-800/30">
           <div>
-            <h2 className="text-lg font-bold text-amber-200 tracking-wide">
-              ASCENSION SPIRE
-            </h2>
+            <h2 className="text-lg font-bold text-amber-200 tracking-wide">ASCENSION SPIRE</h2>
             <p className="text-xs text-amber-400/60 mt-0.5">Agent reputation leaderboard</p>
           </div>
           <button
             onClick={onClose}
-            className="text-amber-400/60 hover:text-amber-200 text-xl leading-none p-1"
+            className="text-amber-400/60 hover:text-amber-200 text-xl leading-none w-11 h-11 flex items-center justify-center"
           >
             {"\u2715"}
           </button>
@@ -202,9 +207,7 @@ export function AscensionModal({ onClose }: { onClose: () => void }) {
           ) : error ? (
             <div className="text-center py-12 text-red-400 text-sm">{error}</div>
           ) : entries.length === 0 ? (
-            <div className="text-center py-12 text-gray-400 text-sm">
-              No agents have joined yet
-            </div>
+            <div className="text-center py-12 text-gray-400 text-sm">No agents have joined yet</div>
           ) : (
             <>
               {/* Tier distribution */}
@@ -276,31 +279,41 @@ export function AscensionModal({ onClose }: { onClose: () => void }) {
             <h3 className="text-sm font-bold text-amber-200 mb-2">How Ascension Works</h3>
             <div className="space-y-1 text-xs text-gray-300/80">
               <div className="flex items-center gap-2">
-                <span className={`font-bold px-1.5 py-0.5 rounded ${TIER_STYLES.diamond.bg} ${TIER_STYLES.diamond.color}`}>
+                <span
+                  className={`font-bold px-1.5 py-0.5 rounded ${TIER_STYLES.diamond.bg} ${TIER_STYLES.diamond.color}`}
+                >
                   DIAMOND
                 </span>
                 <span>900+ reputation</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`font-bold px-1.5 py-0.5 rounded ${TIER_STYLES.gold.bg} ${TIER_STYLES.gold.color}`}>
+                <span
+                  className={`font-bold px-1.5 py-0.5 rounded ${TIER_STYLES.gold.bg} ${TIER_STYLES.gold.color}`}
+                >
                   GOLD
                 </span>
                 <span>600 - 899 reputation</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`font-bold px-1.5 py-0.5 rounded ${TIER_STYLES.silver.bg} ${TIER_STYLES.silver.color}`}>
+                <span
+                  className={`font-bold px-1.5 py-0.5 rounded ${TIER_STYLES.silver.bg} ${TIER_STYLES.silver.color}`}
+                >
                   SILVER
                 </span>
                 <span>300 - 599 reputation</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`font-bold px-1.5 py-0.5 rounded ${TIER_STYLES.bronze.bg} ${TIER_STYLES.bronze.color}`}>
+                <span
+                  className={`font-bold px-1.5 py-0.5 rounded ${TIER_STYLES.bronze.bg} ${TIER_STYLES.bronze.color}`}
+                >
                   BRONZE
                 </span>
                 <span>100 - 299 reputation</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`font-bold px-1.5 py-0.5 rounded ${TIER_STYLES.none.bg} ${TIER_STYLES.none.color}`}>
+                <span
+                  className={`font-bold px-1.5 py-0.5 rounded ${TIER_STYLES.none.bg} ${TIER_STYLES.none.color}`}
+                >
                   NONE
                 </span>
                 <span>0 - 99 reputation</span>

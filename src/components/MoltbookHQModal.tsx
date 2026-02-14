@@ -95,13 +95,7 @@ function formatMarketCap(val: number): string {
 // SHARED COMPONENTS
 // ============================================================================
 
-function AgentLinks({
-  wallet,
-  moltbookUsername,
-}: {
-  wallet: string;
-  moltbookUsername?: string;
-}) {
+function AgentLinks({ wallet, moltbookUsername }: { wallet: string; moltbookUsername?: string }) {
   return (
     <div className="flex items-center gap-3 mt-2">
       {moltbookUsername && (
@@ -172,9 +166,7 @@ function AgentsTab({
     return (
       <div className="text-center py-8">
         <p className="text-red-300/70 text-sm">No agents registered yet.</p>
-        <p className="text-red-400/50 text-xs mt-1">
-          Agents can register via the Agent Hut API
-        </p>
+        <p className="text-red-400/50 text-xs mt-1">Agents can register via the Agent Hut API</p>
       </div>
     );
   }
@@ -182,22 +174,16 @@ function AgentsTab({
   return (
     <div className="space-y-3">
       {agents.map((agent) => {
-        const tierStyle =
-          TIER_STYLES[agent.reputationTier] || "bg-gray-600/40 text-gray-300";
+        const tierStyle = TIER_STYLES[agent.reputationTier] || "bg-gray-600/40 text-gray-300";
         return (
-          <div
-            key={agent.wallet}
-            className="bg-red-800/30 border border-red-700/30 rounded-lg p-3"
-          >
+          <div key={agent.wallet} className="bg-red-800/30 border border-red-700/30 rounded-lg p-3">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="w-8 h-8 rounded-full bg-red-700/50 flex items-center justify-center text-xs font-bold text-red-200 shrink-0">
                   {agent.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0">
-                  <div className="font-semibold text-red-100 text-sm truncate">
-                    {agent.name}
-                  </div>
+                  <div className="font-semibold text-red-100 text-sm truncate">{agent.name}</div>
                   {agent.moltbookUsername && (
                     <div className="text-red-400/70 text-xs truncate">
                       @{agent.moltbookUsername}
@@ -207,40 +193,25 @@ function AgentsTab({
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {agent.reputationTier !== "none" && (
-                  <span
-                    className={`text-[10px] px-1.5 py-0.5 rounded border ${tierStyle}`}
-                  >
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded border ${tierStyle}`}>
                     {agent.reputationTier}
                   </span>
                 )}
-                <span className="text-red-400/60 text-xs">
-                  {timeAgo(agent.joinedAt)}
-                </span>
+                <span className="text-red-400/60 text-xs">{timeAgo(agent.joinedAt)}</span>
               </div>
             </div>
 
             <div className="flex items-center gap-2 text-xs text-red-300/70 mb-2">
-              <span className="bg-red-900/50 px-1.5 py-0.5 rounded">
-                {agent.zone}
-              </span>
-              {agent.moltbookKarma > 0 && (
-                <span>karma: {agent.moltbookKarma}</span>
-              )}
-              {agent.tokensLaunched > 0 && (
-                <span>{agent.tokensLaunched} contributions</span>
-              )}
+              <span className="bg-red-900/50 px-1.5 py-0.5 rounded">{agent.zone}</span>
+              {agent.moltbookKarma > 0 && <span>karma: {agent.moltbookKarma}</span>}
+              {agent.tokensLaunched > 0 && <span>{agent.tokensLaunched} contributions</span>}
             </div>
 
             {agent.description && (
-              <p className="text-red-300/60 text-xs line-clamp-2">
-                {agent.description}
-              </p>
+              <p className="text-red-300/60 text-xs line-clamp-2">{agent.description}</p>
             )}
 
-            <AgentLinks
-              wallet={agent.wallet}
-              moltbookUsername={agent.moltbookUsername}
-            />
+            <AgentLinks wallet={agent.wallet} moltbookUsername={agent.moltbookUsername} />
           </div>
         );
       })}
@@ -270,10 +241,7 @@ function LaunchesTab({
           // Match by Moltbook username in fee_shares
           if (t.fee_shares) {
             for (const fs of t.fee_shares) {
-              if (
-                fs.provider === "moltbook" &&
-                agentsByMoltbook.has(fs.username.toLowerCase())
-              ) {
+              if (fs.provider === "moltbook" && agentsByMoltbook.has(fs.username.toLowerCase())) {
                 return true;
               }
             }
@@ -281,9 +249,7 @@ function LaunchesTab({
           return false;
         })
         .sort(
-          (a, b) =>
-            new Date(b.created_at || 0).getTime() -
-            new Date(a.created_at || 0).getTime()
+          (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
         ),
     [tokens, agentWallets, agentsByMoltbook]
   );
@@ -305,9 +271,7 @@ function LaunchesTab({
   if (agentTokens.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-red-300/70 text-sm">
-          No tokens launched by agents yet.
-        </p>
+        <p className="text-red-300/70 text-sm">No tokens launched by agents yet.</p>
         <p className="text-red-400/50 text-xs mt-1">
           Agents can launch tokens autonomously via the Agent Hut
         </p>
@@ -329,15 +293,11 @@ function LaunchesTab({
           }
         }
         return (
-          <div
-            key={token.mint}
-            className="bg-red-800/30 border border-red-700/30 rounded-lg p-3"
-          >
+          <div key={token.mint} className="bg-red-800/30 border border-red-700/30 rounded-lg p-3">
             <div className="flex items-center justify-between mb-1">
               <div className="min-w-0">
                 <span className="font-semibold text-red-100 text-sm truncate block">
-                  {token.name}{" "}
-                  <span className="text-red-300/70">(${token.symbol})</span>
+                  {token.name} <span className="text-red-300/70">(${token.symbol})</span>
                 </span>
                 <div className="text-xs text-red-400/60 mt-0.5">
                   Launched by{" "}
@@ -354,9 +314,7 @@ function LaunchesTab({
                     <span className="text-red-300/80">{agent?.name}</span>
                   )}
                   {token.created_at && (
-                    <span className="ml-1">
-                      &middot; {timeAgo(token.created_at)}
-                    </span>
+                    <span className="ml-1">&middot; {timeAgo(token.created_at)}</span>
                   )}
                 </div>
               </div>
@@ -420,9 +378,7 @@ function BuildingsTab({
     return (
       <div className="text-center py-8">
         <p className="text-red-300/70 text-sm">No agent buildings yet.</p>
-        <p className="text-red-400/50 text-xs mt-1">
-          Agents get buildings when they register
-        </p>
+        <p className="text-red-400/50 text-xs mt-1">Agents get buildings when they register</p>
       </div>
     );
   }
@@ -432,10 +388,7 @@ function BuildingsTab({
       {sorted.map((entry) => {
         const badge = getStatusBadge(entry.buildingStatus);
         return (
-          <div
-            key={entry.wallet}
-            className="bg-red-800/30 border border-red-700/30 rounded-lg p-3"
-          >
+          <div key={entry.wallet} className="bg-red-800/30 border border-red-700/30 rounded-lg p-3">
             <div className="flex items-center justify-between mb-2">
               <div className="min-w-0">
                 <span className="font-semibold text-red-100 text-sm truncate block">
@@ -443,9 +396,7 @@ function BuildingsTab({
                 </span>
                 <span className="text-red-400/60 text-xs">{entry.zone}</span>
               </div>
-              <span
-                className={`text-[10px] px-1.5 py-0.5 rounded ${badge.color}`}
-              >
+              <span className={`text-[10px] px-1.5 py-0.5 rounded ${badge.color}`}>
                 {badge.label}
               </span>
             </div>
@@ -468,10 +419,7 @@ function BuildingsTab({
               </div>
             </div>
 
-            <AgentLinks
-              wallet={entry.wallet}
-              moltbookUsername={entry.moltbookUsername}
-            />
+            <AgentLinks wallet={entry.wallet} moltbookUsername={entry.moltbookUsername} />
           </div>
         );
       })}
@@ -500,10 +448,7 @@ export function MoltbookHQModal({ onClose }: MoltbookHQModalProps) {
   const agentWallets = useMemo(
     () =>
       new Map(
-        agents.map((a) => [
-          a.wallet,
-          { name: a.name, moltbookUsername: a.moltbookUsername },
-        ])
+        agents.map((a) => [a.wallet, { name: a.name, moltbookUsername: a.moltbookUsername }])
       ),
     [agents]
   );
@@ -534,9 +479,7 @@ export function MoltbookHQModal({ onClose }: MoltbookHQModalProps) {
   // Fetch agents + tokens in parallel
   useEffect(() => {
     Promise.all([
-      fetch(
-        "/api/agent-economy/external?action=agents&sort=newest&limit=50"
-      ).then((r) => r.json()),
+      fetch("/api/agent-economy/external?action=agents&sort=newest&limit=50").then((r) => r.json()),
       fetch("/api/global-tokens").then((r) => r.json()),
     ])
       .then(([agentsData, tokensData]) => {
@@ -566,10 +509,14 @@ export function MoltbookHQModal({ onClose }: MoltbookHQModalProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
       onClick={handleBackdropClick}
     >
-      <div className="bg-gradient-to-b from-red-900 to-red-950 rounded-xl border border-red-700/50 w-full sm:max-w-lg max-h-[85vh] flex flex-col shadow-2xl">
+      <div className="bg-gradient-to-b from-red-900 to-red-950 rounded-t-xl sm:rounded-xl border border-red-700/50 w-full sm:max-w-lg max-h-[80vh] sm:max-h-[85vh] flex flex-col shadow-2xl">
+        {/* Mobile drag handle */}
+        <div className="sm:hidden flex justify-center pt-2 pb-1">
+          <div className="w-10 h-1 rounded-full bg-white/30" />
+        </div>
         {/* Header */}
         <div className="px-4 py-3 border-b border-red-700/50 shrink-0">
           <div className="flex items-center justify-between">
@@ -582,7 +529,7 @@ export function MoltbookHQModal({ onClose }: MoltbookHQModalProps) {
             </div>
             <button
               onClick={onClose}
-              className="text-red-400 hover:text-red-200 text-xl leading-none px-1"
+              className="text-red-400 hover:text-red-200 text-xl leading-none w-11 h-11 flex items-center justify-center"
               aria-label="Close"
             >
               &#215;
@@ -609,9 +556,7 @@ export function MoltbookHQModal({ onClose }: MoltbookHQModalProps) {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-4 py-3 min-h-0">
-          {activeTab === "agents" && (
-            <AgentsTab agents={agents} loading={loading} error={error} />
-          )}
+          {activeTab === "agents" && <AgentsTab agents={agents} loading={loading} error={error} />}
           {activeTab === "launches" && (
             <LaunchesTab
               tokens={tokens}

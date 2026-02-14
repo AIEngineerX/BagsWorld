@@ -127,10 +127,16 @@ function MemberNode({
             : "bg-green-950/40 border-green-800/30 hover:border-green-500/40 hover:bg-green-900/25 hover:shadow-[0_0_8px_rgba(74,222,128,0.08)]"
         }`}
       style={{ transform: "translateY(0)", transition: "transform 0.2s" }}
-      onMouseEnter={(e) => { (e.currentTarget.style.transform = "translateY(-1px)"); }}
-      onMouseLeave={(e) => { (e.currentTarget.style.transform = "translateY(0)"); }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "translateY(-1px)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "translateY(0)";
+      }}
     >
-      <span className={`text-sm font-bold tracking-wide ${isActive ? "text-green-200" : "text-green-300"}`}>
+      <span
+        className={`text-sm font-bold tracking-wide ${isActive ? "text-green-200" : "text-green-300"}`}
+      >
         {member.name}
       </span>
       <span className="text-[11px] text-green-400 font-mono mt-0.5">{member.corpRole}</span>
@@ -174,7 +180,12 @@ function AboutSection() {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVisible(true); }, { threshold: 0.5 });
+    const obs = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) setVisible(true);
+      },
+      { threshold: 0.5 }
+    );
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
@@ -184,15 +195,22 @@ function AboutSection() {
       className="border border-green-700/25 rounded-lg p-3 mt-2 relative overflow-hidden"
       style={{ background: "linear-gradient(135deg, rgba(6,78,59,0.12), rgba(6,78,59,0.04))" }}
     >
-      <div className="pointer-events-none absolute inset-0 opacity-[0.03]"
-        style={{ backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, #000 2px, #000 3px)" }}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(0deg, transparent, transparent 2px, #000 2px, #000 3px)",
+        }}
       />
-      <h4 className="text-xs font-bold text-green-400 font-mono mb-1.5 relative z-[1]">About the Corp</h4>
-      <p ref={ref}
+      <h4 className="text-xs font-bold text-green-400 font-mono mb-1.5 relative z-[1]">
+        About the Corp
+      </h4>
+      <p
+        ref={ref}
         className={`text-xs text-green-400/55 leading-relaxed relative z-[1] transition-opacity duration-700 ${visible ? "opacity-100" : "opacity-0"}`}
       >
-        The Bags.fm Corp coordinates autonomous agent services across the ecosystem.
-        Each member has assigned capabilities and contributes to the A2A task board.
+        The Bags.fm Corp coordinates autonomous agent services across the ecosystem. Each member has
+        assigned capabilities and contributes to the A2A task board.
       </p>
     </div>
   );
@@ -236,7 +254,9 @@ function ActivityFeed({ onViewAgent }: { onViewAgent: (agentId: string) => void 
     return (
       <div className="text-center py-8">
         <p className="text-sm text-green-500/40 font-mono">No recent activity</p>
-        <p className="text-xs text-green-500/30 font-mono mt-1">Agent deliveries will appear here</p>
+        <p className="text-xs text-green-500/30 font-mono mt-1">
+          Agent deliveries will appear here
+        </p>
       </div>
     );
   }
@@ -282,9 +302,11 @@ function ActivityFeed({ onViewAgent }: { onViewAgent: (agentId: string) => void 
               }`}
             >
               <div className="flex items-start gap-2.5">
-                <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${
-                  event.status === "completed" ? "bg-green-500" : "bg-orange-400"
-                }`} />
+                <span
+                  className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${
+                    event.status === "completed" ? "bg-green-500" : "bg-orange-400"
+                  }`}
+                />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <button
@@ -298,7 +320,9 @@ function ActivityFeed({ onViewAgent }: { onViewAgent: (agentId: string) => void 
                       {event.workerName}
                     </button>
                     <span className="text-sm text-green-400/60">{verb}</span>
-                    <span className="text-sm text-green-200 truncate">&ldquo;{event.title}&rdquo;</span>
+                    <span className="text-sm text-green-200 truncate">
+                      &ldquo;{event.title}&rdquo;
+                    </span>
                   </div>
                   {snippet && !isExpanded && (
                     <p className="text-xs text-green-400/50 mt-0.5 truncate">{snippet}</p>
@@ -324,7 +348,10 @@ function ActivityFeed({ onViewAgent }: { onViewAgent: (agentId: string) => void 
                       .filter(([key]) => key !== "narrative" && key !== "summary")
                       .slice(0, 6)
                       .map(([key, val]) => (
-                        <span key={key} className="bg-green-800/30 text-green-300 text-[10px] px-2 py-0.5 rounded font-mono">
+                        <span
+                          key={key}
+                          className="bg-green-800/30 text-green-300 text-[10px] px-2 py-0.5 rounded font-mono"
+                        >
                           {key}: {typeof val === "object" ? JSON.stringify(val) : String(val)}
                         </span>
                       ))}
@@ -333,7 +360,9 @@ function ActivityFeed({ onViewAgent }: { onViewAgent: (agentId: string) => void 
                 <div className="flex items-center gap-2 text-[10px] font-mono text-green-500/50 pt-1">
                   <span>{event.capability}</span>
                   {event.rewardSol > 0 && (
-                    <span className="ml-auto text-green-400/60">{event.rewardSol.toFixed(3)} SOL</span>
+                    <span className="ml-auto text-green-400/60">
+                      {event.rewardSol.toFixed(3)} SOL
+                    </span>
                   )}
                 </div>
               </div>
@@ -356,7 +385,9 @@ function AgentWorkLog({ agentId, onBack }: { agentId: string; onBack: () => void
   useEffect(() => {
     async function fetchLog() {
       try {
-        const res = await fetch(`/api/agent-economy/external?action=agent-work-log&agentId=${agentId}`);
+        const res = await fetch(
+          `/api/agent-economy/external?action=agent-work-log&agentId=${agentId}`
+        );
         const json = await res.json();
         if (json.success) {
           setData(json);
@@ -405,7 +436,10 @@ function AgentWorkLog({ agentId, onBack }: { agentId: string; onBack: () => void
             {data && data.deliveries.length > 0 ? (
               <div className="space-y-2">
                 {data.deliveries.map((d, i) => (
-                  <div key={i} className="bg-green-950/20 border border-green-700/30 rounded-lg p-3">
+                  <div
+                    key={i}
+                    className="bg-green-950/20 border border-green-700/30 rounded-lg p-3"
+                  >
                     <div className="flex items-start justify-between gap-2">
                       <span className="text-sm text-green-200">{d.title}</span>
                       {d.completedAt && (
@@ -461,13 +495,22 @@ function AgentWorkLog({ agentId, onBack }: { agentId: string; onBack: () => void
             {data && data.memories.length > 0 ? (
               <div className="space-y-1.5">
                 {data.memories.map((m, i) => (
-                  <div key={i} className="bg-green-950/20 border border-green-700/20 rounded px-3 py-2">
+                  <div
+                    key={i}
+                    className="bg-green-950/20 border border-green-700/20 rounded px-3 py-2"
+                  >
                     <div className="flex items-start gap-2">
-                      <span className="text-green-500/40 text-xs flex-shrink-0 mt-0.5">{"\uD83D\uDCAD"}</span>
+                      <span className="text-green-500/40 text-xs flex-shrink-0 mt-0.5">
+                        {"\uD83D\uDCAD"}
+                      </span>
                       <div className="min-w-0">
                         <span className="text-xs text-green-300">&ldquo;{m.title}&rdquo;</span>
                         {m.content && m.content !== m.title && (
-                          <span className="text-xs text-green-400/50"> &mdash; {m.content.slice(0, 80)}{m.content.length > 80 ? "..." : ""}</span>
+                          <span className="text-xs text-green-400/50">
+                            {" "}
+                            &mdash; {m.content.slice(0, 80)}
+                            {m.content.length > 80 ? "..." : ""}
+                          </span>
                         )}
                       </div>
                       <span className="text-[10px] text-green-500/30 font-mono flex-shrink-0">
@@ -509,13 +552,25 @@ export function CorpBoardModal({ onClose }: CorpBoardModalProps) {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="relative bg-gradient-to-b from-[#0c1e30] to-[#080e18] border-2 border-green-500/40 rounded-xl
-        w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl shadow-green-500/10 overflow-hidden">
-
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="relative bg-gradient-to-b from-[#0c1e30] to-[#080e18] border-2 border-green-500/40 rounded-t-xl sm:rounded-xl
+        w-full max-w-lg max-h-[80vh] sm:max-h-[85vh] flex flex-col shadow-2xl shadow-green-500/10 overflow-hidden"
+      >
+        {/* Mobile drag handle */}
+        <div className="sm:hidden flex justify-center pt-2 pb-1 relative z-20">
+          <div className="w-10 h-1 rounded-full bg-white/30" />
+        </div>
         {/* CRT scanline overlay */}
-        <div className="pointer-events-none absolute inset-0 rounded-xl opacity-[0.04] z-10"
-          style={{ backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, #000 2px, #000 4px)" }}
+        <div
+          className="pointer-events-none absolute inset-0 rounded-xl opacity-[0.04] z-10"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(0deg, transparent, transparent 2px, #000 2px, #000 4px)",
+          }}
         />
 
         {/* Header */}
@@ -534,8 +589,10 @@ export function CorpBoardModal({ onClose }: CorpBoardModalProps) {
               <div className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse shadow-sm shadow-green-400/50" />
               <div className="w-2.5 h-2.5 rounded-full bg-green-500/50" />
             </div>
-            <button onClick={onClose}
-              className="text-green-500/60 hover:text-green-200 text-xl leading-none p-1 transition-colors">
+            <button
+              onClick={onClose}
+              className="text-green-500/60 hover:text-green-200 text-xl leading-none w-11 h-11 flex items-center justify-center transition-colors"
+            >
               {"\u2715"}
             </button>
           </div>
@@ -573,16 +630,18 @@ export function CorpBoardModal({ onClose }: CorpBoardModalProps) {
         <div className="flex-1 overflow-y-auto p-4 space-y-2 corp-scroll">
           {/* Work Log view — replaces tab content */}
           {workLogAgentId ? (
-            <AgentWorkLog
-              agentId={workLogAgentId}
-              onBack={() => setWorkLogAgentId(null)}
-            />
+            <AgentWorkLog agentId={workLogAgentId} onBack={() => setWorkLogAgentId(null)} />
           ) : activeTab === "board" ? (
             <>
               {/* CEO */}
               <div className="flex justify-center">
                 <div className="w-44">
-                  <MemberNode member={CEO} highlight={!selectedAgent} selected={selectedAgent === CEO.name} onSelect={handleAgentSelect} />
+                  <MemberNode
+                    member={CEO}
+                    highlight={!selectedAgent}
+                    selected={selectedAgent === CEO.name}
+                    onSelect={handleAgentSelect}
+                  />
                 </div>
               </div>
 
@@ -593,8 +652,15 @@ export function CorpBoardModal({ onClose }: CorpBoardModalProps) {
               {/* C-Suite Row */}
               <div className="flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-4 sm:gap-2 sm:overflow-visible">
                 {C_SUITE.map((m) => (
-                  <div key={m.id} className="min-w-[5.5rem] sm:min-w-0 flex-shrink-0 sm:flex-shrink">
-                    <MemberNode member={m} selected={selectedAgent === m.name} onSelect={handleAgentSelect} />
+                  <div
+                    key={m.id}
+                    className="min-w-[5.5rem] sm:min-w-0 flex-shrink-0 sm:flex-shrink"
+                  >
+                    <MemberNode
+                      member={m}
+                      selected={selectedAgent === m.name}
+                      onSelect={handleAgentSelect}
+                    />
                   </div>
                 ))}
               </div>
@@ -606,28 +672,34 @@ export function CorpBoardModal({ onClose }: CorpBoardModalProps) {
               {/* Members Row */}
               <div className="grid grid-cols-3 gap-2">
                 {MEMBERS.map((m) => (
-                  <MemberNode key={m.id} member={m} selected={selectedAgent === m.name} onSelect={handleAgentSelect} />
+                  <MemberNode
+                    key={m.id}
+                    member={m}
+                    selected={selectedAgent === m.name}
+                    onSelect={handleAgentSelect}
+                  />
                 ))}
               </div>
 
               {/* View Log link for selected agent */}
-              {selectedAgent && (() => {
-                const agent = BAGSWORLD_AGENTS.find(
-                  (a) => a.name.toLowerCase() === selectedAgent.toLowerCase()
-                );
-                return agent ? (
-                  <div className="flex justify-center">
-                    <button
-                      type="button"
-                      onClick={() => handleViewWorkLog(agent.id)}
-                      className="text-[11px] font-mono text-green-400/70 hover:text-green-300 transition-colors
+              {selectedAgent &&
+                (() => {
+                  const agent = BAGSWORLD_AGENTS.find(
+                    (a) => a.name.toLowerCase() === selectedAgent.toLowerCase()
+                  );
+                  return agent ? (
+                    <div className="flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => handleViewWorkLog(agent.id)}
+                        className="text-[11px] font-mono text-green-400/70 hover:text-green-300 transition-colors
                         border border-green-700/30 hover:border-green-500/40 rounded px-3 py-1"
-                    >
-                      View {selectedAgent}&apos;s Work Log {"\u2192"}
-                    </button>
-                  </div>
-                ) : null;
-              })()}
+                      >
+                        View {selectedAgent}&apos;s Work Log {"\u2192"}
+                      </button>
+                    </div>
+                  ) : null;
+                })()}
 
               {/* A2A Task Board — real data from API */}
               <CorpTaskBoard selectedAgent={selectedAgent} onSelectAgent={handleAgentSelect} />
@@ -643,7 +715,9 @@ export function CorpBoardModal({ onClose }: CorpBoardModalProps) {
       </div>
 
       {/* Global keyframe styles */}
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         @keyframes corpGlow {
           0%, 100% { text-shadow: 0 0 6px rgba(74,222,128,0.25); }
           50%      { text-shadow: 0 0 14px rgba(74,222,128,0.45); }
@@ -662,7 +736,9 @@ export function CorpBoardModal({ onClose }: CorpBoardModalProps) {
           background: rgba(74,222,128,0.4);
         }
         .corp-scroll { scrollbar-width: thin; scrollbar-color: rgba(74,222,128,0.2) transparent; }
-      `}} />
+      `,
+        }}
+      />
     </div>
   );
 }
