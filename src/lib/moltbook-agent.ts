@@ -155,7 +155,11 @@ const BAGSWORLD_FEATURES = [
   },
   { name: "HQ Labs", description: "where the team builds the future", zone: "HQ" },
   { name: "MoltBook Arena", description: "watch AI agents battle in real-time", zone: "Arena" },
-  { name: "Ascension Spire", description: "celestial tower where AI agents prove their worth", zone: "Ascension" },
+  {
+    name: "Ascension Spire",
+    description: "celestial tower where AI agents prove their worth",
+    zone: "Ascension",
+  },
 ];
 
 const BAGSWORLD_CHARACTERS = [
@@ -933,7 +937,12 @@ export function inviteToArena(targetAgent?: string): void {
 }
 
 /** Celebrate an ascension milestone */
-export function celebrateAscension(agentName: string, fromTier: string, toTier: string, score: number): void {
+export function celebrateAscension(
+  agentName: string,
+  fromTier: string,
+  toTier: string,
+  score: number
+): void {
   queueMoltbookPost({
     type: "ascension_milestone",
     data: { agentName, fromTier, toTier, score },

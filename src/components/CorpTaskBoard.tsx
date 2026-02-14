@@ -69,9 +69,7 @@ function getTimeAgo(isoDate: string): string {
 
 /** Render result data as small chips (key: value) */
 function ResultChips({ data }: { data: Record<string, unknown> }) {
-  const entries = Object.entries(data).filter(
-    ([key]) => key !== "narrative" && key !== "summary"
-  );
+  const entries = Object.entries(data).filter(([key]) => key !== "narrative" && key !== "summary");
   if (entries.length === 0) return null;
 
   return (
@@ -89,9 +87,21 @@ function ResultChips({ data }: { data: Record<string, unknown> }) {
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string; dot: string }> = {
-  open: { label: "OPEN", color: "text-yellow-400", dot: "bg-yellow-400 animate-pulse shadow-[0_0_6px_rgba(250,204,21,0.4)]" },
-  claimed: { label: "IN PROGRESS", color: "text-blue-400", dot: "bg-blue-400 animate-pulse shadow-[0_0_6px_rgba(96,165,250,0.4)]" },
-  delivered: { label: "REVIEW", color: "text-orange-400", dot: "bg-orange-400 shadow-[0_0_6px_rgba(251,146,60,0.3)]" },
+  open: {
+    label: "OPEN",
+    color: "text-yellow-400",
+    dot: "bg-yellow-400 animate-pulse shadow-[0_0_6px_rgba(250,204,21,0.4)]",
+  },
+  claimed: {
+    label: "IN PROGRESS",
+    color: "text-blue-400",
+    dot: "bg-blue-400 animate-pulse shadow-[0_0_6px_rgba(96,165,250,0.4)]",
+  },
+  delivered: {
+    label: "REVIEW",
+    color: "text-orange-400",
+    dot: "bg-orange-400 shadow-[0_0_6px_rgba(251,146,60,0.3)]",
+  },
   completed: { label: "DONE", color: "text-green-600/60", dot: "bg-green-600/60" },
 };
 
@@ -100,7 +110,10 @@ export function CorpTaskBoard({ selectedAgent, onSelectAgent }: CorpTaskBoardPro
   const [recentDeliveries, setRecentDeliveries] = useState<RecentDelivery[]>([]);
   const [isLive, setIsLive] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [corpStats, setCorpStats] = useState<{ totalTasksCompleted: number; treasurySol: number } | null>(null);
+  const [corpStats, setCorpStats] = useState<{
+    totalTasksCompleted: number;
+    treasurySol: number;
+  } | null>(null);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   const fetchCorpTasks = useCallback(async () => {
@@ -169,17 +182,21 @@ export function CorpTaskBoard({ selectedAgent, onSelectAgent }: CorpTaskBoardPro
       {/* Header */}
       <div className="flex items-center gap-2 mb-2">
         <h3 className="text-sm font-bold text-green-300 font-mono">A2A TASK BOARD</h3>
-        <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded ${
-          isLive
-            ? "bg-green-500/20 text-green-400 border border-green-500/30"
-            : "bg-yellow-500/15 text-yellow-500/70 border border-yellow-500/20"
-        }`}>
+        <span
+          className={`text-[9px] font-mono px-1.5 py-0.5 rounded ${
+            isLive
+              ? "bg-green-500/20 text-green-400 border border-green-500/30"
+              : "bg-yellow-500/15 text-yellow-500/70 border border-yellow-500/20"
+          }`}
+        >
           {isLive ? "LIVE" : "OFFLINE"}
         </span>
         <div className="flex-1 h-px bg-green-700/30" />
         {selectedAgent ? (
-          <button onClick={() => onSelectAgent(null)}
-            className="text-[10px] text-green-400 font-mono hover:text-green-200 transition-colors">
+          <button
+            onClick={() => onSelectAgent(null)}
+            className="text-[10px] text-green-400 font-mono hover:text-green-200 transition-colors"
+          >
             {selectedAgent} {"\u2715"}
           </button>
         ) : (
@@ -211,11 +228,14 @@ export function CorpTaskBoard({ selectedAgent, onSelectAgent }: CorpTaskBoardPro
               const posterName = agentName(task.posterAgentId);
               const workerName = agentName(task.workerAgentId);
               const statusInfo = STATUS_LABELS[task.status] || STATUS_LABELS.open;
-              const isHighlighted = selectedId && (task.posterAgentId === selectedId || task.workerAgentId === selectedId);
+              const isHighlighted =
+                selectedId &&
+                (task.posterAgentId === selectedId || task.workerAgentId === selectedId);
               const isDone = task.status === "completed";
 
               return (
-                <div key={`synth-${i}`}
+                <div
+                  key={`synth-${i}`}
                   className={`rounded px-3 py-2 transition-all duration-200 ${
                     isHighlighted
                       ? "bg-green-900/40 border border-green-500/30"
@@ -226,18 +246,28 @@ export function CorpTaskBoard({ selectedAgent, onSelectAgent }: CorpTaskBoardPro
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusInfo.dot}`} />
-                      <span className={`text-sm truncate ${isDone ? "text-green-300/50" : "text-green-200"}`}>
+                      <span
+                        className={`text-sm truncate ${isDone ? "text-green-300/50" : "text-green-200"}`}
+                      >
                         {task.title}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-                      <span className={`text-[10px] font-mono whitespace-nowrap ${isDone ? "text-green-600/40" : "text-green-400/70"}`}>
-                        <span className={selectedId === task.posterAgentId ? "text-green-300" : ""}>{posterName}</span>
+                      <span
+                        className={`text-[10px] font-mono whitespace-nowrap ${isDone ? "text-green-600/40" : "text-green-400/70"}`}
+                      >
+                        <span className={selectedId === task.posterAgentId ? "text-green-300" : ""}>
+                          {posterName}
+                        </span>
                         <span className="text-green-700/50 mx-0.5">{"\u2192"}</span>
-                        <span className={selectedId === task.workerAgentId ? "text-green-300" : ""}>{workerName}</span>
+                        <span className={selectedId === task.workerAgentId ? "text-green-300" : ""}>
+                          {workerName}
+                        </span>
                       </span>
                       {!isDone && (
-                        <span className={`text-[8px] font-mono px-1 py-0.5 rounded ${statusInfo.color} bg-current/10`}>
+                        <span
+                          className={`text-[8px] font-mono px-1 py-0.5 rounded ${statusInfo.color} bg-current/10`}
+                        >
                           {statusInfo.label}
                         </span>
                       )}
@@ -255,7 +285,9 @@ export function CorpTaskBoard({ selectedAgent, onSelectAgent }: CorpTaskBoardPro
                     Recent Deliveries
                   </span>
                   <div className="flex-1 h-px bg-green-700/20" />
-                  <span className="text-[10px] font-mono text-green-500/40">{visibleDeliveries.length}</span>
+                  <span className="text-[10px] font-mono text-green-500/40">
+                    {visibleDeliveries.length}
+                  </span>
                 </div>
                 {visibleDeliveries.map((delivery, i) => {
                   const isExpanded = expandedIndex === i;
@@ -275,8 +307,12 @@ export function CorpTaskBoard({ selectedAgent, onSelectAgent }: CorpTaskBoardPro
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusInfo.dot}`} />
-                            <span className="text-sm truncate text-green-200">{delivery.title}</span>
+                            <span
+                              className={`w-2 h-2 rounded-full flex-shrink-0 ${statusInfo.dot}`}
+                            />
+                            <span className="text-sm truncate text-green-200">
+                              {delivery.title}
+                            </span>
                           </div>
                           <div className="flex items-center gap-2 ml-2 flex-shrink-0">
                             <span className="text-[10px] font-mono text-green-400/70 whitespace-nowrap">
@@ -284,7 +320,9 @@ export function CorpTaskBoard({ selectedAgent, onSelectAgent }: CorpTaskBoardPro
                               <span className="text-green-700/50 mx-0.5">{"\u2192"}</span>
                               {delivery.workerName}
                             </span>
-                            <span className="text-[10px] text-green-500/40">{isExpanded ? "\u25B2" : "\u25BC"}</span>
+                            <span className="text-[10px] text-green-500/40">
+                              {isExpanded ? "\u25B2" : "\u25BC"}
+                            </span>
                           </div>
                         </div>
                       </button>
@@ -322,7 +360,9 @@ export function CorpTaskBoard({ selectedAgent, onSelectAgent }: CorpTaskBoardPro
                               </>
                             )}
                             {delivery.rewardSol > 0 && (
-                              <span className="ml-auto text-green-400/60">{delivery.rewardSol.toFixed(3)} SOL</span>
+                              <span className="ml-auto text-green-400/60">
+                                {delivery.rewardSol.toFixed(3)} SOL
+                              </span>
                             )}
                           </div>
                         </div>

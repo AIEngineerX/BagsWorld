@@ -1203,8 +1203,10 @@ export class WorldScene extends Phaser.Scene {
       // Mark as drag if finger moved beyond threshold (prevents accidental taps)
       if (this.touchStartPos && pointer.isDown && !this.wasDragGesture) {
         const dist = Phaser.Math.Distance.Between(
-          this.touchStartPos.x, this.touchStartPos.y,
-          pointer.x, pointer.y
+          this.touchStartPos.x,
+          this.touchStartPos.y,
+          pointer.x,
+          pointer.y
         );
         if (dist > WorldScene.TAP_DISTANCE_THRESHOLD) {
           this.wasDragGesture = true;

@@ -1834,9 +1834,19 @@ function generateMoltBar(scene: Phaser.Scene): void {
 
   // Top step
   g.fillStyle(stoneBase);
-  g.fillRect(cx - Math.round(30 * s), baseY - Math.round(5 * s), Math.round(60 * s), Math.round(6 * s));
+  g.fillRect(
+    cx - Math.round(30 * s),
+    baseY - Math.round(5 * s),
+    Math.round(60 * s),
+    Math.round(6 * s)
+  );
   g.fillStyle(stoneLight, 0.5);
-  g.fillRect(cx - Math.round(30 * s), baseY - Math.round(5 * s), Math.round(60 * s), Math.round(1 * s));
+  g.fillRect(
+    cx - Math.round(30 * s),
+    baseY - Math.round(5 * s),
+    Math.round(60 * s),
+    Math.round(1 * s)
+  );
 
   // === MAIN SHRINE BODY — tall narrow slab ===
   const bodyLeft = cx - Math.round(22 * s);
@@ -1859,12 +1869,27 @@ function generateMoltBar(scene: Phaser.Scene): void {
   g.fillRect(bodyLeft, bodyTop, Math.round(2 * s), bodyBottom - bodyTop);
   // Dark edge (right)
   g.fillStyle(stoneDark, 0.4);
-  g.fillRect(bodyLeft + bodyW - Math.round(2 * s), bodyTop, Math.round(2 * s), bodyBottom - bodyTop);
+  g.fillRect(
+    bodyLeft + bodyW - Math.round(2 * s),
+    bodyTop,
+    Math.round(2 * s),
+    bodyBottom - bodyTop
+  );
 
   // Moss patches
   g.fillStyle(mossGreen, 0.3);
-  g.fillRect(bodyLeft + Math.round(2 * s), bodyBottom - Math.round(12 * s), Math.round(6 * s), Math.round(4 * s));
-  g.fillRect(bodyLeft + bodyW - Math.round(10 * s), bodyBottom - Math.round(18 * s), Math.round(5 * s), Math.round(3 * s));
+  g.fillRect(
+    bodyLeft + Math.round(2 * s),
+    bodyBottom - Math.round(12 * s),
+    Math.round(6 * s),
+    Math.round(4 * s)
+  );
+  g.fillRect(
+    bodyLeft + bodyW - Math.round(10 * s),
+    bodyBottom - Math.round(18 * s),
+    Math.round(5 * s),
+    Math.round(3 * s)
+  );
 
   // === DOORWAY (dark void entrance) ===
   const doorW = Math.round(18 * s);
@@ -1876,13 +1901,28 @@ function generateMoltBar(scene: Phaser.Scene): void {
   g.fillRect(doorX, doorY, doorW, doorH);
   // Inner depth gradient
   g.fillStyle(0x050508);
-  g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(2 * s), doorW - Math.round(4 * s), doorH - Math.round(2 * s));
+  g.fillRect(
+    doorX + Math.round(2 * s),
+    doorY + Math.round(2 * s),
+    doorW - Math.round(4 * s),
+    doorH - Math.round(2 * s)
+  );
 
   // Door frame — stone lintel
   g.fillStyle(stoneEdge);
-  g.fillRect(doorX - Math.round(3 * s), doorY - Math.round(3 * s), doorW + Math.round(6 * s), Math.round(4 * s));
+  g.fillRect(
+    doorX - Math.round(3 * s),
+    doorY - Math.round(3 * s),
+    doorW + Math.round(6 * s),
+    Math.round(4 * s)
+  );
   g.fillStyle(stoneLight, 0.4);
-  g.fillRect(doorX - Math.round(2 * s), doorY - Math.round(3 * s), doorW + Math.round(4 * s), Math.round(1 * s));
+  g.fillRect(
+    doorX - Math.round(2 * s),
+    doorY - Math.round(3 * s),
+    doorW + Math.round(4 * s),
+    Math.round(1 * s)
+  );
 
   // Door side pillars (thin)
   g.fillStyle(stoneEdge);
@@ -1894,21 +1934,56 @@ function generateMoltBar(scene: Phaser.Scene): void {
 
   // Emblem background recess
   g.fillStyle(stoneDark);
-  g.fillRect(cx - Math.round(14 * s), emblemY - Math.round(2 * s), Math.round(28 * s), Math.round(20 * s));
+  g.fillRect(
+    cx - Math.round(14 * s),
+    emblemY - Math.round(2 * s),
+    Math.round(28 * s),
+    Math.round(20 * s)
+  );
 
   // Lobster body
   g.fillStyle(lobsterRed);
-  g.fillRect(cx - Math.round(6 * s), emblemY + Math.round(4 * s), Math.round(12 * s), Math.round(8 * s));
+  g.fillRect(
+    cx - Math.round(6 * s),
+    emblemY + Math.round(4 * s),
+    Math.round(12 * s),
+    Math.round(8 * s)
+  );
   g.fillStyle(lobsterLight);
-  g.fillRect(cx - Math.round(4 * s), emblemY + Math.round(5 * s), Math.round(8 * s), Math.round(3 * s));
+  g.fillRect(
+    cx - Math.round(4 * s),
+    emblemY + Math.round(5 * s),
+    Math.round(8 * s),
+    Math.round(3 * s)
+  );
 
   // Claws
   g.fillStyle(lobsterRed);
-  g.fillRect(cx - Math.round(12 * s), emblemY + Math.round(5 * s), Math.round(7 * s), Math.round(4 * s));
-  g.fillRect(cx + Math.round(5 * s), emblemY + Math.round(5 * s), Math.round(7 * s), Math.round(4 * s));
+  g.fillRect(
+    cx - Math.round(12 * s),
+    emblemY + Math.round(5 * s),
+    Math.round(7 * s),
+    Math.round(4 * s)
+  );
+  g.fillRect(
+    cx + Math.round(5 * s),
+    emblemY + Math.round(5 * s),
+    Math.round(7 * s),
+    Math.round(4 * s)
+  );
   g.fillStyle(lobsterDark);
-  g.fillRect(cx - Math.round(12 * s), emblemY + Math.round(8 * s), Math.round(2 * s), Math.round(1 * s));
-  g.fillRect(cx + Math.round(10 * s), emblemY + Math.round(8 * s), Math.round(2 * s), Math.round(1 * s));
+  g.fillRect(
+    cx - Math.round(12 * s),
+    emblemY + Math.round(8 * s),
+    Math.round(2 * s),
+    Math.round(1 * s)
+  );
+  g.fillRect(
+    cx + Math.round(10 * s),
+    emblemY + Math.round(8 * s),
+    Math.round(2 * s),
+    Math.round(1 * s)
+  );
 
   // Antennae
   g.fillStyle(lobsterRed);
@@ -1917,18 +1992,43 @@ function generateMoltBar(scene: Phaser.Scene): void {
 
   // Tail
   g.fillStyle(lobsterDark);
-  g.fillRect(cx - Math.round(4 * s), emblemY + Math.round(12 * s), Math.round(8 * s), Math.round(3 * s));
+  g.fillRect(
+    cx - Math.round(4 * s),
+    emblemY + Math.round(12 * s),
+    Math.round(8 * s),
+    Math.round(3 * s)
+  );
 
   // Glowing eyes
   g.fillStyle(glowCyan);
-  g.fillRect(cx - Math.round(3 * s), emblemY + Math.round(6 * s), Math.round(2 * s), Math.round(2 * s));
-  g.fillRect(cx + Math.round(1 * s), emblemY + Math.round(6 * s), Math.round(2 * s), Math.round(2 * s));
+  g.fillRect(
+    cx - Math.round(3 * s),
+    emblemY + Math.round(6 * s),
+    Math.round(2 * s),
+    Math.round(2 * s)
+  );
+  g.fillRect(
+    cx + Math.round(1 * s),
+    emblemY + Math.round(6 * s),
+    Math.round(2 * s),
+    Math.round(2 * s)
+  );
 
   // Cyan glow aura around emblem
   g.fillStyle(glowCyan, 0.1);
-  g.fillRect(cx - Math.round(16 * s), emblemY - Math.round(4 * s), Math.round(32 * s), Math.round(24 * s));
+  g.fillRect(
+    cx - Math.round(16 * s),
+    emblemY - Math.round(4 * s),
+    Math.round(32 * s),
+    Math.round(24 * s)
+  );
   g.fillStyle(glowCyan, 0.06);
-  g.fillRect(cx - Math.round(18 * s), emblemY - Math.round(6 * s), Math.round(36 * s), Math.round(28 * s));
+  g.fillRect(
+    cx - Math.round(18 * s),
+    emblemY - Math.round(6 * s),
+    Math.round(36 * s),
+    Math.round(28 * s)
+  );
 
   // === POINTED CROWN / SPIRE TOP ===
   const crownBase = bodyTop;
@@ -1947,26 +2047,61 @@ function generateMoltBar(scene: Phaser.Scene): void {
 
   // Spire peak cap
   g.fillStyle(stoneLight);
-  g.fillRect(cx - Math.round(9 * s), crownBase - spireH - Math.round(3 * s), Math.round(18 * s), Math.round(4 * s));
+  g.fillRect(
+    cx - Math.round(9 * s),
+    crownBase - spireH - Math.round(3 * s),
+    Math.round(18 * s),
+    Math.round(4 * s)
+  );
   g.fillStyle(coralAccent);
-  g.fillRect(cx - Math.round(3 * s), crownBase - spireH - Math.round(5 * s), Math.round(6 * s), Math.round(3 * s));
+  g.fillRect(
+    cx - Math.round(3 * s),
+    crownBase - spireH - Math.round(5 * s),
+    Math.round(6 * s),
+    Math.round(3 * s)
+  );
 
   // === GLOWING RUNE LINES (vertical channels in stone) ===
   // Left channel
   g.fillStyle(glowCyanDim, 0.35);
-  g.fillRect(bodyLeft + Math.round(5 * s), bodyTop + Math.round(4 * s), Math.round(2 * s), bodyBottom - bodyTop - Math.round(8 * s));
+  g.fillRect(
+    bodyLeft + Math.round(5 * s),
+    bodyTop + Math.round(4 * s),
+    Math.round(2 * s),
+    bodyBottom - bodyTop - Math.round(8 * s)
+  );
   g.fillStyle(glowCyan, 0.15);
-  g.fillRect(bodyLeft + Math.round(4 * s), bodyTop + Math.round(4 * s), Math.round(4 * s), bodyBottom - bodyTop - Math.round(8 * s));
+  g.fillRect(
+    bodyLeft + Math.round(4 * s),
+    bodyTop + Math.round(4 * s),
+    Math.round(4 * s),
+    bodyBottom - bodyTop - Math.round(8 * s)
+  );
 
   // Right channel
   g.fillStyle(glowCyanDim, 0.35);
-  g.fillRect(bodyLeft + bodyW - Math.round(7 * s), bodyTop + Math.round(4 * s), Math.round(2 * s), bodyBottom - bodyTop - Math.round(8 * s));
+  g.fillRect(
+    bodyLeft + bodyW - Math.round(7 * s),
+    bodyTop + Math.round(4 * s),
+    Math.round(2 * s),
+    bodyBottom - bodyTop - Math.round(8 * s)
+  );
   g.fillStyle(glowCyan, 0.15);
-  g.fillRect(bodyLeft + bodyW - Math.round(8 * s), bodyTop + Math.round(4 * s), Math.round(4 * s), bodyBottom - bodyTop - Math.round(8 * s));
+  g.fillRect(
+    bodyLeft + bodyW - Math.round(8 * s),
+    bodyTop + Math.round(4 * s),
+    Math.round(4 * s),
+    bodyBottom - bodyTop - Math.round(8 * s)
+  );
 
   // Horizontal glow line above door
   g.fillStyle(glowCyan, 0.25);
-  g.fillRect(doorX - Math.round(6 * s), doorY - Math.round(6 * s), doorW + Math.round(12 * s), Math.round(2 * s));
+  g.fillRect(
+    doorX - Math.round(6 * s),
+    doorY - Math.round(6 * s),
+    doorW + Math.round(12 * s),
+    Math.round(2 * s)
+  );
 
   // === TORCHES (flanking shrine, on poles) ===
   const torchOffsetX = Math.round(32 * s);
@@ -1976,9 +2111,19 @@ function generateMoltBar(scene: Phaser.Scene): void {
 
     // Torch pole
     g.fillStyle(stoneDark);
-    g.fillRect(tx - Math.round(2 * s), Math.round(35 * s), Math.round(4 * s), bodyBottom - Math.round(35 * s));
+    g.fillRect(
+      tx - Math.round(2 * s),
+      Math.round(35 * s),
+      Math.round(4 * s),
+      bodyBottom - Math.round(35 * s)
+    );
     g.fillStyle(stoneLight, 0.3);
-    g.fillRect(tx - Math.round(2 * s), Math.round(35 * s), Math.round(1 * s), bodyBottom - Math.round(35 * s));
+    g.fillRect(
+      tx - Math.round(2 * s),
+      Math.round(35 * s),
+      Math.round(1 * s),
+      bodyBottom - Math.round(35 * s)
+    );
 
     // Torch bowl
     g.fillStyle(stoneEdge);

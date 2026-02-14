@@ -389,6 +389,46 @@ export class SolanaService extends Service {
   }
 
   /**
+   * Get the number of decimals for a token mint.
+   * Uses getTokenSupply RPC call. Falls back to 6 (standard for Bags.fm tokens).
+   */
+  async getTokenDecimals(tokenMint: string): Promise<number> {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+
+      const response = await fetch(this.rpcUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "getTokenSupply",
+          params: [tokenMint],
+        }),
+      });
+
+      clearTimeout(timeout);
+      const result = await response.json();
+
+      if (result.error) {
+        console.warn(`[SolanaService] getTokenDecimals RPC error for ${tokenMint}:`, result.error);
+        return 6;
+      }
+
+      const decimals = result.result?.value?.decimals;
+      return typeof decimals === "number" ? decimals : 6;
+    } catch (error) {
+      console.warn(
+        `[SolanaService] Failed to get decimals for ${tokenMint}, defaulting to 6:`,
+        error instanceof Error ? error.message : error
+      );
+      return 6;
+    }
+  }
+
+  /**
    * Get the associated token account address for a specific mint.
    * Returns the account pubkey or null if no account exists.
    */

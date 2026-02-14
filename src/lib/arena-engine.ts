@@ -556,9 +556,7 @@ export class ArenaEngine {
         keyframes.push(
           this.captureKeyframe(
             state,
-            allEventsSinceLastKeyframe.length > 0
-              ? [...allEventsSinceLastKeyframe]
-              : undefined
+            allEventsSinceLastKeyframe.length > 0 ? [...allEventsSinceLastKeyframe] : undefined
           )
         );
         allEventsSinceLastKeyframe.length = 0;

@@ -8,9 +8,6 @@ const GAME_HEIGHT = 960;
 // ASCENSION ZONE — Celestial spire where AI agents prove their worth
 // ============================================================================
 
-
-
-
 // ============================================================================
 // ENTRY POINTS
 // ============================================================================
@@ -39,7 +36,6 @@ export function setupAscensionZone(scene: WorldScene): void {
   } else {
     scene.ascensionElements.forEach((el) => (el as any).setVisible(true));
   }
-
 }
 
 export function disconnectAscension(_scene: WorldScene): void {
@@ -76,7 +72,7 @@ function createAscensionSky(scene: WorldScene): void {
   const bandH = Math.ceil(fullH / bandCount);
 
   const colorStops = [
-    { pos: 0.0, color: 0x1a0033 },  // deep celestial purple
+    { pos: 0.0, color: 0x1a0033 }, // deep celestial purple
     { pos: 0.12, color: 0x1a0033 },
     { pos: 0.22, color: 0x2a0a4a }, // dark indigo
     { pos: 0.35, color: 0x4a1a6a }, // violet transition
@@ -85,12 +81,16 @@ function createAscensionSky(scene: WorldScene): void {
     { pos: 0.65, color: 0xddaa44 }, // warm gold
     { pos: 0.78, color: 0xeec866 }, // light gold
     { pos: 0.88, color: 0xf5e0a0 }, // pale gold-cream
-    { pos: 1.0, color: 0xfff8e8 },  // soft white/cream haze
+    { pos: 1.0, color: 0xfff8e8 }, // soft white/cream haze
   ];
 
   const lerpColor = (c1: number, c2: number, t: number): number => {
-    const r1 = (c1 >> 16) & 0xff, g1 = (c1 >> 8) & 0xff, b1 = c1 & 0xff;
-    const r2 = (c2 >> 16) & 0xff, g2 = (c2 >> 8) & 0xff, b2 = c2 & 0xff;
+    const r1 = (c1 >> 16) & 0xff,
+      g1 = (c1 >> 8) & 0xff,
+      b1 = c1 & 0xff;
+    const r2 = (c2 >> 16) & 0xff,
+      g2 = (c2 >> 8) & 0xff,
+      b2 = c2 & 0xff;
     const ri = Math.round(r1 + (r2 - r1) * t);
     const gi = Math.round(g1 + (g2 - g1) * t);
     const bi = Math.round(b1 + (b2 - b1) * t);
@@ -138,11 +138,56 @@ function createAscensionSky(scene: WorldScene): void {
 
   // === 1. God rays — golden diagonal beams from upper portion ===
   const godRayConfigs = [
-    { startX: 200, angle: 12, steps: 18, stepW: 10, stepH: 28, color: 0xffd700, alphaRange: [0.2, 0.5], dur: 6000 },
-    { startX: 450, angle: 8, steps: 16, stepW: 8, stepH: 24, color: 0xf5c842, alphaRange: [0.2, 0.55], dur: 7000 },
-    { startX: 680, angle: 14, steps: 20, stepW: 9, stepH: 26, color: 0xfff5d6, alphaRange: [0.2, 0.5], dur: 5500 },
-    { startX: 900, angle: 10, steps: 14, stepW: 7, stepH: 22, color: 0xffd700, alphaRange: [0.2, 0.45], dur: 8000 },
-    { startX: 1050, angle: 11, steps: 15, stepW: 8, stepH: 25, color: 0xf5c842, alphaRange: [0.2, 0.5], dur: 6500 },
+    {
+      startX: 200,
+      angle: 12,
+      steps: 18,
+      stepW: 10,
+      stepH: 28,
+      color: 0xffd700,
+      alphaRange: [0.2, 0.5],
+      dur: 6000,
+    },
+    {
+      startX: 450,
+      angle: 8,
+      steps: 16,
+      stepW: 8,
+      stepH: 24,
+      color: 0xf5c842,
+      alphaRange: [0.2, 0.55],
+      dur: 7000,
+    },
+    {
+      startX: 680,
+      angle: 14,
+      steps: 20,
+      stepW: 9,
+      stepH: 26,
+      color: 0xfff5d6,
+      alphaRange: [0.2, 0.5],
+      dur: 5500,
+    },
+    {
+      startX: 900,
+      angle: 10,
+      steps: 14,
+      stepW: 7,
+      stepH: 22,
+      color: 0xffd700,
+      alphaRange: [0.2, 0.45],
+      dur: 8000,
+    },
+    {
+      startX: 1050,
+      angle: 11,
+      steps: 15,
+      stepW: 8,
+      stepH: 25,
+      color: 0xf5c842,
+      alphaRange: [0.2, 0.5],
+      dur: 6500,
+    },
   ];
 
   godRayConfigs.forEach((cfg, idx) => {
@@ -150,12 +195,7 @@ function createAscensionSky(scene: WorldScene): void {
     rayGfx.setDepth(-1);
     rayGfx.fillStyle(cfg.color, 0.04);
     for (let step = 0; step < cfg.steps; step++) {
-      rayGfx.fillRect(
-        cfg.startX + step * cfg.angle,
-        step * cfg.stepH,
-        cfg.stepW,
-        cfg.stepH + 2
-      );
+      rayGfx.fillRect(cfg.startX + step * cfg.angle, step * cfg.stepH, cfg.stepW, cfg.stepH + 2);
     }
     rayGfx.setAlpha(cfg.alphaRange[0]);
     scene.ascensionSkyElements.push(rayGfx);
@@ -386,14 +426,7 @@ function createAscensionDecorations(scene: WorldScene): void {
     const cloudParts: Phaser.GameObjects.Ellipse[] = [];
 
     // Main cloud body
-    const mainCloud = scene.add.ellipse(
-      bx,
-      by + r(10),
-      r(def.cloudW),
-      r(30),
-      0xffffff,
-      0.55
-    );
+    const mainCloud = scene.add.ellipse(bx, by + r(10), r(def.cloudW), r(30), 0xffffff, 0.55);
     mainCloud.setDepth(DEPTH.PROPS_MID);
     scene.ascensionElements.push(mainCloud);
     cloudParts.push(mainCloud);
@@ -425,14 +458,7 @@ function createAscensionDecorations(scene: WorldScene): void {
     cloudParts.push(thirdCloud);
 
     // Golden glow underneath
-    const underGlow = scene.add.ellipse(
-      bx,
-      by + r(20),
-      r(def.cloudW + 40),
-      r(24),
-      0xffd700,
-      0.07
-    );
+    const underGlow = scene.add.ellipse(bx, by + r(20), r(def.cloudW + 40), r(24), 0xffd700, 0.07);
     underGlow.setDepth(DEPTH.PROPS_LOW);
     scene.ascensionElements.push(underGlow);
 
@@ -469,11 +495,7 @@ function createAscensionDecorations(scene: WorldScene): void {
     scene.ascensionElements.push(building);
 
     // --- Bob animation: everything bobs together ---
-    const bobTargets = [
-      ...cloudParts,
-      underGlow,
-      building,
-    ];
+    const bobTargets = [...cloudParts, underGlow, building];
     scene.tweens.add({
       targets: bobTargets,
       y: `-=${r(4)}`,
@@ -489,38 +511,17 @@ function createAscensionDecorations(scene: WorldScene): void {
   const templeTopY = r(420);
 
   // Wide outer glow beam
-  const beamGlow = scene.add.rectangle(
-    templeX,
-    templeTopY - r(160),
-    r(20),
-    r(320),
-    0xffd700,
-    0.08
-  );
+  const beamGlow = scene.add.rectangle(templeX, templeTopY - r(160), r(20), r(320), 0xffd700, 0.08);
   beamGlow.setDepth(DEPTH.PROPS_HIGH);
   scene.ascensionElements.push(beamGlow);
 
   // Core beam (brighter, narrower)
-  const beam = scene.add.rectangle(
-    templeX,
-    templeTopY - r(160),
-    r(6),
-    r(320),
-    0xffd700,
-    0.5
-  );
+  const beam = scene.add.rectangle(templeX, templeTopY - r(160), r(6), r(320), 0xffd700, 0.5);
   beam.setDepth(DEPTH.UI_LOW);
   scene.ascensionElements.push(beam);
 
   // Inner bright core
-  const beamCore = scene.add.rectangle(
-    templeX,
-    templeTopY - r(160),
-    r(2),
-    r(320),
-    0xfffef5,
-    0.6
-  );
+  const beamCore = scene.add.rectangle(templeX, templeTopY - r(160), r(2), r(320), 0xfffef5, 0.6);
   beamCore.setDepth(DEPTH.UI_LOW);
   scene.ascensionElements.push(beamCore);
 
@@ -581,25 +582,11 @@ function createAscensionDecorations(scene: WorldScene): void {
   ];
 
   lanternPositions.forEach((pos) => {
-    const lanternBody = scene.add.rectangle(
-      r(pos.x),
-      r(pos.y),
-      r(4),
-      r(6),
-      0xffd700,
-      0.8
-    );
+    const lanternBody = scene.add.rectangle(r(pos.x), r(pos.y), r(4), r(6), 0xffd700, 0.8);
     lanternBody.setDepth(DEPTH.PROPS_MID);
     scene.ascensionElements.push(lanternBody);
 
-    const lanternGlow = scene.add.ellipse(
-      r(pos.x),
-      r(pos.y),
-      r(12),
-      r(8),
-      0xffd700,
-      0.1
-    );
+    const lanternGlow = scene.add.ellipse(r(pos.x), r(pos.y), r(12), r(8), 0xffd700, 0.1);
     lanternGlow.setDepth(DEPTH.PROPS_MID);
     scene.ascensionElements.push(lanternGlow);
 
@@ -632,10 +619,7 @@ function createAscensionDecorations(scene: WorldScene): void {
     const startY = droplet.y;
     const animateDroplet = () => {
       if (!(droplet as any).active) return;
-      droplet.setPosition(
-        waterfallX + r(Math.random() * 10 - 5),
-        startY
-      );
+      droplet.setPosition(waterfallX + r(Math.random() * 10 - 5), startY);
       droplet.setAlpha(0.6);
       scene.tweens.add({
         targets: droplet,
@@ -655,23 +639,13 @@ function createAscensionDecorations(scene: WorldScene): void {
     const moteSize = r(1.5 + Math.random() * 2);
     const px = r(30 + Math.random() * 1220);
     const py = r(460 + Math.random() * 100);
-    const mote = scene.add.rectangle(
-      px,
-      py,
-      moteSize,
-      moteSize,
-      moteColor,
-      0.8
-    );
+    const mote = scene.add.rectangle(px, py, moteSize, moteSize, moteColor, 0.8);
     mote.setDepth(DEPTH.FLYING);
     scene.ascensionElements.push(mote);
 
     const animateMote = () => {
       if (!(mote as any).active) return;
-      mote.setPosition(
-        r(30 + Math.random() * 1220),
-        r(460 + Math.random() * 100)
-      );
+      mote.setPosition(r(30 + Math.random() * 1220), r(460 + Math.random() * 100));
       mote.setAlpha(0.6 + Math.random() * 0.3);
       scene.tweens.add({
         targets: mote,
@@ -739,5 +713,4 @@ function createAscensionDecorations(scene: WorldScene): void {
       delay: Math.random() * 5000,
     });
   });
-
 }

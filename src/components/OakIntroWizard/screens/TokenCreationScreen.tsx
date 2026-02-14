@@ -17,11 +17,7 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 /** Upload + auto-resize an image via the oak-generate API */
-async function uploadAndResize(
-  file: File,
-  width: number,
-  height: number
-): Promise<string> {
+async function uploadAndResize(file: File, width: number, height: number): Promise<string> {
   const base64 = await fileToBase64(file);
 
   try {
@@ -134,10 +130,7 @@ function TokenConceptView({
 }
 
 /* ─── Sub-screen: Custom Token Creation (manual everything) ─── */
-function TokenCustomView({
-  state,
-  dispatch,
-}: Pick<ScreenProps, "state" | "dispatch">) {
+function TokenCustomView({ state, dispatch }: Pick<ScreenProps, "state" | "dispatch">) {
   const [name, setName] = useState(state.tokenName || "");
   const [symbol, setSymbol] = useState(state.tokenSymbol || "");
   const [description, setDescription] = useState(state.tokenDescription || "");
@@ -242,14 +235,18 @@ function TokenCustomView({
         <div className="flex gap-2">
           {/* Logo */}
           <div className="flex-1">
-            <label className="font-pixel text-[7px] text-gray-400 mb-0.5 block">Logo (512x512) *</label>
+            <label className="font-pixel text-[7px] text-gray-400 mb-0.5 block">
+              Logo (512x512) *
+            </label>
             <button
               type="button"
               className="w-full h-16 bg-gray-800 border border-dashed border-gray-600 rounded flex items-center justify-center cursor-pointer hover:border-bags-green transition-colors overflow-hidden"
               onClick={() => logoInputRef.current?.click()}
             >
               {resizingLogo ? (
-                <span className="font-pixel text-[7px] text-bags-gold animate-pulse">Resizing...</span>
+                <span className="font-pixel text-[7px] text-bags-gold animate-pulse">
+                  Resizing...
+                </span>
               ) : logoPreview ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
@@ -268,14 +265,18 @@ function TokenCustomView({
 
           {/* Banner */}
           <div className="flex-1">
-            <label className="font-pixel text-[7px] text-gray-400 mb-0.5 block">Banner (600x200)</label>
+            <label className="font-pixel text-[7px] text-gray-400 mb-0.5 block">
+              Banner (600x200)
+            </label>
             <button
               type="button"
               className="w-full h-16 bg-gray-800 border border-dashed border-gray-600 rounded flex items-center justify-center cursor-pointer hover:border-bags-green transition-colors overflow-hidden"
               onClick={() => bannerInputRef.current?.click()}
             >
               {resizingBanner ? (
-                <span className="font-pixel text-[7px] text-bags-gold animate-pulse">Resizing...</span>
+                <span className="font-pixel text-[7px] text-bags-gold animate-pulse">
+                  Resizing...
+                </span>
               ) : bannerPreview ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={bannerPreview} alt="Banner" className="w-full h-full object-cover" />
@@ -298,7 +299,9 @@ function TokenCustomView({
 
         {/* X link */}
         <div>
-          <label className="font-pixel text-[7px] text-gray-400 mb-0.5 block">X / Twitter link</label>
+          <label className="font-pixel text-[7px] text-gray-400 mb-0.5 block">
+            X / Twitter link
+          </label>
           <input
             type="text"
             value={twitter}
@@ -693,7 +696,9 @@ function TokenImageView({
           {/* Optional social links */}
           <div className="w-full max-w-[300px] space-y-1.5 mb-3">
             <div>
-              <label className="font-pixel text-[7px] text-gray-400 mb-0.5 block">X / Twitter link (optional)</label>
+              <label className="font-pixel text-[7px] text-gray-400 mb-0.5 block">
+                X / Twitter link (optional)
+              </label>
               <input
                 type="text"
                 value={twitter}
@@ -704,7 +709,9 @@ function TokenImageView({
               />
             </div>
             <div>
-              <label className="font-pixel text-[7px] text-gray-400 mb-0.5 block">Website (optional)</label>
+              <label className="font-pixel text-[7px] text-gray-400 mb-0.5 block">
+                Website (optional)
+              </label>
               <input
                 type="text"
                 value={website}

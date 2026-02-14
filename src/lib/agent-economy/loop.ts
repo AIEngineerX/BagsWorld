@@ -647,7 +647,9 @@ async function processAgent(
             limit: 3,
           })
             .then((memories) =>
-              memories.map((m) => `[${getTimeAgo(m.createdAt)}] "${m.title}" — ${m.content.slice(0, 120)}`)
+              memories.map(
+                (m) => `[${getTimeAgo(m.createdAt)}] "${m.title}" — ${m.content.slice(0, 120)}`
+              )
             )
             .catch(() => [] as string[]);
 
@@ -660,7 +662,9 @@ async function processAgent(
           });
 
           const delivered = await deliverTask(task.id, wallet, resultData);
-          console.log(`[Loop] ${agent.username}: Delivered task "${delivered.title}"${resultData.generatedBy === "llm" ? " (LLM)" : ""}`);
+          console.log(
+            `[Loop] ${agent.username}: Delivered task "${delivered.title}"${resultData.generatedBy === "llm" ? " (LLM)" : ""}`
+          );
 
           // Store to memory if we got a narrative
           const narrative = resultData.narrative;
@@ -679,7 +683,10 @@ async function processAgent(
           await sendA2AMessage(wallet, task.posterWallet, "task_deliver", {
             agent: agent.username,
             taskTitle: delivered.title,
-            resultSummary: (typeof narrative === "string" && narrative) ? narrative : Object.keys(resultData).join(", "),
+            resultSummary:
+              typeof narrative === "string" && narrative
+                ? narrative
+                : Object.keys(resultData).join(", "),
             deliveredAt: new Date().toISOString(),
           });
         }
@@ -757,13 +764,9 @@ async function processAgent(
             `[Loop] ${agent.username}: [CORP] Posted service task "${posted.title}" (${serviceTask.category}, ${posted.rewardSol} SOL)`
           );
 
-          emitCorpService(
-            agent.username,
-            corp.name,
-            posted.title,
-            posted.rewardSol,
-            false
-          ).catch(() => {});
+          emitCorpService(agent.username, corp.name, posted.title, posted.rewardSol, false).catch(
+            () => {}
+          );
         }
       }
 
@@ -817,29 +820,59 @@ async function processAgent(
           const rewardSol = confirmed.rewardSol;
 
           // Revenue split (70/20/10)
-          const split = await recordTaskCompletion(corp.id, member?.agentId || agent.agentId, rewardSol);
+          const split = await recordTaskCompletion(
+            corp.id,
+            member?.agentId || agent.agentId,
+            rewardSol
+          );
           console.log(
             `[Loop] ${agent.username}: [CORP] Confirmed "${confirmed.title}" — worker: ${split.workerShare} SOL, treasury: ${split.treasuryShare} SOL`
           );
 
           // Progress missions based on task category
           const taskTitle = confirmed.title.toLowerCase();
-          if (taskTitle.includes("tutorial") || taskTitle.includes("guide") || taskTitle.includes("explain") || taskTitle.includes("document")) {
+          if (
+            taskTitle.includes("tutorial") ||
+            taskTitle.includes("guide") ||
+            taskTitle.includes("explain") ||
+            taskTitle.includes("document")
+          ) {
             const missionResult = await progressMission(corp.id, "tasks_education");
             if (missionResult?.status === "completed") {
-              emitCorpMissionComplete(corp.name, missionResult.title, missionResult.rewardSol).catch(() => {});
+              emitCorpMissionComplete(
+                corp.name,
+                missionResult.title,
+                missionResult.rewardSol
+              ).catch(() => {});
             }
           }
-          if (taskTitle.includes("analyze") || taskTitle.includes("report") || taskTitle.includes("scan") || taskTitle.includes("track")) {
+          if (
+            taskTitle.includes("analyze") ||
+            taskTitle.includes("report") ||
+            taskTitle.includes("scan") ||
+            taskTitle.includes("track")
+          ) {
             const missionResult = await progressMission(corp.id, "tasks_intelligence");
             if (missionResult?.status === "completed") {
-              emitCorpMissionComplete(corp.name, missionResult.title, missionResult.rewardSol).catch(() => {});
+              emitCorpMissionComplete(
+                corp.name,
+                missionResult.title,
+                missionResult.rewardSol
+              ).catch(() => {});
             }
           }
-          if (taskTitle.includes("onboarding") || taskTitle.includes("training") || taskTitle.includes("mastery")) {
+          if (
+            taskTitle.includes("onboarding") ||
+            taskTitle.includes("training") ||
+            taskTitle.includes("mastery")
+          ) {
             const missionResult = await progressMission(corp.id, "tasks_onboarding");
             if (missionResult?.status === "completed") {
-              emitCorpMissionComplete(corp.name, missionResult.title, missionResult.rewardSol).catch(() => {});
+              emitCorpMissionComplete(
+                corp.name,
+                missionResult.title,
+                missionResult.rewardSol
+              ).catch(() => {});
             }
           }
 
@@ -967,7 +1000,10 @@ export async function runLoopIteration(config: EconomyLoopConfig = DEFAULT_LOOP_
             confirmed.id
           ).catch(() => {});
         } catch (taskErr) {
-          console.error(`[Loop] Failed to auto-confirm seed bounty ${task.id} (non-critical):`, taskErr);
+          console.error(
+            `[Loop] Failed to auto-confirm seed bounty ${task.id} (non-critical):`,
+            taskErr
+          );
         }
       }
     }

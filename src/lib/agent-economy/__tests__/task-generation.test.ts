@@ -7,13 +7,20 @@ jest.mock("@neondatabase/serverless", () => ({
   neon: jest.fn(() => jest.fn().mockResolvedValue([])),
 }));
 
-import { generateResultForCapability, RESULT_TEMPLATES, TASK_TEMPLATES, generateTaskForCapability } from "../task-board";
+import {
+  generateResultForCapability,
+  RESULT_TEMPLATES,
+  TASK_TEMPLATES,
+  generateTaskForCapability,
+} from "../task-board";
 import { generateServiceResult } from "../corps";
 import { shouldUseLlm, generateTaskResult } from "../llm";
 import type { AgentCapability } from "../../types";
 
 const mockedShouldUseLlm = shouldUseLlm as jest.MockedFunction<typeof shouldUseLlm>;
-const mockedGenerateTaskResult = generateTaskResult as jest.MockedFunction<typeof generateTaskResult>;
+const mockedGenerateTaskResult = generateTaskResult as jest.MockedFunction<
+  typeof generateTaskResult
+>;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -36,10 +43,12 @@ describe("generateResultForCapability", () => {
 
     const result = await generateResultForCapability("analysis", ctx);
 
-    expect(mockedGenerateTaskResult).toHaveBeenCalledWith(expect.objectContaining({
-      agentId: "ghost",
-      capability: "analysis",
-    }));
+    expect(mockedGenerateTaskResult).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: "ghost",
+        capability: "analysis",
+      })
+    );
     expect(result.generatedBy).toBe("llm");
   });
 
@@ -72,14 +81,20 @@ describe("generateResultForCapability", () => {
     const memory = ['[2d ago] "Analysis" — some content'];
     await generateResultForCapability("analysis", { ...ctx, memory });
 
-    expect(mockedGenerateTaskResult).toHaveBeenCalledWith(
-      expect.objectContaining({ memory })
-    );
+    expect(mockedGenerateTaskResult).toHaveBeenCalledWith(expect.objectContaining({ memory }));
   });
 });
 
 describe("RESULT_TEMPLATES", () => {
-  const caps: AgentCapability[] = ["alpha", "trading", "content", "launch", "combat", "scouting", "analysis"];
+  const caps: AgentCapability[] = [
+    "alpha",
+    "trading",
+    "content",
+    "launch",
+    "combat",
+    "scouting",
+    "analysis",
+  ];
 
   it.each(caps)("produces non-empty object for %s", (cap) => {
     const result = RESULT_TEMPLATES[cap]();
@@ -113,7 +128,15 @@ describe("RESULT_TEMPLATES", () => {
 });
 
 describe("TASK_TEMPLATES", () => {
-  const caps: AgentCapability[] = ["alpha", "trading", "content", "launch", "combat", "scouting", "analysis"];
+  const caps: AgentCapability[] = [
+    "alpha",
+    "trading",
+    "content",
+    "launch",
+    "combat",
+    "scouting",
+    "analysis",
+  ];
 
   it.each(caps)("has non-empty templates for %s", (cap) => {
     const templates = TASK_TEMPLATES[cap];
@@ -183,9 +206,7 @@ describe("generateServiceResult", () => {
     const memory = ['[1d ago] "Tutorial" — wrote fee guide'];
     await generateServiceResult("guide", { ...ctx, memory });
 
-    expect(mockedGenerateTaskResult).toHaveBeenCalledWith(
-      expect.objectContaining({ memory })
-    );
+    expect(mockedGenerateTaskResult).toHaveBeenCalledWith(expect.objectContaining({ memory }));
   });
 
   it("handles all output types", async () => {

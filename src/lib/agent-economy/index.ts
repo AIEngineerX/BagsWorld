@@ -198,7 +198,13 @@ export {
   type CorpBoardTask,
 } from "./corps";
 
-export { generateTaskResult, shouldUseLlm, parseJsonResponse, type TaskResultInput, type TaskResultOutput } from "./llm";
+export {
+  generateTaskResult,
+  shouldUseLlm,
+  parseJsonResponse,
+  type TaskResultInput,
+  type TaskResultOutput,
+} from "./llm";
 
 export { storeMemory, recallMemories, cleanupExpiredMemories, getTimeAgo } from "./memory";
 

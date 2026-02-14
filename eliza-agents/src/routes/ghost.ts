@@ -94,9 +94,10 @@ router.post("/learning/reset", requireAdminKey, async (req: Request, res: Respon
   res.json({
     success: result.success,
     message: result.success
-      ? `Learning data reset. ${result.signalsCleared} signals cleared.`
+      ? `Learning data reset. ${result.signalsCleared} signals cleared, ${result.memoriesCleared} poisoned memories removed.`
       : "Failed to reset learning data",
     signalsCleared: result.signalsCleared,
+    memoriesCleared: result.memoriesCleared,
   });
 });
 
@@ -140,11 +141,16 @@ router.get("/status", async (req: Request, res: Response) => {
       minPositionSol: config.minPositionSol,
       maxPositionSol: config.maxPositionSol,
       takeProfitTiers: config.takeProfitTiers,
+      partialSellPercent: config.partialSellPercent,
       trailingStopPercent: config.trailingStopPercent,
       stopLossPercent: config.stopLossPercent,
+      deadPositionDecayPercent: config.deadPositionDecayPercent,
+      maxHoldTimeMinutes: config.maxHoldTimeMinutes,
+      minVolumeToHoldUsd: config.minVolumeToHoldUsd,
       minLiquidityUsd: config.minLiquidityUsd,
       minBuySellRatio: config.minBuySellRatio,
       slippageBps: config.slippageBps,
+      maxPriceImpactPercent: config.maxPriceImpactPercent,
     },
     buyAndBurn: {
       enabled: config.burnEnabled,
@@ -303,27 +309,33 @@ router.post("/stop-trading", requireAdminKey, async (req: Request, res: Response
 // POST /api/ghost/config - Update trading configuration
 router.post("/config", requireAdminKey, (req: Request, res: Response) => {
   const trader = getGhostTrader();
-  const allowedUpdates = [
+  const allowedNumericUpdates = [
     "minPositionSol",
     "maxPositionSol",
     "maxTotalExposureSol",
     "maxOpenPositions",
-    "takeProfitMultiplier",
     "stopLossPercent",
-    "minLiquiditySol",
+    "partialSellPercent",
+    "trailingStopPercent",
+    "deadPositionDecayPercent",
+    "maxHoldTimeMinutes",
+    "minVolumeToHoldUsd",
+    "minLiquidityUsd",
     "maxCreatorFeeBps",
     "slippageBps",
+    "maxPriceImpactPercent",
   ];
 
-  const updates: Record<string, number> = {};
+  const updates: Record<string, number | number[]> = {};
 
-  for (const key of allowedUpdates) {
+  // Handle numeric fields
+  for (const key of allowedNumericUpdates) {
     if (req.body[key] !== undefined) {
       const value = parseFloat(req.body[key]);
       if (isNaN(value)) {
         res.status(400).json({
           success: false,
-          error: `Invalid value for ${key}`,
+          error: `Invalid value for ${key}: must be a number`,
         });
         return;
       }
@@ -331,11 +343,38 @@ router.post("/config", requireAdminKey, (req: Request, res: Response) => {
     }
   }
 
+  // Handle takeProfitTiers (array of numbers)
+  // Accepts: [1.5, 2.0, 3.0] or "1.5,2.0,3.0"
+  if (req.body.takeProfitTiers !== undefined) {
+    let tiers: number[];
+    if (Array.isArray(req.body.takeProfitTiers)) {
+      tiers = req.body.takeProfitTiers.map(Number);
+    } else if (typeof req.body.takeProfitTiers === "string") {
+      tiers = req.body.takeProfitTiers.split(",").map((s: string) => parseFloat(s.trim()));
+    } else {
+      res.status(400).json({
+        success: false,
+        error: "takeProfitTiers must be an array of numbers or comma-separated string",
+      });
+      return;
+    }
+
+    if (tiers.some(isNaN) || tiers.length === 0) {
+      res.status(400).json({
+        success: false,
+        error: "takeProfitTiers must contain valid numbers (e.g. [1.5, 2.0, 3.0])",
+      });
+      return;
+    }
+
+    updates.takeProfitTiers = tiers;
+  }
+
   if (Object.keys(updates).length === 0) {
     res.status(400).json({
       success: false,
       error: "No valid updates provided",
-      allowedFields: allowedUpdates,
+      allowedFields: [...allowedNumericUpdates, "takeProfitTiers"],
     });
     return;
   }

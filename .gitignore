@@ -69,3 +69,9 @@ bagsworld-banner-*.png
 
 # Private alpha wallet data (never commit)
 data/alpha-wallets.json
+
+# Screenshots and temp analysis files (root-level only)
+/*.png
+/screenshot-*.mjs
+/ASCENSION-ZONE-PLAN.md
+/UsersfootbAppDataLocalTempclaudekaetram-analysis/

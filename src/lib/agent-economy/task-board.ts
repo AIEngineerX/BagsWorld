@@ -751,7 +751,14 @@ export async function seedBounties(): Promise<number> {
   const toSeed = MIN_OPEN_BOUNTIES - openCount;
   let seeded = 0;
 
-  const capabilities: AgentCapability[] = ["alpha", "trading", "content", "launch", "scouting", "analysis"];
+  const capabilities: AgentCapability[] = [
+    "alpha",
+    "trading",
+    "content",
+    "launch",
+    "scouting",
+    "analysis",
+  ];
 
   for (let i = 0; i < toSeed; i++) {
     try {
@@ -765,9 +772,8 @@ export async function seedBounties(): Promise<number> {
 
       // Announce to Moltbook (non-critical)
       try {
-        const client = wallet === "bagsy-internal"
-          ? getMoltbookOrNull()
-          : getChadGhostMoltbookOrNull();
+        const client =
+          wallet === "bagsy-internal" ? getMoltbookOrNull() : getChadGhostMoltbookOrNull();
         if (client && client.canPost().allowed) {
           await client.createPost({
             submolt: "bagsworld",
@@ -785,7 +791,9 @@ export async function seedBounties(): Promise<number> {
   }
 
   if (seeded > 0) {
-    console.log(`[TaskBoard] Seeded ${seeded} bounties (${openCount} were open, target ${MIN_OPEN_BOUNTIES})`);
+    console.log(
+      `[TaskBoard] Seeded ${seeded} bounties (${openCount} were open, target ${MIN_OPEN_BOUNTIES})`
+    );
   }
 
   return seeded;

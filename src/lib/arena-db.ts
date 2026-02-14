@@ -1116,10 +1116,7 @@ export async function canFighterEnterQueue(
  * Store a fight replay in the fight_log JSONB column.
  * Replays are distinguished from old event arrays by having a `keyframes` property.
  */
-export async function storeMatchReplay(
-  matchId: number,
-  replay: FightReplay
-): Promise<boolean> {
+export async function storeMatchReplay(matchId: number, replay: FightReplay): Promise<boolean> {
   await initializeArenaTables();
 
   if (useMemoryStore) {
@@ -1152,9 +1149,7 @@ export async function storeMatchReplay(
  * Get a fight replay by match ID.
  * Returns null if match not found or fight_log doesn't contain a replay.
  */
-export async function getMatchReplay(
-  matchId: number
-): Promise<FightReplay | null> {
+export async function getMatchReplay(matchId: number): Promise<FightReplay | null> {
   await initializeArenaTables();
 
   if (useMemoryStore) {
@@ -1204,20 +1199,12 @@ export async function getLatestReplay(): Promise<FightReplay | null> {
   if (useMemoryStore) {
     const matches = Array.from(memoryStore.matches.values())
       .filter((m) => m.status === "completed")
-      .sort(
-        (a, b) =>
-          new Date(b.ended_at || "").getTime() -
-          new Date(a.ended_at || "").getTime()
-      )
+      .sort((a, b) => new Date(b.ended_at || "").getTime() - new Date(a.ended_at || "").getTime())
       .slice(0, 5);
 
     for (const match of matches) {
       const log = match.fight_log as unknown;
-      if (
-        log &&
-        typeof log === "object" &&
-        "keyframes" in (log as Record<string, unknown>)
-      ) {
+      if (log && typeof log === "object" && "keyframes" in (log as Record<string, unknown>)) {
         return log as unknown as FightReplay;
       }
     }
@@ -1240,11 +1227,7 @@ export async function getLatestReplay(): Promise<FightReplay | null> {
       if (typeof log === "string") {
         log = JSON.parse(log);
       }
-      if (
-        log &&
-        typeof log === "object" &&
-        "keyframes" in (log as Record<string, unknown>)
-      ) {
+      if (log && typeof log === "object" && "keyframes" in (log as Record<string, unknown>)) {
         return log as unknown as FightReplay;
       }
     }

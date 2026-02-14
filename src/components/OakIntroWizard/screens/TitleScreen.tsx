@@ -186,9 +186,7 @@ export function TitleScreen({ onAdvance }: ScreenProps) {
             width: s.size,
             height: s.size,
             opacity: s.opacity,
-            animation: ready
-              ? `starDrift ${s.duration}s linear ${s.delay}s infinite`
-              : "none",
+            animation: ready ? `starDrift ${s.duration}s linear ${s.delay}s infinite` : "none",
           }}
         />
       ))}
@@ -210,14 +208,8 @@ export function TitleScreen({ onAdvance }: ScreenProps) {
           }}
         >
           {/* Cross-shaped flash */}
-          <span
-            className="absolute bg-white"
-            style={{ width: 5, height: 1, top: 2, left: 0 }}
-          />
-          <span
-            className="absolute bg-white"
-            style={{ width: 1, height: 5, top: 0, left: 2 }}
-          />
+          <span className="absolute bg-white" style={{ width: 5, height: 1, top: 2, left: 0 }} />
+          <span className="absolute bg-white" style={{ width: 1, height: 5, top: 0, left: 2 }} />
         </span>
       ))}
 
@@ -227,9 +219,7 @@ export function TitleScreen({ onAdvance }: ScreenProps) {
         style={{
           top: "12%",
           left: "-5%",
-          animation: ready
-            ? `shootingStar 1.2s ease-out ${PHASE.SHOOT1}s both`
-            : "none",
+          animation: ready ? `shootingStar 1.2s ease-out ${PHASE.SHOOT1}s both` : "none",
         }}
       >
         <div
@@ -255,9 +245,7 @@ export function TitleScreen({ onAdvance }: ScreenProps) {
         style={{
           top: "58%",
           right: "-5%",
-          animation: ready
-            ? `shootingStar2 0.9s ease-out ${PHASE.SHOOT2}s both`
-            : "none",
+          animation: ready ? `shootingStar2 0.9s ease-out ${PHASE.SHOOT2}s both` : "none",
         }}
       >
         <div
@@ -268,7 +256,8 @@ export function TitleScreen({ onAdvance }: ScreenProps) {
           className="absolute top-[0px] left-[3px] h-[1px]"
           style={{
             width: 40,
-            background: "linear-gradient(to right, transparent, rgba(255,255,255,0.7), transparent)",
+            background:
+              "linear-gradient(to right, transparent, rgba(255,255,255,0.7), transparent)",
           }}
         />
       </div>
@@ -279,19 +268,14 @@ export function TitleScreen({ onAdvance }: ScreenProps) {
         <div
           className="relative z-10 mb-1 overflow-hidden"
           style={{
-            animation: ready
-              ? `lineScanReveal 0.6s ease-out ${PHASE.LOGO}s both`
-              : "none",
+            animation: ready ? `lineScanReveal 0.6s ease-out ${PHASE.LOGO}s both` : "none",
           }}
         >
           <h1
             className="font-pixel text-2xl sm:text-4xl text-bags-green whitespace-nowrap"
             style={{
-              textShadow:
-                "0 0 10px #22C55E, 0 0 20px #22C55E, 0 0 40px #16A34A, 0 2px 0 #0a4a1e",
-              animation: ready
-                ? `titleGlow 2s ease-in-out ${PHASE.LOGO_GLOW}s infinite`
-                : "none",
+              textShadow: "0 0 10px #22C55E, 0 0 20px #22C55E, 0 0 40px #16A34A, 0 2px 0 #0a4a1e",
+              animation: ready ? `titleGlow 2s ease-in-out ${PHASE.LOGO_GLOW}s infinite` : "none",
             }}
           >
             BAGSWORLD
@@ -329,9 +313,7 @@ export function TitleScreen({ onAdvance }: ScreenProps) {
         style={{
           bottom: "12%",
           left: "-15%",
-          animation: ready
-            ? `runAcross 3.5s linear ${PHASE.RUNNER}s both`
-            : "none",
+          animation: ready ? `runAcross 3.5s linear ${PHASE.RUNNER}s both` : "none",
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}

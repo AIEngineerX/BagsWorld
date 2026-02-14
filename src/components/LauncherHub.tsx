@@ -127,7 +127,10 @@ export function LauncherHub({ onClose }: LauncherHubProps) {
         {/* Header */}
         <div className="bg-bags-green px-3 py-2 flex justify-between items-center">
           <span className="font-pixel text-black text-xs">LAUNCHERS</span>
-          <button onClick={onClose} className="font-pixel text-black hover:text-red-800 text-xs w-11 h-11 flex items-center justify-center -mr-2">
+          <button
+            onClick={onClose}
+            className="font-pixel text-black hover:text-red-800 text-xs w-11 h-11 flex items-center justify-center -mr-2"
+          >
             [X]
           </button>
         </div>

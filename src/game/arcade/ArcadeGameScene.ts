@@ -21,10 +21,20 @@ import {
 import { getGroundPlatforms, getSectionData, type EnemySpawn } from "./level-data";
 
 const ANIM_SPEEDS: Record<string, number> = {
-  idle: 200, run: 120, shoot: 100, die: 150, jump: 200, fall: 200,
+  idle: 200,
+  run: 120,
+  shoot: 100,
+  die: 150,
+  jump: 200,
+  fall: 200,
 };
 const ANIM_FRAMES: Record<string, number> = {
-  idle: 4, run: 4, jump: 2, fall: 2, shoot: 3, die: 5,
+  idle: 4,
+  run: 4,
+  jump: 2,
+  fall: 2,
+  shoot: 3,
+  die: 5,
 };
 
 export class ArcadeGameScene extends Phaser.Scene {
@@ -147,7 +157,7 @@ export class ArcadeGameScene extends Phaser.Scene {
         const tile = this.platforms.create(
           gp.x + i * TILE_SIZE + TILE_SIZE / 2,
           gp.y + TILE_SIZE / 2,
-          gp.texture,
+          gp.texture
         ) as Phaser.Physics.Arcade.Sprite;
         tile.setImmovable(true);
         tile.refreshBody();
@@ -162,15 +172,9 @@ export class ArcadeGameScene extends Phaser.Scene {
     this.cameras.main.setDeadzone(60, 40);
 
     this.cursors = this.input.keyboard!.createCursorKeys();
-    this.keyZ = this.input.keyboard!.addKey(
-      Phaser.Input.Keyboard.KeyCodes.Z,
-    );
-    this.keyX = this.input.keyboard!.addKey(
-      Phaser.Input.Keyboard.KeyCodes.X,
-    );
-    this.keyC = this.input.keyboard!.addKey(
-      Phaser.Input.Keyboard.KeyCodes.C,
-    );
+    this.keyZ = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
+    this.keyX = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.X);
+    this.keyC = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.C);
 
     this.physics.add.collider(this.player, this.platforms);
     this.physics.add.collider(this.enemies, this.platforms);
@@ -180,42 +184,42 @@ export class ArcadeGameScene extends Phaser.Scene {
       this.enemies,
       this.onBulletHitEnemy as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
       undefined,
-      this,
+      this
     );
     this.physics.add.overlap(
       this.enemyBullets,
       this.player,
       this.onEnemyBulletHitPlayer as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
       undefined,
-      this,
+      this
     );
     this.physics.add.overlap(
       this.player,
       this.pickups,
       this.onCollectPickup as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
       undefined,
-      this,
+      this
     );
     this.physics.add.overlap(
       this.player,
       this.enemies,
       this.onPlayerTouchEnemy as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
       undefined,
-      this,
+      this
     );
     this.physics.add.overlap(
       this.bullets,
       this.crates,
       this.onBulletHitCrate as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
       undefined,
-      this,
+      this
     );
     this.physics.add.overlap(
       this.grenadeGroup,
       this.crates,
       this.onGrenadeHitCrate as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
       undefined,
-      this,
+      this
     );
 
     this.enemyAnimTimer = 0;
@@ -298,17 +302,14 @@ export class ArcadeGameScene extends Phaser.Scene {
 
     // Landing dust puff
     if (onGround && !this.wasOnGround) {
-      const dust = this.add.particles(
-        this.player.x, this.player.y + 14, "particle_dust",
-        {
-          speed: { min: 15, max: 40 },
-          angle: { min: 0, max: 360 },
-          lifespan: 300,
-          gravityY: 50,
-          scale: { start: 1, end: 0 },
-          emitting: false,
-        },
-      );
+      const dust = this.add.particles(this.player.x, this.player.y + 14, "particle_dust", {
+        speed: { min: 15, max: 40 },
+        angle: { min: 0, max: 360 },
+        lifespan: 300,
+        gravityY: 50,
+        scale: { start: 1, end: 0 },
+        emitting: false,
+      });
       dust.explode(Phaser.Math.Between(4, 6));
       this.time.delayedCall(400, () => dust.destroy());
     }
@@ -332,11 +333,7 @@ export class ArcadeGameScene extends Phaser.Scene {
   }
 
   private createPlayer(): void {
-    this.player = this.physics.add.sprite(
-      50,
-      GROUND_Y - 32,
-      `${this.character}_idle_1`,
-    );
+    this.player = this.physics.add.sprite(50, GROUND_Y - 32, `${this.character}_idle_1`);
     this.player.setCollideWorldBounds(true);
     this.player.body!.setSize(16, 30);
     this.player.body!.setOffset(4, 2);
@@ -427,14 +424,7 @@ export class ArcadeGameScene extends Phaser.Scene {
     const dir = this.facing === "right" ? 1 : -1;
 
     if (weaponInfo.spread === 1) {
-      this.fireBullet(
-        this.player.x + dir * 12,
-        bulletY,
-        dir,
-        0,
-        weaponInfo,
-        bulletTexture,
-      );
+      this.fireBullet(this.player.x + dir * 12, bulletY, dir, 0, weaponInfo, bulletTexture);
     } else {
       for (let i = -1; i <= 1; i++) {
         this.fireBullet(
@@ -443,39 +433,31 @@ export class ArcadeGameScene extends Phaser.Scene {
           dir,
           i * 0.26,
           weaponInfo,
-          bulletTexture,
+          bulletTexture
         );
       }
     }
 
     // Muzzle flash particles
     const muzzleX = this.player.x + dir * 14;
-    const muzzle = this.add.particles(
-      muzzleX, bulletY, "particle_muzzle",
-      {
-        speed: { min: 20, max: 60 },
-        lifespan: 80,
-        scale: { start: 1, end: 0 },
-        emitting: false,
-      },
-    );
+    const muzzle = this.add.particles(muzzleX, bulletY, "particle_muzzle", {
+      speed: { min: 20, max: 60 },
+      lifespan: 80,
+      scale: { start: 1, end: 0 },
+      emitting: false,
+    });
     muzzle.explode(Phaser.Math.Between(3, 5));
     this.time.delayedCall(100, () => muzzle.destroy());
 
     // Shell casing
-    const shellAngle = this.facing === "right"
-      ? { min: 200, max: 250 }
-      : { min: 290, max: 340 };
-    const shell = this.add.particles(
-      this.player.x, this.player.y - 2, "particle_shell",
-      {
-        speed: { min: 30, max: 60 },
-        angle: shellAngle,
-        lifespan: 500,
-        gravityY: 200,
-        emitting: false,
-      },
-    );
+    const shellAngle = this.facing === "right" ? { min: 200, max: 250 } : { min: 290, max: 340 };
+    const shell = this.add.particles(this.player.x, this.player.y - 2, "particle_shell", {
+      speed: { min: 30, max: 60 },
+      angle: shellAngle,
+      lifespan: 500,
+      gravityY: 200,
+      emitting: false,
+    });
     shell.explode(1);
     this.time.delayedCall(600, () => shell.destroy());
   }
@@ -486,13 +468,9 @@ export class ArcadeGameScene extends Phaser.Scene {
     dirX: number,
     angleOffset: number,
     weaponInfo: { bulletSpeed: number; damage: number },
-    texture: string,
+    texture: string
   ): void {
-    const bullet = this.bullets.get(
-      x,
-      y,
-      texture,
-    ) as Phaser.Physics.Arcade.Sprite;
+    const bullet = this.bullets.get(x, y, texture) as Phaser.Physics.Arcade.Sprite;
     if (!bullet) return;
 
     bullet.setActive(true).setVisible(true);
@@ -523,7 +501,7 @@ export class ArcadeGameScene extends Phaser.Scene {
     vx: number,
     vy: number,
     damage: number,
-    texture: string,
+    texture: string
   ): void {
     const bullet = this.enemyBullets.get(x, y, texture) as Phaser.Physics.Arcade.Sprite;
     if (!bullet) return;
@@ -543,12 +521,9 @@ export class ArcadeGameScene extends Phaser.Scene {
     const grenade = this.grenadeGroup.create(
       this.player.x + dir * 10,
       this.player.y - 10,
-      "grenade",
+      "grenade"
     ) as Phaser.Physics.Arcade.Sprite;
-    (grenade.body as Phaser.Physics.Arcade.Body).setVelocity(
-      dir * 200,
-      -200,
-    );
+    (grenade.body as Phaser.Physics.Arcade.Body).setVelocity(dir * 200, -200);
     grenade.setBounce(0.3);
 
     // Explode after 1.5 seconds
@@ -559,25 +534,19 @@ export class ArcadeGameScene extends Phaser.Scene {
 
       // Grenade-specific: extra shake + fire particles
       this.cameras.main.shake(200, 0.012);
-      const fire = this.add.particles(
-        grenade.x, grenade.y, "particle_fire",
-        {
-          speed: { min: 30, max: 80 },
-          angle: { min: 0, max: 360 },
-          lifespan: 400,
-          scale: { start: 1, end: 0 },
-          emitting: false,
-        },
-      );
+      const fire = this.add.particles(grenade.x, grenade.y, "particle_fire", {
+        speed: { min: 30, max: 80 },
+        angle: { min: 0, max: 360 },
+        lifespan: 400,
+        scale: { start: 1, end: 0 },
+        emitting: false,
+      });
       fire.explode(6);
       this.time.delayedCall(500, () => fire.destroy());
 
       this.enemies.getChildren().forEach((obj) => {
         const e = obj as Phaser.Physics.Arcade.Sprite;
-        if (
-          e.active &&
-          Phaser.Math.Distance.Between(grenade.x, grenade.y, e.x, e.y) < 60
-        ) {
+        if (e.active && Phaser.Math.Distance.Between(grenade.x, grenade.y, e.x, e.y) < 60) {
           if ((e as any).isBoss) {
             this.damageBoss(GRENADE_DAMAGE);
           } else {
@@ -634,18 +603,10 @@ export class ArcadeGameScene extends Phaser.Scene {
     (this.player.body as Phaser.Physics.Arcade.Body).setVelocity(0, -200);
 
     // 5-frame death animation sequence
-    this.time.delayedCall(150, () =>
-      this.player.setTexture(`${this.character}_die_2`),
-    );
-    this.time.delayedCall(300, () =>
-      this.player.setTexture(`${this.character}_die_3`),
-    );
-    this.time.delayedCall(450, () =>
-      this.player.setTexture(`${this.character}_die_4`),
-    );
-    this.time.delayedCall(600, () =>
-      this.player.setTexture(`${this.character}_die_5`),
-    );
+    this.time.delayedCall(150, () => this.player.setTexture(`${this.character}_die_2`));
+    this.time.delayedCall(300, () => this.player.setTexture(`${this.character}_die_3`));
+    this.time.delayedCall(450, () => this.player.setTexture(`${this.character}_die_4`));
+    this.time.delayedCall(600, () => this.player.setTexture(`${this.character}_die_5`));
 
     this.time.delayedCall(1000, () => {
       this.lives--;
@@ -690,7 +651,7 @@ export class ArcadeGameScene extends Phaser.Scene {
 
   private onBulletHitEnemy(
     bullet: Phaser.GameObjects.GameObject,
-    enemy: Phaser.GameObjects.GameObject,
+    enemy: Phaser.GameObjects.GameObject
   ): void {
     const b = bullet as Phaser.Physics.Arcade.Sprite;
     const e = enemy as Phaser.Physics.Arcade.Sprite;
@@ -708,7 +669,7 @@ export class ArcadeGameScene extends Phaser.Scene {
 
   private onEnemyBulletHitPlayer(
     _player: Phaser.GameObjects.GameObject,
-    bullet: Phaser.GameObjects.GameObject,
+    bullet: Phaser.GameObjects.GameObject
   ): void {
     const b = bullet as Phaser.Physics.Arcade.Sprite;
     this.deactivateBullet(b);
@@ -717,7 +678,7 @@ export class ArcadeGameScene extends Phaser.Scene {
 
   private onPlayerTouchEnemy(
     _player: Phaser.GameObjects.GameObject,
-    enemy: Phaser.GameObjects.GameObject,
+    enemy: Phaser.GameObjects.GameObject
   ): void {
     const e = enemy as Phaser.Physics.Arcade.Sprite;
     if (e.active) {
@@ -728,7 +689,7 @@ export class ArcadeGameScene extends Phaser.Scene {
 
   private onCollectPickup(
     _player: Phaser.GameObjects.GameObject,
-    pickup: Phaser.GameObjects.GameObject,
+    pickup: Phaser.GameObjects.GameObject
   ): void {
     const p = pickup as Phaser.Physics.Arcade.Sprite;
     const type = (p as any).pickupType as PickupType | undefined;
@@ -757,7 +718,7 @@ export class ArcadeGameScene extends Phaser.Scene {
 
   private onBulletHitCrate(
     bullet: Phaser.GameObjects.GameObject,
-    crate: Phaser.GameObjects.GameObject,
+    crate: Phaser.GameObjects.GameObject
   ): void {
     const b = bullet as Phaser.Physics.Arcade.Sprite;
     this.deactivateBullet(b);
@@ -785,7 +746,7 @@ export class ArcadeGameScene extends Phaser.Scene {
 
   private onGrenadeHitCrate(
     _grenade: Phaser.GameObjects.GameObject,
-    crate: Phaser.GameObjects.GameObject,
+    crate: Phaser.GameObjects.GameObject
   ): void {
     const c = crate as Phaser.Physics.Arcade.Sprite;
     this.createExplosion(c.x, c.y);
@@ -793,10 +754,7 @@ export class ArcadeGameScene extends Phaser.Scene {
     this.score += 25;
   }
 
-  private damageEnemy(
-    enemy: Phaser.Physics.Arcade.Sprite,
-    damage: number,
-  ): void {
+  private damageEnemy(enemy: Phaser.Physics.Arcade.Sprite, damage: number): void {
     if ((enemy as any).isDying) return;
 
     (enemy as any).hp = ((enemy as any).hp ?? 1) - damage;
@@ -822,10 +780,7 @@ export class ArcadeGameScene extends Phaser.Scene {
     }
   }
 
-  private playEnemyDeath(
-    enemy: Phaser.Physics.Arcade.Sprite,
-    type: EnemyType,
-  ): void {
+  private playEnemyDeath(enemy: Phaser.Physics.Arcade.Sprite, type: EnemyType): void {
     (enemy as any).isDying = true;
     const body = enemy.body as Phaser.Physics.Arcade.Body;
     body.enable = false;
@@ -889,7 +844,7 @@ export class ArcadeGameScene extends Phaser.Scene {
           const tile = this.platforms.create(
             p.x + i * TILE_SIZE + TILE_SIZE / 2,
             p.y + TILE_SIZE / 2,
-            p.texture,
+            p.texture
           ) as Phaser.Physics.Arcade.Sprite;
           tile.setImmovable(true);
           tile.refreshBody();
@@ -902,7 +857,7 @@ export class ArcadeGameScene extends Phaser.Scene {
         const pickup = this.pickups.create(
           p.x,
           p.y,
-          `pickup_${p.type}`,
+          `pickup_${p.type}`
         ) as Phaser.Physics.Arcade.Sprite;
         (pickup as any).pickupType = p.type;
         (pickup.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
@@ -931,11 +886,7 @@ export class ArcadeGameScene extends Phaser.Scene {
                 { x: base + 600, y: GROUND_Y - 16 },
               ];
         cratePositions.forEach((pos) => {
-          const crate = this.crates.create(
-            pos.x,
-            pos.y,
-            "crate",
-          ) as Phaser.Physics.Arcade.Sprite;
+          const crate = this.crates.create(pos.x, pos.y, "crate") as Phaser.Physics.Arcade.Sprite;
           (crate as any).crateHP = 2;
           (crate.body as Phaser.Physics.Arcade.Body).setImmovable(true);
         });
@@ -970,7 +921,7 @@ export class ArcadeGameScene extends Phaser.Scene {
     const enemy = this.enemies.create(
       data.x,
       data.y + spawnOffsetY,
-      textureKey,
+      textureKey
     ) as Phaser.Physics.Arcade.Sprite;
     enemy.body!.setSize(stats.width - 4, stats.height - 4);
     (enemy as any).hp = stats.hp;
@@ -995,17 +946,14 @@ export class ArcadeGameScene extends Phaser.Scene {
       // Landing dust when they reach ground
       this.time.delayedCall(500, () => {
         if (!enemy.active) return;
-        const dust = this.add.particles(
-          enemy.x, enemy.y + stats.height / 2, "particle_dust",
-          {
-            speed: { min: 10, max: 30 },
-            angle: { min: 0, max: 360 },
-            lifespan: 250,
-            gravityY: 40,
-            scale: { start: 1, end: 0 },
-            emitting: false,
-          },
-        );
+        const dust = this.add.particles(enemy.x, enemy.y + stats.height / 2, "particle_dust", {
+          speed: { min: 10, max: 30 },
+          angle: { min: 0, max: 360 },
+          lifespan: 250,
+          gravityY: 40,
+          scale: { start: 1, end: 0 },
+          emitting: false,
+        });
         dust.explode(3);
         this.time.delayedCall(300, () => dust.destroy());
       });
@@ -1026,7 +974,7 @@ export class ArcadeGameScene extends Phaser.Scene {
         enemy.x,
         enemy.y,
         this.player.x,
-        this.player.y,
+        this.player.y
       );
 
       // Texture animation: idle cycling for stationary, walk for moving
@@ -1075,10 +1023,7 @@ export class ArcadeGameScene extends Phaser.Scene {
         }
       }
 
-      if (
-        distToPlayer < 300 &&
-        time - ((enemy as any).lastFire || 0) > stats.fireRate
-      ) {
+      if (distToPlayer < 300 && time - ((enemy as any).lastFire || 0) > stats.fireRate) {
         (enemy as any).lastFire = time;
         enemy.setTexture(`${type}_shoot`);
 
@@ -1089,9 +1034,12 @@ export class ArcadeGameScene extends Phaser.Scene {
         const angle = Phaser.Math.Angle.Between(bulletX, bulletY, this.player.x, this.player.y);
         const speed = type === "heavy" ? 150 : 200;
         this.fireEnemyBullet(
-          bulletX, bulletY,
-          Math.cos(angle) * speed, Math.sin(angle) * speed,
-          stats.damage, bulletTexture,
+          bulletX,
+          bulletY,
+          Math.cos(angle) * speed,
+          Math.sin(angle) * speed,
+          stats.damage,
+          bulletTexture
         );
       }
     });
@@ -1128,7 +1076,7 @@ export class ArcadeGameScene extends Phaser.Scene {
             if (this.boss) {
               this.createExplosion(
                 this.boss.x + Phaser.Math.Between(-30, 30),
-                this.boss.y + Phaser.Math.Between(-30, 30),
+                this.boss.y + Phaser.Math.Between(-30, 30)
               );
             }
           });
@@ -1155,8 +1103,7 @@ export class ArcadeGameScene extends Phaser.Scene {
       body.setVelocityX(0);
     }
 
-    const fireRate =
-      this.bossPhase === 2 ? stats.fireRate / 2 : stats.fireRate;
+    const fireRate = this.bossPhase === 2 ? stats.fireRate / 2 : stats.fireRate;
     if (time - this.bossLastFire > fireRate) {
       this.bossLastFire = time;
       this.bossShootUntil = time + 200;
@@ -1167,9 +1114,12 @@ export class ArcadeGameScene extends Phaser.Scene {
 
         const dir = dist > 0 ? 1 : -1;
         this.fireEnemyBullet(
-          this.boss.x + dir * 32, this.boss.y - 10,
-          dir * 180, 0,
-          stats.damage, "rocket",
+          this.boss.x + dir * 32,
+          this.boss.y - 10,
+          dir * 180,
+          0,
+          stats.damage,
+          "rocket"
         );
       } else {
         // Phase 2: Triple missile spread
@@ -1177,27 +1127,24 @@ export class ArcadeGameScene extends Phaser.Scene {
 
         for (let i = -1; i <= 1; i++) {
           const angle =
-            Phaser.Math.Angle.Between(
-              this.boss.x, this.boss.y,
-              this.player.x, this.player.y,
-            ) + i * 0.3;
+            Phaser.Math.Angle.Between(this.boss.x, this.boss.y, this.player.x, this.player.y) +
+            i * 0.3;
           this.fireEnemyBullet(
-            this.boss.x, this.boss.y - 20,
-            Math.cos(angle) * 160, Math.sin(angle) * 160,
-            stats.damage, "rocket",
+            this.boss.x,
+            this.boss.y - 20,
+            Math.cos(angle) * 160,
+            Math.sin(angle) * 160,
+            stats.damage,
+            "rocket"
           );
         }
       }
     } else if (time > this.bossShootUntil) {
       // Boss walk/idle animation (only when not in shoot pose)
       if (Math.abs(body.velocity.x) > 5) {
-        this.boss.setTexture(
-          this.animFrame % 2 === 0 ? "boss_walk_1" : "boss_walk_2",
-        );
+        this.boss.setTexture(this.animFrame % 2 === 0 ? "boss_walk_1" : "boss_walk_2");
       } else {
-        this.boss.setTexture(
-          this.enemyAnimFrame === 0 ? "boss_idle" : "boss_idle_2",
-        );
+        this.boss.setTexture(this.enemyAnimFrame === 0 ? "boss_idle" : "boss_idle_2");
       }
     }
   }

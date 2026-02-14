@@ -101,9 +101,7 @@ export function ArcadeModal({ onClose }: ArcadeModalProps) {
           <p className="font-pixel text-[8px] text-gray-500 hidden sm:block">
             Arrow Keys: Move &nbsp; Z: Shoot &nbsp; X: Jump &nbsp; C: Grenade
           </p>
-          <p className="font-pixel text-[8px] text-gray-500 sm:hidden">
-            Tap to play
-          </p>
+          <p className="font-pixel text-[8px] text-gray-500 sm:hidden">Tap to play</p>
         </div>
 
         <div

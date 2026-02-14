@@ -248,10 +248,7 @@ export async function GET(request: NextRequest) {
 
       const replay = await getMatchReplay(parseInt(matchId, 10));
       if (!replay) {
-        return NextResponse.json(
-          { error: "Replay not found for this match" },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: "Replay not found for this match" }, { status: 404 });
       }
 
       return NextResponse.json({ success: true, replay });

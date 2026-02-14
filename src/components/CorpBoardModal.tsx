@@ -554,7 +554,9 @@ export function CorpBoardModal({ onClose }: CorpBoardModalProps) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div
         className="relative bg-gradient-to-b from-[#0c1e30] to-[#080e18] border-2 border-green-500/40 rounded-t-xl sm:rounded-xl
