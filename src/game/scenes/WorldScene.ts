@@ -1026,9 +1026,10 @@ export class WorldScene extends Phaser.Scene {
       character.id.startsWith("external-") || character.id.startsWith("agent-");
 
     if (isExternalAgent) {
-      // Open the agent's profile page directly
-      if (character.profileUrl) {
-        window.open(character.profileUrl, "_blank");
+      // Show tooltip with "Visit Profile" button instead of navigating directly
+      const sprite = this.characterSprites.get(character.id);
+      if (sprite) {
+        this.showCharacterTooltip(character, sprite);
       }
     } else if (character.isToly) {
       window.dispatchEvent(new CustomEvent("bagsworld-toly-click"));
@@ -1063,8 +1064,11 @@ export class WorldScene extends Phaser.Scene {
     } else if (character.isBagsy) {
       window.dispatchEvent(new CustomEvent("bagsworld-bagsy-click"));
     } else if (character.profileUrl) {
-      // Open profile directly
-      window.open(character.profileUrl, "_blank");
+      // Show tooltip with "Visit Profile" button instead of navigating directly
+      const sprite = this.characterSprites.get(character.id);
+      if (sprite) {
+        this.showCharacterTooltip(character, sprite);
+      }
     }
   }
 
@@ -6031,10 +6035,8 @@ export class WorldScene extends Phaser.Scene {
       if (this.wasDragGesture) return;
 
       if (isOpenClaw) {
-        // Click directly opens the agent's profile page
-        if (character.profileUrl) {
-          window.open(character.profileUrl, "_blank");
-        }
+        // Show tooltip with "Visit Profile" button instead of navigating directly
+        this.showCharacterTooltip(character, sprite!);
       } else if (isToly) {
         // Toly opens the Solana wisdom chat
         window.dispatchEvent(new CustomEvent("bagsworld-toly-click"));
@@ -6084,8 +6086,8 @@ export class WorldScene extends Phaser.Scene {
         // Bagsy opens the mascot chat
         window.dispatchEvent(new CustomEvent("bagsworld-bagsy-click"));
       } else if (character.profileUrl) {
-        // Open profile directly
-        window.open(character.profileUrl, "_blank");
+        // Show tooltip with "Visit Profile" button instead of navigating directly
+        this.showCharacterTooltip(character, sprite!);
       }
     });
 
