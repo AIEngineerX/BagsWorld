@@ -3,11 +3,11 @@ import React from "react";
 export type WizardScreen =
   | "title"
   | "professor_entry"
-  | "welcome_dialogue"
   | "creator_name"
   | "rival_intro"
   | "rival_name"
   | "token_concept"
+  | "token_custom"
   | "token_style"
   | "token_names"
   | "token_image"
@@ -42,6 +42,8 @@ export interface WizardState {
   tokenDescription: string;
   tokenImageUrl: string | null;
   tokenBannerUrl: string | null;
+  tokenTwitter: string;
+  tokenWebsite: string;
   suggestedNames: SuggestedName[];
   isGenerating: boolean;
   initialBuySOL: string;
@@ -60,6 +62,8 @@ export type WizardAction =
   | { type: "SET_TOKEN_DATA"; name: string; symbol: string; description: string }
   | { type: "SET_TOKEN_IMAGE"; url: string | null }
   | { type: "SET_TOKEN_BANNER"; url: string | null }
+  | { type: "SET_TOKEN_TWITTER"; twitter: string }
+  | { type: "SET_TOKEN_WEBSITE"; website: string }
   | { type: "SET_SUGGESTED_NAMES"; names: SuggestedName[] }
   | { type: "SET_GENERATING"; generating: boolean }
   | { type: "SET_INITIAL_BUY"; amount: string }

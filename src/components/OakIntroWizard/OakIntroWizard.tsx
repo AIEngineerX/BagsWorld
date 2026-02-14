@@ -1,6 +1,6 @@
 "use client";
 
-import { useReducer, useCallback, useEffect, useMemo, useRef } from "react";
+import { useReducer, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMobileWallet } from "@/hooks/useMobileWallet";
 import { executeLaunchFlow } from "@/lib/launch-flow";
 import { GameBoyFrame } from "./GameBoyFrame";
@@ -26,6 +26,8 @@ const initialState: WizardState = {
   tokenDescription: "",
   tokenImageUrl: null,
   tokenBannerUrl: null,
+  tokenTwitter: "",
+  tokenWebsite: "",
   suggestedNames: [],
   isGenerating: false,
   initialBuySOL: "0",
@@ -58,6 +60,10 @@ function wizardReducer(state: WizardState, action: WizardAction): WizardState {
       return { ...state, tokenImageUrl: action.url };
     case "SET_TOKEN_BANNER":
       return { ...state, tokenBannerUrl: action.url };
+    case "SET_TOKEN_TWITTER":
+      return { ...state, tokenTwitter: action.twitter };
+    case "SET_TOKEN_WEBSITE":
+      return { ...state, tokenWebsite: action.website };
     case "SET_SUGGESTED_NAMES":
       return { ...state, suggestedNames: action.names };
     case "SET_GENERATING":
@@ -110,9 +116,36 @@ export function OakIntroWizard({ onClose, onLaunchSuccess }: OakIntroWizardProps
     stateRef.current = state;
   }, [state]);
 
+  const handleClose = useCallback(() => {
+    sessionStorage.setItem("bagsworld_intro_seen", "true");
+    onClose();
+  }, [onClose]);
+
+  // Screen transition fade
+  const [transitioning, setTransitioning] = useState(false);
+  const pendingAdvanceRef = useRef<(() => void) | null>(null);
+
   const handleAdvance = useCallback(() => {
-    dispatch({ type: "ADVANCE_SCREEN" });
-  }, []);
+    // If on the last screen (sendoff), close the wizard instead of advancing nowhere
+    if (stateRef.current.currentScreen === "sendoff") {
+      handleClose();
+      return;
+    }
+    // Quick fade-to-black between screens
+    setTransitioning(true);
+    pendingAdvanceRef.current = () => dispatch({ type: "ADVANCE_SCREEN" });
+  }, [handleClose]);
+
+  // After fade-out completes (150ms), switch screen and fade back in
+  useEffect(() => {
+    if (!transitioning) return;
+    const timer = setTimeout(() => {
+      pendingAdvanceRef.current?.();
+      pendingAdvanceRef.current = null;
+      setTransitioning(false);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [transitioning]);
 
   const handleSkip = useCallback(() => {
     const s = stateRef.current;
@@ -159,6 +192,8 @@ export function OakIntroWizard({ onClose, onLaunchSuccess }: OakIntroWizardProps
             symbol: s.tokenSymbol,
             description: s.tokenDescription,
             image: s.tokenImageUrl || "",
+            twitter: s.tokenTwitter || undefined,
+            website: s.tokenWebsite || undefined,
           },
           feeShares: feeClaimers,
           initialBuySOL: s.initialBuySOL,
@@ -207,11 +242,6 @@ export function OakIntroWizard({ onClose, onLaunchSuccess }: OakIntroWizardProps
     };
   }, [state.currentScreen, publicKey, connected, onLaunchSuccess]);
 
-  const handleClose = useCallback(() => {
-    sessionStorage.setItem("bagsworld_intro_seen", "true");
-    onClose();
-  }, [onClose]);
-
   // Block only Phaser game-control keys (arrows, WASD) from propagating.
   // All other keys (letters, Space, Enter, Backspace, Escape, numbers)
   // are allowed through so wizard screens can handle them.
@@ -255,7 +285,6 @@ export function OakIntroWizard({ onClose, onLaunchSuccess }: OakIntroWizardProps
         return <TitleScreen {...screenProps} />;
 
       case "professor_entry":
-      case "welcome_dialogue":
         return <ProfessorEntry {...screenProps} />;
 
       case "creator_name":
@@ -266,6 +295,7 @@ export function OakIntroWizard({ onClose, onLaunchSuccess }: OakIntroWizardProps
         return <RivalScreen {...screenProps} />;
 
       case "token_concept":
+      case "token_custom":
       case "token_style":
       case "token_names":
       case "token_image":
@@ -304,5 +334,14 @@ export function OakIntroWizard({ onClose, onLaunchSuccess }: OakIntroWizardProps
     }
   };
 
-  return <GameBoyFrame onClose={handleClose}>{renderScreen()}</GameBoyFrame>;
+  return (
+    <GameBoyFrame onClose={handleClose}>
+      <div
+        className="absolute inset-0 transition-opacity duration-150"
+        style={{ opacity: transitioning ? 0 : 1 }}
+      >
+        {renderScreen()}
+      </div>
+    </GameBoyFrame>
+  );
 }

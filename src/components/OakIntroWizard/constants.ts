@@ -10,10 +10,10 @@ export const DIALOGUE = {
   ],
   rival_intro: [
     "Before we go further, meet BAGSY!",
-    "Bagsy is here to explain how you EARN from your token.",
-    "You earn 1% from every trade of your token — forever! That's your royalties.",
-    "You choose who gets to claim those earnings. Keep 100%, or split with collaborators!",
-    "Each claimer verifies their social account on Bags and links a wallet to claim.",
+    "Bagsy is here to explain how FEE CLAIMERS work.",
+    "Every trade of your token generates a 1% fee. That fee gets split between your FEE CLAIMERS.",
+    "Fee claimers are the people you designate — yourself, collaborators, anyone you choose!",
+    "Each claimer verifies their social account on Bags and links a wallet to claim their share.",
     "One more thing — fee shares are PERMANENT. Once you launch, they're locked forever!",
   ],
   token_concept: [
@@ -21,8 +21,8 @@ export const DIALOGUE = {
     "Tell me about your idea, and I'll help you bring it to life!",
   ],
   education_fees: [
-    "You earn 1% royalties from every trade of your TOKEN — the more it trades, the more you earn!",
-    "To claim, verify your social account on Bags and tap the claim button. Earnings go straight to your wallet!",
+    "Every trade of your TOKEN generates a 1% fee — split between the FEE CLAIMERS you just set up!",
+    "Each claimer verifies their social account on Bags and links a wallet. Then they tap CLAIM to collect!",
     "Gotta claim 'em all!",
   ],
   education_world: [
@@ -78,7 +78,6 @@ export const ART_STYLES = [
 export const SCREEN_ORDER: WizardScreen[] = [
   "title",
   "professor_entry",
-  "welcome_dialogue",
   "creator_name",
   "rival_intro",
   "rival_name",
@@ -105,6 +104,8 @@ export const INITIAL_STATE: WizardState = {
   tokenDescription: "",
   tokenImageUrl: null,
   tokenBannerUrl: null,
+  tokenTwitter: "",
+  tokenWebsite: "",
   suggestedNames: [],
   isGenerating: false,
   initialBuySOL: "",
