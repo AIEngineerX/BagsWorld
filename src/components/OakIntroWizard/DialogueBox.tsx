@@ -106,6 +106,10 @@ export function DialogueBox({
       <div
         className="bg-black/95 border-t-4 border-bags-green p-4 min-h-[80px] cursor-pointer relative select-none"
         onClick={handleInteraction}
+        onTouchEnd={(e) => {
+          e.stopPropagation();
+          handleInteraction();
+        }}
       >
         {/* Speaker name */}
         {speakerName && (
