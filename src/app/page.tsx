@@ -435,7 +435,7 @@ export default function Home() {
   }, [worldState]);
 
   return (
-    <main className="h-[100dvh] w-screen overflow-hidden flex flex-col">
+    <main className="h-[100dvh] w-full overflow-hidden flex flex-col">
       {/* Deep link handler for ?zone= and ?chat= from /agents page */}
       <Suspense fallback={null}>
         <DeepLinkHandler />
@@ -516,7 +516,7 @@ export default function Home() {
 
         {/* Mobile dropdown menu */}
         {mobileMenuOpen && (
-          <div className="absolute top-full left-0 right-0 bg-bags-dark border-b-4 border-bags-green p-3 sm:p-4 lg:hidden z-[60] shadow-lg shadow-bags-green/10">
+          <div className="absolute top-full left-0 right-0 bg-bags-dark border-b-4 border-bags-green p-3 sm:p-4 lg:hidden z-[60] shadow-lg shadow-bags-green/10 max-h-[70vh] overflow-y-auto">
             <div className="flex flex-col gap-3">
               {/* Health bar on mobile */}
               <div className="sm:hidden pb-3 border-b border-bags-green/30">
@@ -631,7 +631,7 @@ export default function Home() {
           className={`
           ${mobileSidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}
           fixed lg:relative right-0 top-14 md:top-16 lg:top-0
-          w-full sm:w-80 h-[calc(100dvh-3.5rem)] md:h-[calc(100dvh-4rem)] lg:h-full
+          w-[85vw] sm:w-80 h-[calc(100dvh-3.5rem)] md:h-[calc(100dvh-4rem)] lg:h-full
           sidebar-panel hud-border-left flex flex-col
           transition-transform duration-300 ease-in-out z-40
           pb-safe
@@ -707,7 +707,7 @@ export default function Home() {
       </div>
 
       {/* Footer status bar - simplified on mobile */}
-      <footer className="min-h-[36px] sm:min-h-[36px] hud-panel hud-border-top flex items-center justify-between px-2 md:px-4 font-pixel text-[8px] sm:text-[8px] md:text-[10px] safe-area-bottom shrink-0 overflow-hidden">
+      <footer className="min-h-[36px] sm:min-h-[36px] hud-panel hud-border-top flex items-center justify-between px-2 md:px-4 font-pixel text-[10px] sm:text-[9px] md:text-[10px] safe-area-bottom shrink-0 overflow-hidden">
         <div className="flex items-center gap-2 md:gap-4">
           <span className="text-gray-400">
             [POP:<span className="text-white ml-1">{worldState?.population?.length ?? 0}</span>]

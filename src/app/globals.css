@@ -216,11 +216,18 @@ body {
   }
 }
 
-/* Responsive font sizing */
+/* Responsive font sizing — enforce minimum readable size on mobile */
 @media (max-width: 639px) {
   .font-pixel {
     letter-spacing: -0.5px; /* Tighter on small screens */
-    font-size: max(10px, inherit);
+  }
+
+  /* Override tiny text classes to be readable on mobile (min 10px) */
+  .text-\[6px\],
+  .text-\[7px\],
+  .text-\[8px\],
+  .text-\[9px\] {
+    font-size: 10px !important;
   }
 }
 

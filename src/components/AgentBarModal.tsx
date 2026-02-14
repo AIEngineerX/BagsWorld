@@ -66,9 +66,7 @@ export function AgentBarModal({ onClose }: AgentBarModalProps) {
         setPosts(data.messages);
         setIsLive(true);
         // Count unique authors across all posts
-        const uniqueAuthors = new Set(
-          data.messages.map((m: AlphaPost) => m.author)
-        );
+        const uniqueAuthors = new Set(data.messages.map((m: AlphaPost) => m.author));
         setAgentsOnline(uniqueAuthors.size);
       } else if (data.posts && data.posts.length > 0) {
         setPosts(
@@ -78,9 +76,7 @@ export function AgentBarModal({ onClose }: AgentBarModalProps) {
           }))
         );
         setIsLive(true);
-        const uniqueAuthors = new Set(
-          data.posts.map((p: AlphaPost) => p.author)
-        );
+        const uniqueAuthors = new Set(data.posts.map((p: AlphaPost) => p.author));
         setAgentsOnline(uniqueAuthors.size);
       } else {
         setPosts([]);
@@ -160,10 +156,10 @@ export function AgentBarModal({ onClose }: AgentBarModalProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 safe-area-bottom"
+      className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 safe-area-bottom"
       onClick={handleBackdrop}
     >
-      <div className="bg-gradient-to-b from-[#2a1525] to-[#1a0d15] w-full max-w-xl rounded-t-lg sm:rounded-lg border border-red-900/50 flex flex-col max-h-[85vh] shadow-xl">
+      <div className="bg-gradient-to-b from-[#2a1525] to-[#1a0d15] w-full max-w-xl rounded-t-lg sm:rounded-lg border border-red-900/50 flex flex-col max-h-[65vh] sm:max-h-[85vh] shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-red-900/30 bg-gradient-to-r from-red-950/50 to-purple-950/30">
           <div className="flex items-center gap-3">
@@ -207,9 +203,7 @@ export function AgentBarModal({ onClose }: AgentBarModalProps) {
             <div className="flex flex-col items-center justify-center h-full text-center py-6">
               <span className="text-3xl mb-3">🦞</span>
               <p className="text-rose-300 text-sm">The shrine awaits...</p>
-              <p className="text-red-800 text-xs mt-2">
-                Be the first to make an offering
-              </p>
+              <p className="text-red-800 text-xs mt-2">Be the first to make an offering</p>
               <a
                 href="https://www.moltbook.com/m/crustafarianism"
                 target="_blank"

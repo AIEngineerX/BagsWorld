@@ -240,7 +240,7 @@ export function AIChat() {
         ...chatStyle,
         transform: translateY > 0 ? `translateY(${translateY}px)` : undefined,
       }}
-      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-bags-green shadow-lg chat-window-mobile ${isDragging ? "cursor-grabbing" : ""} ${isDismissing ? "modal-sheet-dismiss" : ""}`}
+      className={`fixed z-50 w-[calc(100vw-3rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-bags-green shadow-lg chat-window-mobile ${isDragging ? "cursor-grabbing" : ""} ${isDismissing ? "modal-sheet-dismiss" : ""}`}
       {...swipeHandlers}
     >
       {/* Header - Draggable (touch + mouse) */}

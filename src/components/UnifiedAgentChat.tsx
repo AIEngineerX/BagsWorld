@@ -136,7 +136,7 @@ export function UnifiedAgentChat({
     <div
       ref={chatRef}
       style={chatStyle}
-      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-${agentInfo.color}-500 shadow-lg shadow-${agentInfo.color}-500/20 ${isDragging ? "cursor-grabbing" : ""}`}
+      className={`fixed z-50 w-[calc(100vw-3rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-${agentInfo.color}-500 shadow-lg shadow-${agentInfo.color}-500/20 ${isDragging ? "cursor-grabbing" : ""}`}
     >
       {/* Header */}
       <div
