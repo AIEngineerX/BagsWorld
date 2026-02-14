@@ -31,12 +31,20 @@ const PHASE = {
 
 export function TitleScreen({ onAdvance }: ScreenProps) {
   const [ready, setReady] = useState(false);
+  const [canAdvance, setCanAdvance] = useState(false);
   const musicRef = useRef<IntroMusic | null>(null);
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => setReady(true));
     return () => cancelAnimationFrame(raf);
   }, []);
+
+  // Don't allow advance until "PRESS START" is visible (prevents accidental mobile taps)
+  useEffect(() => {
+    if (!ready) return;
+    const timer = setTimeout(() => setCanAdvance(true), PHASE.PRESS_START * 1000);
+    return () => clearTimeout(timer);
+  }, [ready]);
 
   // Start music after delay, stop on unmount
   useEffect(() => {
@@ -108,6 +116,7 @@ export function TitleScreen({ onAdvance }: ScreenProps) {
   // Keyboard
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!canAdvance) return;
       if (e.code === "Space" || e.code === "Enter") {
         e.preventDefault();
         musicRef.current?.stop();
@@ -116,24 +125,21 @@ export function TitleScreen({ onAdvance }: ScreenProps) {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onAdvance]);
+  }, [onAdvance, canAdvance]);
 
   // Use a ref to prevent double-advance from both touchend and click
   const advancedRef = useRef(false);
 
   const doAdvance = useCallback(() => {
+    if (!canAdvance) return;
     if (advancedRef.current) return;
     advancedRef.current = true;
     musicRef.current?.stop();
     onAdvance();
-  }, [onAdvance]);
+  }, [onAdvance, canAdvance]);
 
+  // Single click handler — works for both mouse and touch (no separate onTouchEnd needed)
   const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    doAdvance();
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
     e.stopPropagation();
     doAdvance();
   };
@@ -143,7 +149,6 @@ export function TitleScreen({ onAdvance }: ScreenProps) {
     <div
       className="absolute inset-0 bg-black overflow-hidden cursor-pointer select-none"
       onClick={handleClick}
-      onTouchEnd={handleTouchEnd}
     >
       {/* ── Deep space gradient ── */}
       <div

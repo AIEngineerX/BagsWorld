@@ -179,6 +179,8 @@ export function SamChat() {
 
   useEffect(() => {
     const handleSamClick = () => {
+      // Don't open chat while a modal (intro wizard, etc.) is active
+      if ((window as any).__bagsworld_modal_open) return;
       setIsOpen(true);
       if (messages.length === 0) {
         sendToSam("initializing...");

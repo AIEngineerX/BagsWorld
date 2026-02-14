@@ -71,11 +71,11 @@ export function GameBoyFrame({ children, onClose }: GameBoyFrameProps) {
             }}
           />
 
-          {/* Skip button */}
+          {/* Skip button — sized for mobile touch targets (min 44x44px) */}
           {onClose && (
             <button
               onClick={onClose}
-              className="absolute top-2 right-2 font-pixel text-[8px] text-gray-600 hover:text-gray-400 cursor-pointer z-20"
+              className="absolute top-3 right-3 font-pixel text-[10px] sm:text-[8px] text-gray-400 hover:text-gray-200 cursor-pointer z-20 min-w-[44px] min-h-[44px] flex items-center justify-center"
               type="button"
             >
               [SKIP]

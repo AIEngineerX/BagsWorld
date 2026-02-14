@@ -90,6 +90,8 @@ export function DevChat() {
   // Listen for Dev click events
   useEffect(() => {
     const handleDevClick = () => {
+      // Don't open chat while a modal (intro wizard, etc.) is active
+      if ((window as any).__bagsworld_modal_open) return;
       setIsOpen(true);
       if (messages.length === 0) {
         const randomQuote = DEV_QUOTES[Math.floor(Math.random() * DEV_QUOTES.length)];

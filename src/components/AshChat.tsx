@@ -82,6 +82,8 @@ export function AshChat() {
   // Listen for Ash click events
   useEffect(() => {
     const handleAshClick = () => {
+      // Don't open chat while a modal (intro wizard, etc.) is active
+      if ((window as any).__bagsworld_modal_open) return;
       setIsOpen(true);
       if (messages.length === 0) {
         addMessage({

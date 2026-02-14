@@ -701,10 +701,12 @@ export class WorldScene extends Phaser.Scene {
     this.interactPrompt.add(text);
 
     // On mobile, make the prompt tappable to trigger interaction
+    // Uses pointerup + drag guard to prevent accidental triggers while panning
     if (this.isMobile) {
       const hitArea = this.add.rectangle(0, 0, pillWidth + 20, 50, 0x000000, 0);
       hitArea.setInteractive({ useHandCursor: true });
-      hitArea.on("pointerdown", () => {
+      hitArea.on("pointerup", () => {
+        if (this.wasDragGesture) return;
         if (this.nearbyNPC) {
           this.interactWithNPC(this.nearbyNPC);
         } else if (this.nearbyBuilding) {
