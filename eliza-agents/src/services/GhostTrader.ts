@@ -1021,14 +1021,23 @@ export class GhostTrader {
     this.maybeChatter(scanMessages[Math.floor(Math.random() * scanMessages.length)], "focused");
 
     const evaluations: TradeEvaluation[] = [];
+    let evaluatedCount = 0;
 
     for (const launch of launches) {
       // Skip if already traded or recently evaluated
       if (this.tradedMints.has(launch.mint)) continue;
       if (this.wasRecentlyEvaluated(launch.mint)) continue;
 
+      // Stagger RPC calls: 500ms between evaluations to avoid bursting
+      // the Helius rate limit (each evaluation fires 2+ RPC calls for
+      // concentration checks, plus API calls for token info)
+      if (evaluatedCount > 0) {
+        await new Promise((r) => setTimeout(r, 500));
+      }
+
       const evaluation = await this.evaluateLaunch(launch);
       this.markAsEvaluated(launch.mint);
+      evaluatedCount++;
 
       if (evaluation.shouldBuy) {
         evaluations.push(evaluation);

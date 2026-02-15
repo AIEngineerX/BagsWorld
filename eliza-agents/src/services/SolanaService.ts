@@ -86,8 +86,13 @@ export class SolanaService extends Service {
   readonly capabilityDescription = "Solana transaction signing and submission";
 
   private rpcUrl: string;
+  private fallbackRpcUrls: string[];
   private keypair: nacl.SignKeyPair | null = null;
   private publicKeyBytes: Uint8Array | null = null;
+
+  // Cache for getTopHolderConcentration — avoids redundant RPC bursts
+  private concentrationCache: Map<string, { data: { top5Pct: number; top10Pct: number; largestPct: number } | null; expiry: number }> = new Map();
+  private static readonly CONCENTRATION_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
   constructor(runtime?: IAgentRuntime) {
     super(runtime);
@@ -96,6 +101,13 @@ export class SolanaService extends Service {
       process.env.SOLANA_RPC_URL ||
       process.env.HELIUS_RPC_URL ||
       "https://api.mainnet-beta.solana.com";
+
+    // Build fallback RPC list — public endpoints for when Helius is rate-limited.
+    // These are only used after the primary RPC has been exhausted on retries.
+    this.fallbackRpcUrls = [
+      "https://api.mainnet-beta.solana.com",
+      "https://solana-rpc.publicnode.com",
+    ].filter((url) => url !== this.rpcUrl); // Don't duplicate the primary
   }
 
   static async start(runtime: IAgentRuntime): Promise<SolanaService> {
@@ -240,87 +252,202 @@ export class SolanaService extends Service {
   }
 
   /**
-   * Send raw transaction to RPC with retry on rate limits
+   * Send raw transaction to a specific RPC URL.
+   * Returns the signature string on success, or throws on error.
+   */
+  private async sendRawTransactionToRpc(
+    rpcUrl: string,
+    base64Tx: string,
+    options?: SendTransactionOptions
+  ): Promise<string> {
+    const response = await fetch(rpcUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "sendTransaction",
+        params: [
+          base64Tx,
+          {
+            encoding: "base64",
+            skipPreflight: options?.skipPreflight ?? false,
+            preflightCommitment: options?.preflightCommitment ?? "confirmed",
+            maxRetries: options?.maxRetries ?? 3,
+          },
+        ],
+      }),
+    });
+
+    const result = await response.json();
+
+    if (result.error) {
+      const msg = result.error.message || JSON.stringify(result.error);
+      const isRateLimit = msg.includes("max usage") || msg.includes("429") || response.status === 429;
+      if (isRateLimit) {
+        throw Object.assign(new Error(msg), { isRateLimit: true });
+      }
+      throw new Error(msg);
+    }
+
+    return result.result;
+  }
+
+  /**
+   * Send raw transaction to RPC with exponential backoff retries on the primary
+   * RPC, then fall back to public RPCs if the primary is rate-limited.
    */
   private async sendRawTransaction(
     signedTransaction: Uint8Array,
     options?: SendTransactionOptions
   ): Promise<string> {
     const base64Tx = btoa(String.fromCharCode(...signedTransaction));
-    const maxAttempts = 3;
 
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      const response = await fetch(this.rpcUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "sendTransaction",
-          params: [
-            base64Tx,
-            {
-              encoding: "base64",
-              skipPreflight: options?.skipPreflight ?? false,
-              preflightCommitment: options?.preflightCommitment ?? "confirmed",
-              maxRetries: options?.maxRetries ?? 3,
-            },
-          ],
-        }),
-      });
+    // Phase 1: Retry on primary RPC with exponential backoff
+    const maxPrimaryAttempts = 5;
+    let lastError: Error | null = null;
+    let hitRateLimit = false;
 
-      const result = await response.json();
+    for (let attempt = 1; attempt <= maxPrimaryAttempts; attempt++) {
+      try {
+        return await this.sendRawTransactionToRpc(this.rpcUrl, base64Tx, options);
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        const isRateLimit = (err as { isRateLimit?: boolean }).isRateLimit === true;
 
-      if (result.error) {
-        const msg = result.error.message || JSON.stringify(result.error);
-        const isRateLimit = msg.includes("max usage") || msg.includes("429") || response.status === 429;
-
-        if (isRateLimit && attempt < maxAttempts) {
-          const delayMs = attempt * 2000; // 2s, 4s
-          console.warn(`[SolanaService] sendTransaction rate limited (attempt ${attempt}/${maxAttempts}), retrying in ${delayMs / 1000}s...`);
+        if (isRateLimit && attempt < maxPrimaryAttempts) {
+          const delayMs = Math.min(2000 * Math.pow(2, attempt - 1), 16000); // 2s, 4s, 8s, 16s
+          console.warn(
+            `[SolanaService] sendTransaction rate limited on primary (attempt ${attempt}/${maxPrimaryAttempts}), retrying in ${delayMs / 1000}s...`
+          );
           await new Promise((r) => setTimeout(r, delayMs));
           continue;
         }
 
-        throw new Error(msg);
-      }
+        if (isRateLimit) {
+          hitRateLimit = true;
+          console.warn(
+            `[SolanaService] Primary RPC exhausted after ${maxPrimaryAttempts} attempts, trying fallback RPCs...`
+          );
+          break;
+        }
 
-      return result.result;
+        // Non-rate-limit error — don't retry, throw immediately
+        throw lastError;
+      }
     }
 
-    throw new Error("sendTransaction failed after all retry attempts");
+    // Phase 2: Try fallback RPCs (only reached on rate-limit exhaustion)
+    if (hitRateLimit) {
+      for (const fallbackUrl of this.fallbackRpcUrls) {
+        try {
+          console.log(
+            `[SolanaService] Trying fallback RPC: ${fallbackUrl.replace(/https?:\/\//, "").slice(0, 30)}...`
+          );
+          const sig = await this.sendRawTransactionToRpc(fallbackUrl, base64Tx, options);
+          console.log(`[SolanaService] sendTransaction succeeded on fallback RPC`);
+          return sig;
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.warn(`[SolanaService] Fallback RPC failed: ${msg}`);
+          lastError = err instanceof Error ? err : new Error(msg);
+        }
+      }
+    }
+
+    throw lastError || new Error("sendTransaction failed after all retry attempts");
   }
 
   /**
-   * Confirm transaction
+   * Check signature status against a single RPC URL.
+   * Returns "confirmed" | "finalized" | "processing" | "error" | "rpc_error".
+   */
+  private async checkSignatureStatus(
+    rpcUrl: string,
+    signature: string
+  ): Promise<{ state: "confirmed" | "finalized" | "processing" | "error" | "rpc_error"; err?: string }> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch(rpcUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getSignatureStatuses",
+        params: [[signature]],
+      }),
+    });
+
+    clearTimeout(timeout);
+    const result = await response.json();
+
+    if (result.error) {
+      return { state: "rpc_error", err: result.error.message || JSON.stringify(result.error) };
+    }
+
+    const status = result.result?.value?.[0];
+    if (!status) {
+      return { state: "processing" };
+    }
+    if (status.err) {
+      return { state: "error", err: JSON.stringify(status.err) };
+    }
+    if (status.confirmationStatus === "confirmed" || status.confirmationStatus === "finalized") {
+      return { state: status.confirmationStatus };
+    }
+    return { state: "processing" };
+  }
+
+  /**
+   * Confirm transaction by polling signature status.
+   * Uses primary RPC first, falls back to public RPCs on rate-limit errors.
    */
   private async confirmTransaction(signature: string, maxRetries: number = 30): Promise<boolean> {
+    const rpcUrls = [this.rpcUrl, ...this.fallbackRpcUrls];
+    let currentRpcIndex = 0;
+    let consecutiveRpcErrors = 0;
+
     for (let i = 0; i < maxRetries; i++) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      const response = await fetch(this.rpcUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "getSignatureStatuses",
-          params: [[signature]],
-        }),
-      });
+      const url = rpcUrls[currentRpcIndex];
 
-      const result = await response.json();
-      const status = result.result?.value?.[0];
+      try {
+        const result = await this.checkSignatureStatus(url, signature);
 
-      if (status) {
-        if (status.err) {
-          throw new Error(`Transaction failed: ${JSON.stringify(status.err)}`);
+        switch (result.state) {
+          case "confirmed":
+          case "finalized":
+            return true;
+          case "error":
+            throw new Error(`Transaction failed: ${result.err}`);
+          case "rpc_error":
+            consecutiveRpcErrors++;
+            // Switch to next RPC after 2 consecutive errors on the current one
+            if (consecutiveRpcErrors >= 2 && currentRpcIndex < rpcUrls.length - 1) {
+              currentRpcIndex++;
+              consecutiveRpcErrors = 0;
+              console.warn(
+                `[SolanaService] confirmTransaction: switching to RPC #${currentRpcIndex + 1} after errors`
+              );
+            }
+            break;
+          case "processing":
+            consecutiveRpcErrors = 0;
+            break;
         }
-        if (
-          status.confirmationStatus === "confirmed" ||
-          status.confirmationStatus === "finalized"
-        ) {
-          return true;
+      } catch (err) {
+        // Network/abort errors — try next RPC
+        consecutiveRpcErrors++;
+        if (consecutiveRpcErrors >= 2 && currentRpcIndex < rpcUrls.length - 1) {
+          currentRpcIndex++;
+          consecutiveRpcErrors = 0;
+          console.warn(
+            `[SolanaService] confirmTransaction: switching to RPC #${currentRpcIndex + 1} after fetch error`
+          );
         }
       }
     }
@@ -378,92 +505,119 @@ export class SolanaService extends Service {
    * Get SPL token balance for a specific mint.
    * Returns raw token amount (not decimal-adjusted), matching how amountTokens
    * is stored from parseFloat(quote.outAmount) during buys.
+   * Tries primary RPC, falls back to public RPCs on error.
    */
   async getTokenBalance(tokenMint: string): Promise<number> {
     if (!this.publicKeyBytes) return 0;
 
     const publicKey = base58Encode(this.publicKeyBytes);
+    const rpcUrls = [this.rpcUrl, ...this.fallbackRpcUrls];
 
-    const response = await fetch(this.rpcUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "getTokenAccountsByOwner",
-        params: [
-          publicKey,
-          { mint: tokenMint },
-          { encoding: "jsonParsed", commitment: "confirmed" },
-        ],
-      }),
-    });
+    for (const url of rpcUrls) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
 
-    const result = await response.json();
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "getTokenAccountsByOwner",
+            params: [
+              publicKey,
+              { mint: tokenMint },
+              { encoding: "jsonParsed", commitment: "confirmed" },
+            ],
+          }),
+        });
 
-    if (result.error) {
-      throw new Error(result.error.message || JSON.stringify(result.error));
-    }
+        clearTimeout(timeout);
+        const result = await response.json();
 
-    const accounts = result.result?.value;
-
-    if (!accounts || accounts.length === 0) {
-      return 0;
-    }
-
-    // Sum balances across all token accounts for this mint (usually just one)
-    let totalAmount = 0;
-    for (const account of accounts) {
-      const tokenAmount = account.account?.data?.parsed?.info?.tokenAmount;
-      if (tokenAmount) {
-        const parsed = parseFloat(tokenAmount.amount);
-        if (!isNaN(parsed)) {
-          totalAmount += parsed;
+        if (result.error) {
+          console.warn(
+            `[SolanaService] getTokenBalance RPC error from ${url === this.rpcUrl ? "primary" : "fallback"}:`,
+            result.error
+          );
+          continue;
         }
+
+        const accounts = result.result?.value;
+
+        if (!accounts || accounts.length === 0) {
+          return 0;
+        }
+
+        // Sum balances across all token accounts for this mint (usually just one)
+        let totalAmount = 0;
+        for (const account of accounts) {
+          const tokenAmount = account.account?.data?.parsed?.info?.tokenAmount;
+          if (tokenAmount) {
+            const parsed = parseFloat(tokenAmount.amount);
+            if (!isNaN(parsed)) {
+              totalAmount += parsed;
+            }
+          }
+        }
+
+        return totalAmount;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[SolanaService] getTokenBalance failed on ${url === this.rpcUrl ? "primary" : "fallback"} RPC: ${msg}`);
+        continue;
       }
     }
 
-    return totalAmount;
+    throw new Error("All RPC endpoints failed for getTokenBalance");
   }
 
   /**
    * Get the number of decimals for a token mint.
-   * Uses getTokenSupply RPC call. Falls back to 6 (standard for Bags.fm tokens).
+   * Uses getTokenSupply RPC call. Tries primary RPC, falls back to public RPCs,
+   * then defaults to 6 (standard for Bags.fm tokens) if all RPCs fail.
    */
   async getTokenDecimals(tokenMint: string): Promise<number> {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
+    const rpcUrls = [this.rpcUrl, ...this.fallbackRpcUrls];
 
-      const response = await fetch(this.rpcUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "getTokenSupply",
-          params: [tokenMint],
-        }),
-      });
+    for (const url of rpcUrls) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
 
-      clearTimeout(timeout);
-      const result = await response.json();
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "getTokenSupply",
+            params: [tokenMint],
+          }),
+        });
 
-      if (result.error) {
-        console.warn(`[SolanaService] getTokenDecimals RPC error for ${tokenMint}:`, result.error);
-        return 6;
+        clearTimeout(timeout);
+        const result = await response.json();
+
+        if (result.error) {
+          console.warn(`[SolanaService] getTokenDecimals RPC error for ${tokenMint} from ${url === this.rpcUrl ? "primary" : "fallback"}:`, result.error);
+          continue;
+        }
+
+        const decimals = result.result?.value?.decimals;
+        return typeof decimals === "number" ? decimals : 6;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[SolanaService] getTokenDecimals failed on ${url === this.rpcUrl ? "primary" : "fallback"} RPC: ${msg}`);
+        continue;
       }
-
-      const decimals = result.result?.value?.decimals;
-      return typeof decimals === "number" ? decimals : 6;
-    } catch (error) {
-      console.warn(
-        `[SolanaService] Failed to get decimals for ${tokenMint}, defaulting to 6:`,
-        error instanceof Error ? error.message : error
-      );
-      return 6;
     }
+
+    console.warn(`[SolanaService] All RPCs failed for getTokenDecimals(${tokenMint}), defaulting to 6`);
+    return 6;
   }
 
   /**
@@ -509,11 +663,27 @@ export class SolanaService extends Service {
   /**
    * Get top holder concentration for a token mint.
    * Uses getTokenLargestAccounts + getTokenSupply to detect bundled tokens.
+   * Results are cached for CONCENTRATION_CACHE_TTL_MS to avoid burst RPC calls
+   * when evaluating multiple launches in rapid succession.
    * Returns null on any error (graceful degradation - never blocks trading).
    */
   async getTopHolderConcentration(
     mint: string
   ): Promise<{ top5Pct: number; top10Pct: number; largestPct: number } | null> {
+    // Check cache first
+    const cached = this.concentrationCache.get(mint);
+    if (cached && Date.now() < cached.expiry) {
+      return cached.data;
+    }
+
+    // Evict expired entries periodically (keep cache bounded)
+    if (this.concentrationCache.size > 100) {
+      const now = Date.now();
+      for (const [key, entry] of this.concentrationCache) {
+        if (now >= entry.expiry) this.concentrationCache.delete(key);
+      }
+    }
+
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 5000);
@@ -550,6 +720,8 @@ export class SolanaService extends Service {
 
       if (largestData.error || supplyData.error) {
         console.warn("[SolanaService] Concentration RPC error:", largestData.error || supplyData.error);
+        // Cache null result too — avoids re-hitting a failing RPC for the same mint
+        this.concentrationCache.set(mint, { data: null, expiry: Date.now() + SolanaService.CONCENTRATION_CACHE_TTL_MS });
         return null;
       }
 
@@ -557,6 +729,7 @@ export class SolanaService extends Service {
       const totalSupply = parseFloat(supplyData.result?.value?.amount || "0");
 
       if (!accounts || accounts.length === 0 || totalSupply === 0) {
+        this.concentrationCache.set(mint, { data: null, expiry: Date.now() + SolanaService.CONCENTRATION_CACHE_TTL_MS });
         return null;
       }
 
@@ -569,13 +742,18 @@ export class SolanaService extends Service {
       const top10Sum = sorted.slice(0, 10).reduce((s: number, v: number) => s + v, 0);
       const largest = sorted[0] || 0;
 
-      return {
+      const result = {
         top5Pct: (top5Sum / totalSupply) * 100,
         top10Pct: (top10Sum / totalSupply) * 100,
         largestPct: (largest / totalSupply) * 100,
       };
+
+      this.concentrationCache.set(mint, { data: result, expiry: Date.now() + SolanaService.CONCENTRATION_CACHE_TTL_MS });
+      return result;
     } catch (error) {
       console.warn("[SolanaService] Concentration check failed (continuing):", error instanceof Error ? error.message : "unknown");
+      // Cache the failure to avoid immediately retrying a timed-out/rate-limited mint
+      this.concentrationCache.set(mint, { data: null, expiry: Date.now() + SolanaService.CONCENTRATION_CACHE_TTL_MS });
       return null;
     }
   }
