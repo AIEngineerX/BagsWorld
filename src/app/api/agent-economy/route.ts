@@ -110,10 +110,23 @@ export async function GET(request: NextRequest) {
         const agent = await resolveAgent(agentId);
         if (agent instanceof NextResponse) return agent;
 
+        let balanceError: string | undefined;
+        let claimableError: string | undefined;
+
         const [isAuth, balance, claimable] = await Promise.all([
           agent.isAuthenticated().catch(() => false),
-          agent.getBalance().catch(() => ({ sol: 0, wallets: [] })),
-          agent.getClaimableFees().catch(() => ({ positions: [], totalSol: 0 })),
+          agent.getBalance().catch((err) => {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error(`[AgentEconomy] Balance fetch failed for ${agentId}: ${msg}`);
+            balanceError = msg;
+            return { sol: 0, wallets: [] };
+          }),
+          agent.getClaimableFees().catch((err) => {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error(`[AgentEconomy] Claimable fetch failed for ${agentId}: ${msg}`);
+            claimableError = msg;
+            return { positions: [], totalSol: 0 };
+          }),
         ]);
 
         const wallet = await agent.getWallet().catch(() => null);
@@ -127,6 +140,8 @@ export async function GET(request: NextRequest) {
             balanceSol: balance.sol,
             claimableSol: claimable.totalSol,
             claimablePositions: claimable.positions.length,
+            ...(balanceError && { balanceError }),
+            ...(claimableError && { claimableError }),
           },
         });
       }
