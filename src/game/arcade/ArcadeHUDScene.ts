@@ -75,18 +75,18 @@ export class ArcadeHUDScene extends Phaser.Scene {
     panelGfx.lineBetween(0, 52, 104, 52); // bottom border
 
     // Bottom-left panel (weapon)
-    panelGfx.fillStyle(0x0a0a0f, 0.5);
-    panelGfx.fillRect(0, ARCADE_HEIGHT - 20, 80, 20);
-    panelGfx.lineStyle(1, 0x4ade80, 0.8);
-    panelGfx.lineBetween(0, ARCADE_HEIGHT - 20, 80, ARCADE_HEIGHT - 20); // top border
-    panelGfx.lineBetween(80, ARCADE_HEIGHT - 20, 80, ARCADE_HEIGHT); // right border
+    panelGfx.fillStyle(0x0a0a0f, 0.75);
+    panelGfx.fillRect(0, ARCADE_HEIGHT - 24, 80, 24);
+    panelGfx.lineStyle(2, 0x4ade80, 0.8);
+    panelGfx.lineBetween(0, ARCADE_HEIGHT - 24, 80, ARCADE_HEIGHT - 24); // top border
+    panelGfx.lineBetween(80, ARCADE_HEIGHT - 24, 80, ARCADE_HEIGHT); // right border
 
     // Bottom-right panel (grenades)
-    panelGfx.fillStyle(0x0a0a0f, 0.5);
-    panelGfx.fillRect(ARCADE_WIDTH - 70, ARCADE_HEIGHT - 20, 70, 20);
-    panelGfx.lineStyle(1, 0x4ade80, 0.8);
-    panelGfx.lineBetween(ARCADE_WIDTH - 70, ARCADE_HEIGHT - 20, ARCADE_WIDTH, ARCADE_HEIGHT - 20); // top border
-    panelGfx.lineBetween(ARCADE_WIDTH - 70, ARCADE_HEIGHT - 20, ARCADE_WIDTH - 70, ARCADE_HEIGHT); // left border
+    panelGfx.fillStyle(0x0a0a0f, 0.75);
+    panelGfx.fillRect(ARCADE_WIDTH - 70, ARCADE_HEIGHT - 24, 70, 24);
+    panelGfx.lineStyle(2, 0x4ade80, 0.8);
+    panelGfx.lineBetween(ARCADE_WIDTH - 70, ARCADE_HEIGHT - 24, ARCADE_WIDTH, ARCADE_HEIGHT - 24); // top border
+    panelGfx.lineBetween(ARCADE_WIDTH - 70, ARCADE_HEIGHT - 24, ARCADE_WIDTH - 70, ARCADE_HEIGHT); // left border
 
     // --- Portrait (top-left, 32x32) ---
     this.add.sprite(18, 18, `${char}_portrait`);
@@ -142,7 +142,7 @@ export class ArcadeHUDScene extends Phaser.Scene {
 
     // --- Weapon/Ammo (bottom-left) ---
     this.weaponIndicator = this.add.graphics();
-    this.weaponText = this.add.text(14, ARCADE_HEIGHT - 14, "PISTOL \u221E", {
+    this.weaponText = this.add.text(14, ARCADE_HEIGHT - 18, "PISTOL \u221E", {
       fontFamily: "monospace",
       fontSize: "7px",
       color: "#4ade80",
@@ -191,7 +191,8 @@ export class ArcadeHUDScene extends Phaser.Scene {
     this.hpBarFill.clear();
     const ratio = Math.max(0, hp) / maxHP;
     const barW = Math.floor(60 * ratio);
-    const color = ratio > 0.5 ? 0x4ade80 : ratio > 0.25 ? 0xf97316 : 0xfbbf24;
+    const color =
+      ratio > 0.6 ? 0x4ade80 : ratio > 0.4 ? 0xfbbf24 : ratio > 0.2 ? 0xf97316 : 0xef4444;
     this.hpBarFill.fillStyle(color);
     this.hpBarFill.fillRect(38, 8, barW, 6);
     this.hpBarFill.fillStyle(0xffffff, 0.3);
@@ -214,9 +215,9 @@ export class ArcadeHUDScene extends Phaser.Scene {
     this.weaponIndicator.clear();
     const color = WEAPONS[weapon].color;
     this.weaponIndicator.fillStyle(color);
-    this.weaponIndicator.fillRect(4, ARCADE_HEIGHT - 14, 8, 8);
+    this.weaponIndicator.fillRect(4, ARCADE_HEIGHT - 18, 8, 8);
     this.weaponIndicator.fillStyle(0xffffff, 0.3);
-    this.weaponIndicator.fillRect(4, ARCADE_HEIGHT - 14, 8, 1);
+    this.weaponIndicator.fillRect(4, ARCADE_HEIGHT - 18, 8, 1);
   }
 
   private drawGrenades(count: number): void {
@@ -229,13 +230,13 @@ export class ArcadeHUDScene extends Phaser.Scene {
 
     const shown = Math.min(count, 5);
     for (let i = 0; i < shown; i++) {
-      const s = this.add.sprite(ARCADE_WIDTH - 8 - i * 10, ARCADE_HEIGHT - 10, "grenade");
+      const s = this.add.sprite(ARCADE_WIDTH - 8 - i * 10, ARCADE_HEIGHT - 14, "grenade");
       this.grenadeSprites.push(s);
     }
     if (count > 5) {
       this.grenadeExtraText = this.add.text(
         ARCADE_WIDTH - 60,
-        ARCADE_HEIGHT - 14,
+        ARCADE_HEIGHT - 18,
         `+${count - 5}`,
         { fontFamily: "monospace", fontSize: "7px", color: "#4ade80" }
       );
