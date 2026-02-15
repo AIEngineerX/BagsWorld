@@ -43,31 +43,26 @@ class BagsApiClient {
       });
 
       if (!response.ok) {
-        // Try to get error details from response body
         let errorDetail = "";
         let parsedError: { success?: boolean; response?: string; error?: string } | null = null;
         try {
           const errorBody = await response.text();
           errorDetail = errorBody ? ` - ${errorBody}` : "";
-
-          // Try to parse as JSON to get more specific error
           try {
             parsedError = JSON.parse(errorBody);
           } catch {
-            // Not JSON, use raw text
+            // Not JSON
           }
         } catch {
-          // Ignore if we can't read the body
+          // Can't read body
         }
 
-        // Handle 500 errors with retry for transient issues
         if (response.status >= 500 && retryCount < maxRetries) {
           const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
           await new Promise((resolve) => setTimeout(resolve, delay));
           return this.fetch<T>(endpoint, options, retryCount + 1);
         }
 
-        // Extract error message from parsed response
         const errorMessage =
           parsedError?.error ||
           (typeof parsedError?.response === "string" ? parsedError.response : null) ||
@@ -79,7 +74,6 @@ class BagsApiClient {
       const data: ApiResponse<T> = await response.json();
 
       if (!data.success) {
-        // Handle error in both 'error' and 'response' fields
         const errorMessage =
           data.error ||
           (typeof data.response === "string" ? data.response : null) ||
@@ -89,7 +83,6 @@ class BagsApiClient {
 
       return data.response as T;
     } catch (error) {
-      // Retry on network errors
       if (
         error instanceof TypeError &&
         error.message.includes("fetch") &&
@@ -102,8 +95,6 @@ class BagsApiClient {
       throw error;
     }
   }
-
-  // Fee Share Endpoints
 
   async getWalletByUsername(
     provider: string,
@@ -138,8 +129,6 @@ class BagsApiClient {
     });
   }
 
-  // Analytics Endpoints
-
   async getTokenLifetimeFees(tokenMint: string): Promise<number> {
     const params = new URLSearchParams({ tokenMint });
     const data = await this.fetch<string>(`/token-launch/lifetime-fees?${params}`);
@@ -160,7 +149,6 @@ class BagsApiClient {
 
   async getClaimStats(tokenMint: string): Promise<ClaimStats[]> {
     const params = new URLSearchParams({ tokenMint });
-    // API returns { wallet, tokenMint, totalClaimed (string) } — normalize to ClaimStats
     const raw = await this.fetch<
       Array<{ wallet: string; tokenMint: string; totalClaimed: string }>
     >(`/token-launch/claim-stats?${params}`);
@@ -224,8 +212,6 @@ class BagsApiClient {
     }));
   }
 
-  // Fee Claiming Endpoints
-
   async getClaimablePositions(wallet: string): Promise<ClaimablePosition[]> {
     const params = new URLSearchParams({ wallet });
     return this.fetch(`/token-launch/claimable-positions?${params}`);
@@ -243,8 +229,6 @@ class BagsApiClient {
       body: JSON.stringify({ wallet, positions }),
     });
   }
-
-  // Trading Endpoints
 
   async getTradeQuote(
     inputMint: string,
@@ -278,8 +262,6 @@ class BagsApiClient {
     });
   }
 
-  // Token Launch Endpoints
-
   async createTokenInfo(
     data: {
       name: string;
@@ -304,7 +286,6 @@ class BagsApiClient {
     formData.append("description", data.description);
 
     if (data.imageBlob) {
-      // FormData.append with 3 args: (name, blob, filename)
       formData.append("image", data.imageBlob, data.imageName || "token-image.png");
     } else if (data.imageUrl) {
       formData.append("imageUrl", data.imageUrl);
@@ -321,7 +302,6 @@ class BagsApiClient {
         method: "POST",
         headers: {
           "x-api-key": this.apiKey,
-          // Note: Don't set Content-Type for FormData - browser sets it with boundary
         },
         body: formData,
       });
@@ -329,7 +309,6 @@ class BagsApiClient {
       if (!response.ok) {
         const errorText = await response.text();
 
-        // Try to parse JSON error
         let parsedError: { success?: boolean; response?: string; error?: string } | null = null;
         try {
           parsedError = JSON.parse(errorText);
@@ -337,7 +316,6 @@ class BagsApiClient {
           // Not JSON
         }
 
-        // Retry on 500 errors
         if (response.status >= 500 && retryCount < maxRetries) {
           const delay = Math.pow(2, retryCount) * 1000;
           await new Promise((resolve) => setTimeout(resolve, delay));
@@ -356,7 +334,6 @@ class BagsApiClient {
         await response.json();
 
       if (!result.success) {
-        // Handle error in both 'error' and 'response' fields
         const errorMessage =
           result.error ||
           (typeof result.response === "string" ? result.response : null) ||
@@ -366,7 +343,6 @@ class BagsApiClient {
 
       return result.response as { tokenMint: string; tokenMetadata: string };
     } catch (error) {
-      // Retry on network errors
       if (
         error instanceof TypeError &&
         error.message.includes("fetch") &&
@@ -389,9 +365,6 @@ class BagsApiClient {
     tipWallet?: string;
     tipLamports?: number;
   }): Promise<{ transaction: string; lastValidBlockHeight?: number }> {
-    // Bags API expects ipfs and wallet (not metadataUrl/launchWallet)
-    // Note: Partner fees are earned via the partner config created at dev.bags.fm
-    // The API key is linked to the partner config, so fees are automatic
     const apiBody = {
       ipfs: data.ipfs,
       tokenMint: data.tokenMint,
@@ -406,7 +379,6 @@ class BagsApiClient {
         : {}),
     };
 
-    // Make raw fetch
     const url = `${this.baseUrl}/token-launch/create-launch-transaction`;
     const response = await fetch(url, {
       method: "POST",
@@ -423,7 +395,6 @@ class BagsApiClient {
       throw new Error(`API error ${response.status}: ${rawText}`);
     }
 
-    // Parse JSON
     let data_response;
     try {
       data_response = JSON.parse(rawText);
@@ -432,26 +403,18 @@ class BagsApiClient {
       throw new Error(`Invalid JSON response from Bags API: ${rawText.substring(0, 200)}`);
     }
 
-    // Extract transaction - check all possible locations
     let transaction: string | undefined;
     let lastValidBlockHeight: number | undefined;
 
-    // Standard format: { success: true, response: { transaction: "...", lastValidBlockHeight: ... } }
     if (data_response.response?.transaction) {
       transaction = data_response.response.transaction;
       lastValidBlockHeight = data_response.response.lastValidBlockHeight;
-    }
-    // Alternative: { success: true, response: "base64string" }
-    else if (typeof data_response.response === "string") {
+    } else if (typeof data_response.response === "string") {
       transaction = data_response.response;
-    }
-    // Direct: { transaction: "..." }
-    else if (data_response.transaction) {
+    } else if (data_response.transaction) {
       transaction = data_response.transaction;
       lastValidBlockHeight = data_response.lastValidBlockHeight;
-    }
-    // Direct string response
-    else if (typeof data_response === "string") {
+    } else if (typeof data_response === "string") {
       transaction = data_response;
     }
 
@@ -470,7 +433,6 @@ class BagsApiClient {
     return { transaction, lastValidBlockHeight };
   }
 
-  // Fee Share Configuration
   async createFeeShareConfig(
     mint: string,
     feeClaimers: Array<{
@@ -490,20 +452,16 @@ class BagsApiClient {
       blockhash: { blockhash: string; lastValidBlockHeight: number };
     }>;
   }> {
-    // Separate solana wallets from social usernames
     const solanaClaimers = feeClaimers.filter((fc) => fc.provider === "solana");
     const socialClaimers = feeClaimers.filter((fc) => fc.provider !== "solana");
 
-    // Build wallet map
     const walletMap = new Map<string, string>();
 
-    // Solana addresses are already wallets
     for (const fc of solanaClaimers) {
       const key = `${fc.provider}:${fc.providerUsername}`;
       walletMap.set(key, fc.providerUsername);
     }
 
-    // Bulk lookup social usernames
     if (socialClaimers.length > 0) {
       try {
         const lookupItems = socialClaimers.map((fc) => ({
@@ -518,7 +476,6 @@ class BagsApiClient {
           walletMap.set(key, result.wallet);
         }
 
-        // Check for any missing wallets and provide specific error
         const missingUsers: string[] = [];
         for (const fc of socialClaimers) {
           const key = `${fc.provider}:${fc.providerUsername}`;
@@ -532,14 +489,12 @@ class BagsApiClient {
           );
         }
       } catch (lookupError) {
-        // Re-throw if it's our custom error
         if (
           lookupError instanceof Error &&
           lookupError.message.includes("Could not find wallets")
         ) {
           throw lookupError;
         }
-        // Otherwise provide generic error with context
         const userList = socialClaimers.map((fc) => `@${fc.providerUsername}`).join(", ");
         throw new Error(
           `Failed to lookup wallets for: ${userList}. Make sure all users have linked their wallets at bags.fm/settings`
@@ -547,7 +502,6 @@ class BagsApiClient {
       }
     }
 
-    // Build arrays and deduplicate by wallet address (combine BPS for duplicates)
     const walletBpsMap = new Map<string, number>();
 
     for (const fc of feeClaimers) {
@@ -556,12 +510,10 @@ class BagsApiClient {
       if (!wallet) {
         throw new Error(`Could not find wallet for ${fc.provider} user: ${fc.providerUsername}`);
       }
-      // Combine BPS if wallet already exists (handles duplicates)
       const existingBps = walletBpsMap.get(wallet) || 0;
       walletBpsMap.set(wallet, existingBps + fc.bps);
     }
 
-    // Convert map to arrays
     const claimersArray: string[] = [];
     const basisPointsArray: number[] = [];
 
@@ -577,7 +529,6 @@ class BagsApiClient {
       basisPointsArray,
     };
 
-    // Include partner config if provided - this links to the correct Meteora bonding curve
     if (partnerWallet) {
       requestBody.partner = partnerWallet;
     }
@@ -585,7 +536,6 @@ class BagsApiClient {
       requestBody.partnerConfig = partnerConfigPda;
     }
 
-    // Make raw fetch
     const url = `${this.baseUrl}/fee-share/config`;
     const response = await fetch(url, {
       method: "POST",
@@ -610,11 +560,8 @@ class BagsApiClient {
       throw new Error(`Invalid JSON from fee config API: ${rawText.substring(0, 200)}`);
     }
 
-    // Handle wrapped response
     const result = parsed.response || parsed;
 
-    // Handle different possible response field names - check all variations
-    // The API returns "meteoraConfigKey" as the config key to use for launch
     const configId = (result.meteoraConfigKey ||
       result.configId ||
       result.configKey ||
@@ -623,7 +570,6 @@ class BagsApiClient {
       result.key ||
       result.id ||
       result.config ||
-      // Sometimes the response is just the string directly
       (typeof result === "string" ? result : null)) as string;
 
     const totalBps = (result.totalBps || result.total_bps || result.bps || 0) as number;
@@ -637,8 +583,7 @@ class BagsApiClient {
 
     if (!configId) {
       throw new Error(
-        `Fee share config created but no configKey returned. API response keys: ${Object.keys(result).join(", ")}. ` +
-          `This may indicate a Bags.fm API change. Please report this issue.`
+        `No configKey in fee share response. Keys: ${Object.keys(result).join(", ")}`
       );
     }
 
@@ -650,15 +595,12 @@ class BagsApiClient {
     };
   }
 
-  // Pool Discovery
-
   async getBagsPools(): Promise<
     Array<{ tokenMint: string; dbcConfigKey: string; dbcPoolKey: string }>
   > {
     return this.fetch("/solana/bags/pools");
   }
 
-  // Partner Fee Claiming
   async generatePartnerClaimTx(
     partnerKey: string,
     wallet: string
@@ -683,7 +625,6 @@ class BagsApiClient {
   }
 }
 
-// Singleton instance - will be initialized with API key
 let apiClient: BagsApiClient | null = null;
 
 export function initBagsApi(apiKey: string): BagsApiClient {

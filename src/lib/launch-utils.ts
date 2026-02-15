@@ -116,44 +116,40 @@ export function estimateLaunchCost(initialBuySOL: number): {
 // AI generation helpers
 // ---------------------------------------------------------------------------
 
-export async function generateNameSuggestions(
+async function oakGenerate(
+  action: string,
   concept: string,
   style: string
-): Promise<{ success: boolean; names?: NameSuggestion[]; error?: string }> {
+): Promise<{ success: boolean; [key: string]: unknown }> {
   const res = await fetch("/api/oak-generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "suggest-names", concept, style }),
+    body: JSON.stringify({ action, concept, style }),
   });
   if (!res.ok) return { success: false, error: `API error: ${res.status}` };
   return res.json();
 }
 
-export async function generateLogo(
-  concept: string,
-  style: string
-): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
-  const res = await fetch("/api/oak-generate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "generate-logo", concept, style }),
-  });
-  if (!res.ok) return { success: false, error: `API error: ${res.status}` };
-  return res.json();
-}
+export const generateNameSuggestions = (concept: string, style: string) =>
+  oakGenerate("suggest-names", concept, style) as Promise<{
+    success: boolean;
+    names?: NameSuggestion[];
+    error?: string;
+  }>;
 
-export async function generateBanner(
-  concept: string,
-  style: string
-): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
-  const res = await fetch("/api/oak-generate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "generate-banner", concept, style }),
-  });
-  if (!res.ok) return { success: false, error: `API error: ${res.status}` };
-  return res.json();
-}
+export const generateLogo = (concept: string, style: string) =>
+  oakGenerate("generate-logo", concept, style) as Promise<{
+    success: boolean;
+    imageUrl?: string;
+    error?: string;
+  }>;
+
+export const generateBanner = (concept: string, style: string) =>
+  oakGenerate("generate-banner", concept, style) as Promise<{
+    success: boolean;
+    imageUrl?: string;
+    error?: string;
+  }>;
 
 // ---------------------------------------------------------------------------
 // Launch flow

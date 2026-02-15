@@ -2,15 +2,8 @@ import { Connection, Transaction, VersionedTransaction, SendOptions } from "@sol
 import bs58 from "bs58";
 
 /**
- * Pre-simulate a transaction before presenting it to the user's wallet.
- *
- * Uses `sigVerify: false` so partially-signed or unsigned transactions can
- * be simulated without valid signatures.  This lets Phantom (and other
- * wallets) see that the dApp already validated the transaction, which
- * suppresses the "This dApp could be malicious" simulation warning.
- *
- * Throws a descriptive error when simulation fails so the caller can
- * surface it to the user *before* the wallet popup appears.
+ * Pre-simulate a transaction with sigVerify:false so unsigned txs can be
+ * validated before the wallet popup. Throws on simulation failure.
  */
 export async function preSimulateTransaction(
   connection: Connection,
@@ -29,8 +22,7 @@ export async function preSimulateTransaction(
       );
     }
   } else {
-    // Legacy Transaction — use raw RPC call with sigVerify:false so
-    // unsigned / partially-signed transactions can be simulated.
+    // Legacy Transaction — raw RPC call needed for sigVerify:false
     const serialized = transaction.serialize({
       requireAllSignatures: false,
       verifySignatures: false,
@@ -54,10 +46,7 @@ export async function preSimulateTransaction(
   }
 }
 
-/**
- * Deserialize a transaction from a base64 or base58 encoded string.
- * Tries VersionedTransaction first, falls back to legacy Transaction.
- */
+/** Deserialize a transaction from base64/base58. Tries Versioned first, then legacy. */
 export function deserializeTransaction(
   encoded: string | Record<string, unknown>,
   context: string = "transaction"
@@ -111,10 +100,7 @@ export function deserializeTransaction(
   }
 }
 
-/**
- * Check whether a transaction already carries non-zero signatures
- * (i.e. the API pre-signed it).
- */
+/** Check whether a transaction already carries non-zero signatures (pre-signed). */
 export function hasExistingSignatures(transaction: Transaction | VersionedTransaction): boolean {
   if (transaction instanceof VersionedTransaction) {
     return transaction.signatures.some((sig) => sig.some((byte) => byte !== 0));
@@ -124,11 +110,7 @@ export function hasExistingSignatures(transaction: Transaction | VersionedTransa
   );
 }
 
-/**
- * Send a signed transaction with sensible defaults.
- *
- * Uses `skipPreflight: false` so the RPC node validates before forwarding.
- */
+/** Send a signed transaction with preflight validation enabled. */
 export async function sendSignedTransaction(
   connection: Connection,
   signedTx: Transaction | VersionedTransaction,

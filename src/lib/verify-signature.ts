@@ -12,13 +12,11 @@ export function verifyAdminSignature(
   adminWallet: string | string[]
 ): { verified: boolean; error?: string } {
   try {
-    // Support both single wallet and array of wallets
     const adminWallets = Array.isArray(adminWallet) ? adminWallet : [adminWallet];
     if (!adminWallets.includes(wallet)) {
       return { verified: false, error: "Not admin wallet" };
     }
 
-    // Prevent replay attacks
     if (Math.abs(Date.now() - timestamp) > SIGNATURE_MAX_AGE_MS) {
       return { verified: false, error: "Signature expired" };
     }
@@ -34,7 +32,6 @@ export function verifyAdminSignature(
       return { verified: false, error: "Invalid wallet address" };
     }
 
-    // Uint8Array wrapper required for cross-environment compatibility
     const isValid = nacl.sign.detached.verify(
       messageBytes,
       signatureBytes,
@@ -46,9 +43,4 @@ export function verifyAdminSignature(
     console.error("[Auth] Signature verification error:", error);
     return { verified: false, error: "Verification failed" };
   }
-}
-
-/** Creates the message to be signed: "casino-admin:{action}:{timestamp}" */
-export function createAdminMessage(action: string, timestamp: number): string {
-  return `casino-admin:${action}:${timestamp}`;
 }
