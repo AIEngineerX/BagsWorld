@@ -21,6 +21,8 @@ import {
   LEVEL_WIDTH,
   SECTIONS,
   TILE_SIZE,
+  GRENADE_RADIUS,
+  GRAVITY,
   type ArcadeCharacter,
   type WeaponType,
   type EnemyType,
@@ -238,8 +240,6 @@ describe("weapon economy", () => {
 // --- Grenade Blast Radius Simulation ---
 
 describe("grenade blast radius simulation", () => {
-  // Grenade explosion radius is 60px in ArcadeGameScene
-  const GRENADE_RADIUS = 60;
 
   it("grenade can hit multiple clustered enemies", () => {
     // Section 4 has enemies at x=100, x=150 (50px apart, within radius)
@@ -309,9 +309,12 @@ describe("invincibility frame analysis", () => {
   });
 });
 
-// --- HP Clamping Scenarios ---
+// --- HP Clamping Behavioral Specs ---
+// NOTE: These test expected HP math by simulating logic inline.
+// They do NOT exercise the actual takeDamage()/onCollectPickup() methods in ArcadeGameScene.
+// They serve as documentation of design intent, not integration tests.
 
-describe("HP clamping scenarios", () => {
+describe("HP clamping behavioral specs", () => {
   const characters: ArcadeCharacter[] = ["ghost", "neo", "cj"];
   const healAmount = PICKUPS.health.healAmount!;
 
@@ -354,9 +357,12 @@ describe("HP clamping scenarios", () => {
   });
 });
 
-// --- Weapon Switching Edge Cases ---
+// --- Weapon Switching Behavioral Specs ---
+// NOTE: These test expected game BEHAVIOR by simulating logic inline.
+// They do NOT exercise the actual shoot()/onCollectPickup() methods in ArcadeGameScene.
+// They serve as documentation of design intent, not integration tests.
 
-describe("weapon switching edge cases", () => {
+describe("weapon switching behavioral specs", () => {
   it("last ammo shot reverts to pistol (ammo goes from 1 to 0)", () => {
     // Simulating the logic: if ammo > 0, ammo--; if ammo <= 0, revert to pistol
     let ammo = 1;
@@ -393,7 +399,6 @@ describe("weapon switching edge cases", () => {
 // --- Physics & Movement Math ---
 
 describe("physics and movement math", () => {
-  const GRAVITY = 800; // From ArcadeModal config
   const characters: ArcadeCharacter[] = ["ghost", "neo", "cj"];
 
   describe.each(characters)(
@@ -517,6 +522,7 @@ describe("camera and viewport math", () => {
   });
 
   it("camera deadzone (60×40) allows character to move without camera following", () => {
+    // HARDCODED: These values must match ArcadeGameScene.ts:182 (setDeadzone(60, 40))
     const deadzoneWidth = 60;
     const deadzoneHeight = 40;
     const visibleWidth = ARCADE_WIDTH / 1.5;
@@ -635,7 +641,9 @@ describe("section transition boundaries", () => {
 // --- GameOver Score Counter Duration ---
 
 describe("GameOver score counter animation", () => {
-  // Logic from ArcadeGameOverScene: Math.min(1500, Math.max(500, score * 2))
+  // WARNING: This is a LOCAL REPLICA of the counter tween duration in ArcadeGameOverScene.ts:50.
+  // If that source changes, this test will NOT catch the drift. Verify manually.
+  // Source: src/game/arcade/ArcadeGameOverScene.ts line 50
   function counterDuration(score: number): number {
     return Math.min(1500, Math.max(500, score * 2));
   }

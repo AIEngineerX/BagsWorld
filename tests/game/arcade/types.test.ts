@@ -913,7 +913,9 @@ describe("ammo sufficiency", () => {
 // HP Bar Color Thresholds (ArcadeHUDScene drawHPBar logic)
 
 describe("HP bar color thresholds", () => {
-  // Replicates the logic: ratio > 0.6 ? green : ratio > 0.4 ? yellow : ratio > 0.2 ? orange : red
+  // WARNING: This is a LOCAL REPLICA of the drawHPBar logic in ArcadeHUDScene.ts:194-195.
+  // If that source changes, this test will NOT catch the drift. Verify manually.
+  // Source: src/game/arcade/ArcadeHUDScene.ts lines 194-195
   function getHPBarColor(hp: number, maxHP: number): number {
     const ratio = Math.max(0, hp) / maxHP;
     return ratio > 0.6 ? 0x4ade80 : ratio > 0.4 ? 0xfbbf24 : ratio > 0.2 ? 0xf97316 : 0xef4444;
@@ -979,7 +981,9 @@ describe("HP bar color thresholds", () => {
 // Score Popup Color Tiers (ArcadeGameScene showScorePopup logic)
 
 describe("score popup color tiers", () => {
-  // Replicates: points >= 1000 ? red : >= 500 ? orange : >= 200 ? yellow : green
+  // WARNING: This is a LOCAL REPLICA of the showScorePopup logic in ArcadeGameScene.ts:1616-1623.
+  // If that source changes, this test will NOT catch the drift. Verify manually.
+  // Source: src/game/arcade/ArcadeGameScene.ts lines 1616-1623
   function getScoreColor(points: number): string {
     return points >= 1000
       ? "#ef4444"

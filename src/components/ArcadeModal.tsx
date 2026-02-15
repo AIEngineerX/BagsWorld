@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import * as Phaser from "phaser";
+import { GRAVITY } from "@/game/arcade/types";
 
 const loadScenes = () =>
   Promise.all([
@@ -43,7 +44,7 @@ export function ArcadeModal({ onClose }: ArcadeModalProps) {
           physics: {
             default: "arcade",
             arcade: {
-              gravity: { x: 0, y: 800 },
+              gravity: { x: 0, y: GRAVITY },
               debug: false,
             },
           },
