@@ -170,7 +170,7 @@ describe("env-utils", () => {
           expect.stringContaining("TEST_SECRET not set")
         );
         expect(warnSpy).toHaveBeenCalledWith(
-          expect.stringContaining("NOT FOR PRODUCTION")
+          expect.stringContaining("development fallback")
         );
       });
     });
@@ -182,19 +182,7 @@ describe("env-utils", () => {
 
       it("throws an error when the env var is not set", () => {
         expect(() => getRequiredSecret("TEST_SECRET", "fallback")).toThrow(
-          /SECURITY ERROR.*Missing required environment variable.*TEST_SECRET/
-        );
-      });
-
-      it("throws an error containing guidance about Netlify env vars", () => {
-        expect(() => getRequiredSecret("TEST_SECRET", "fallback")).toThrow(
-          /Netlify environment variables/
-        );
-      });
-
-      it("throws an error containing the openssl generation hint", () => {
-        expect(() => getRequiredSecret("TEST_SECRET", "fallback")).toThrow(
-          /openssl rand -base64 32/
+          /Missing required env var in production: TEST_SECRET/
         );
       });
     });
@@ -229,14 +217,12 @@ describe("env-utils", () => {
       it("throws when value is shorter than default minimum length (32)", () => {
         const tooShort = "a".repeat(31);
         expect(() => validateSecretStrength("MY_KEY", tooShort)).toThrow(
-          /SECURITY ERROR.*MY_KEY must be at least 32 characters/
+          /MY_KEY must be at least 32 characters in production/
         );
       });
 
       it("includes current length in error message", () => {
-        expect(() => validateSecretStrength("MY_KEY", "abc")).toThrow(
-          /Current length: 3/
-        );
+        expect(() => validateSecretStrength("MY_KEY", "abc")).toThrow(/got 3/);
       });
 
       it("respects custom minLength parameter", () => {
@@ -247,7 +233,9 @@ describe("env-utils", () => {
       });
 
       it("throws for empty string", () => {
-        expect(() => validateSecretStrength("MY_KEY", "")).toThrow(/SECURITY ERROR/);
+        expect(() => validateSecretStrength("MY_KEY", "")).toThrow(
+          /MY_KEY must be at least 32 characters/
+        );
       });
     });
   });

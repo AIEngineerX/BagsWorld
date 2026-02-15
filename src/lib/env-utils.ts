@@ -100,6 +100,19 @@ export function isValidBps(bps: unknown, min: number = 0, max: number = 10000): 
   return bps >= min && bps <= max;
 }
 
+export function getEnvVar(name: string, defaultValue: string): string {
+  return process.env[name] || defaultValue;
+}
+
+export function getEnvList(name: string): string[] {
+  const value = process.env[name];
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 // SSRF protection
 const BLOCKED_IP_PATTERNS = [
   /^127\./,
