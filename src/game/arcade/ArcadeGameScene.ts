@@ -302,7 +302,10 @@ export class ArcadeGameScene extends Phaser.Scene {
       body.setVelocityX(0);
     }
 
-    if ((Phaser.Input.Keyboard.JustDown(this.keyX) || Phaser.Input.Keyboard.JustDown(this.keyW)) && onGround) {
+    if (
+      (Phaser.Input.Keyboard.JustDown(this.keyX) || Phaser.Input.Keyboard.JustDown(this.keyW)) &&
+      onGround
+    ) {
       body.setVelocityY(stats.jumpForce);
     }
 
@@ -919,7 +922,7 @@ export class ArcadeGameScene extends Phaser.Scene {
           const lx = base + 50 + li * 95 + Phaser.Math.Between(-20, 20);
           const ly = Phaser.Math.Between(60, 200);
           const light = this.add.rectangle(lx, ly, 2, 2, theme.ambientColor, 0.15);
-          light.setDepth(-0.5);
+          light.setDepth(1);
           this.tweens.add({
             targets: light,
             alpha: { from: 0.05, to: 0.3 },
