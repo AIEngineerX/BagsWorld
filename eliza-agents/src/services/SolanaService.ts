@@ -314,26 +314,49 @@ export class SolanaService extends Service {
   }
 
   /**
-   * Get SOL balance
+   * Get SOL balance — tries primary RPC, falls back to public RPC on rate limit
    */
   async getBalance(): Promise<number> {
     if (!this.publicKeyBytes) return 0;
 
     const publicKey = base58Encode(this.publicKeyBytes);
 
-    const response = await fetch(this.rpcUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "getBalance",
-        params: [publicKey],
-      }),
-    });
+    const rpcUrls = [this.rpcUrl, "https://api.mainnet-beta.solana.com"];
 
-    const result = await response.json();
-    return (result.result?.value || 0) / 1_000_000_000;
+    for (const url of rpcUrls) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "getBalance",
+            params: [publicKey],
+          }),
+        });
+
+        clearTimeout(timeout);
+        const result = await response.json();
+
+        if (result.error) {
+          console.warn(`[SolanaService] getBalance RPC error from ${url === this.rpcUrl ? "primary" : "fallback"}:`, result.error);
+          continue; // Try next RPC
+        }
+
+        return (result.result?.value || 0) / 1_000_000_000;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[SolanaService] getBalance failed on ${url === this.rpcUrl ? "primary" : "fallback"} RPC: ${msg}`);
+        continue; // Try next RPC
+      }
+    }
+
+    throw new Error("All RPC endpoints failed for getBalance");
   }
 
   /**
