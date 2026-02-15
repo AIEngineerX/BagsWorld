@@ -44,3 +44,7 @@ export function verifyAdminSignature(
     return { verified: false, error: "Verification failed" };
   }
 }
+
+export function createAdminMessage(action: string, timestamp: number): string {
+  return `casino-admin:${action}:${timestamp}`;
+}

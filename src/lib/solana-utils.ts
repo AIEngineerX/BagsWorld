@@ -56,6 +56,9 @@ export function formatSolCompact(sol: number): string {
   if (sol >= 1) {
     return sol.toFixed(2);
   }
+  if (sol >= 0.1) {
+    return sol.toFixed(2);
+  }
   if (sol >= 0.01) {
     return sol.toFixed(3);
   }
