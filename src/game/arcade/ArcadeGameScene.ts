@@ -85,6 +85,11 @@ export class ArcadeGameScene extends Phaser.Scene {
   private spawnedSections = new Set<number>();
   private enemyAnimTimer = 0;
   private enemyAnimFrame = 0;
+  private lastDustTime = 0;
+  private lastVelocityX = 0;
+  private vignetteSprite?: Phaser.GameObjects.Sprite;
+  private damageOverlay?: Phaser.GameObjects.Rectangle;
+  private lowHPPulseTween?: Phaser.Tweens.Tween;
 
   constructor() {
     super({ key: "ArcadeGameScene" });
@@ -253,11 +258,23 @@ export class ArcadeGameScene extends Phaser.Scene {
 
     // Vignette overlay
     if (this.textures.exists("vignette")) {
-      const vignette = this.add.sprite(ARCADE_WIDTH / 2, ARCADE_HEIGHT / 2, "vignette");
-      vignette.setScrollFactor(0);
-      vignette.setDepth(90);
-      vignette.setAlpha(0.6);
+      this.vignetteSprite = this.add.sprite(ARCADE_WIDTH / 2, ARCADE_HEIGHT / 2, "vignette");
+      this.vignetteSprite.setScrollFactor(0);
+      this.vignetteSprite.setDepth(90);
+      this.vignetteSprite.setAlpha(0.6);
     }
+
+    // Damage overlay (red flash on hit)
+    this.damageOverlay = this.add.rectangle(
+      ARCADE_WIDTH / 2,
+      ARCADE_HEIGHT / 2,
+      ARCADE_WIDTH,
+      ARCADE_HEIGHT,
+      0xff0000,
+      0
+    );
+    this.damageOverlay.setScrollFactor(0);
+    this.damageOverlay.setDepth(89);
 
     this.emitHUD();
     this.checkSectionSpawns();
@@ -332,6 +349,48 @@ export class ArcadeGameScene extends Phaser.Scene {
       dust.explode(Phaser.Math.Between(4, 6));
       this.time.delayedCall(400, () => dust.destroy());
     }
+
+    // Running dust trail
+    if (onGround && Math.abs(body.velocity.x) > 10 && time - this.lastDustTime > 150) {
+      this.lastDustTime = time;
+      const footOffset = this.lastDustTime % 300 < 150 ? -4 : 4;
+      const runDust = this.add.particles(
+        this.player.x + footOffset,
+        this.player.y + 14,
+        "particle_dust",
+        {
+          speed: { min: 8, max: 20 },
+          angle: body.velocity.x > 0 ? { min: 150, max: 210 } : { min: -30, max: 30 },
+          lifespan: 200,
+          gravityY: 30,
+          scale: { start: 0.8, end: 0 },
+          emitting: false,
+        }
+      );
+      runDust.explode(3);
+      this.time.delayedCall(250, () => runDust.destroy());
+    }
+
+    // Skid dust on direction change
+    if (
+      onGround &&
+      this.lastVelocityX !== 0 &&
+      Math.sign(body.velocity.x) !== Math.sign(this.lastVelocityX) &&
+      Math.abs(body.velocity.x) > 10
+    ) {
+      const skidDust = this.add.particles(this.player.x, this.player.y + 14, "particle_dust", {
+        speed: { min: 20, max: 50 },
+        angle: { min: 0, max: 360 },
+        lifespan: 250,
+        gravityY: 40,
+        scale: { start: 1, end: 0 },
+        emitting: false,
+      });
+      skidDust.explode(5);
+      this.time.delayedCall(300, () => skidDust.destroy());
+    }
+    this.lastVelocityX = body.velocity.x;
+
     this.wasOnGround = onGround;
 
     if (time < this.invincibleUntil) {
@@ -551,8 +610,9 @@ export class ArcadeGameScene extends Phaser.Scene {
 
       this.createLargeExplosion(grenade.x, grenade.y);
 
-      // Grenade-specific: extra shake + fire particles
-      this.cameras.main.shake(200, 0.012);
+      // Grenade-specific: extra shake + fire particles + flash
+      this.cameras.main.shake(200, 0.04);
+      this.cameras.main.flash(120, 255, 200, 100);
       const fire = this.add.particles(grenade.x, grenade.y, "particle_fire", {
         speed: { min: 30, max: 80 },
         angle: { min: 0, max: 360 },
@@ -595,9 +655,46 @@ export class ArcadeGameScene extends Phaser.Scene {
     // Screen red flash on damage
     this.cameras.main.flash(100, 255, 50, 50, true);
 
+    // Vignette damage pulse
+    if (this.vignetteSprite) {
+      this.tweens.add({
+        targets: this.vignetteSprite,
+        alpha: 1.0,
+        duration: 150,
+        yoyo: true,
+        ease: "Sine.easeOut",
+      });
+    }
+
+    // Red damage overlay flash
+    if (this.damageOverlay) {
+      this.damageOverlay.setAlpha(0.15);
+      this.tweens.add({
+        targets: this.damageOverlay,
+        alpha: 0,
+        duration: 200,
+      });
+    }
+
+    // Low HP continuous vignette pulse
+    if (
+      this.hp - amount <= 2 &&
+      this.hp - amount > 0 &&
+      this.vignetteSprite &&
+      !this.lowHPPulseTween
+    ) {
+      this.lowHPPulseTween = this.tweens.add({
+        targets: this.vignetteSprite,
+        alpha: { from: 0.6, to: 0.9 },
+        duration: 500,
+        yoyo: true,
+        repeat: -1,
+      });
+    }
+
     // Screen shake on heavy hits
     if (amount >= 2) {
-      this.cameras.main.shake(80, 0.004);
+      this.cameras.main.shake(100, 0.015);
     }
 
     // Knockback
@@ -621,6 +718,15 @@ export class ArcadeGameScene extends Phaser.Scene {
     this.player.setTexture(`${this.character}_die_1`);
     (this.player.body as Phaser.Physics.Arcade.Body).setVelocity(0, -200);
 
+    // Death flash and dramatic zoom out
+    this.cameras.main.flash(300, 255, 50, 50);
+    this.tweens.add({
+      targets: this.cameras.main,
+      zoom: 1.3,
+      duration: 500,
+      ease: "Sine.easeOut",
+    });
+
     // 5-frame death animation sequence
     this.time.delayedCall(150, () => this.player.setTexture(`${this.character}_die_2`));
     this.time.delayedCall(300, () => this.player.setTexture(`${this.character}_die_3`));
@@ -638,6 +744,18 @@ export class ArcadeGameScene extends Phaser.Scene {
   }
 
   private respawn(): void {
+    // Restore camera zoom
+    this.cameras.main.setZoom(1.5);
+
+    // Stop low HP vignette pulse
+    if (this.lowHPPulseTween) {
+      this.lowHPPulseTween.stop();
+      this.lowHPPulseTween = undefined;
+    }
+    if (this.vignetteSprite) {
+      this.vignetteSprite.setAlpha(0.6);
+    }
+
     // Respawn at current section start
     const currentSection = Math.floor(this.player.x / 800);
     const respawnX = currentSection * 800 + 50;
@@ -721,6 +839,38 @@ export class ArcadeGameScene extends Phaser.Scene {
     if (info.weapon) {
       this.weapon = info.weapon;
       this.ammo = WEAPONS[info.weapon].ammo;
+
+      // Weapon pickup flash + "grab" camera punch
+      this.cameras.main.flash(60, 255, 255, 255, true);
+      this.tweens.add({
+        targets: this.cameras.main,
+        zoom: 1.55,
+        duration: 50,
+        yoyo: true,
+      });
+
+      // Show weapon name at center screen
+      const weaponName = info.weapon.toUpperCase() + " GUN!";
+      const pickupText = this.add
+        .text(this.cameras.main.midPoint.x, this.cameras.main.midPoint.y - 20, weaponName, {
+          fontFamily: "monospace",
+          fontSize: "14px",
+          color: "#fbbf24",
+          stroke: "#000",
+          strokeThickness: 2,
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(91);
+      this.tweens.add({
+        targets: pickupText,
+        y: pickupText.y - 20,
+        alpha: 0,
+        scaleX: 1.5,
+        scaleY: 1.5,
+        duration: 800,
+        onComplete: () => pickupText.destroy(),
+      });
     }
     if (info.healAmount) {
       this.hp = Math.min(this.maxHP, this.hp + info.healAmount);
@@ -806,44 +956,71 @@ export class ArcadeGameScene extends Phaser.Scene {
 
     const hitDir = this.player.x < enemy.x ? 1 : -1;
 
-    // Frame 1: recoil
+    // Screen shake on each enemy death
+    this.cameras.main.shake(60, 0.008);
+
+    // Spark burst on death frame 1
+    const deathSparks = this.add.particles(enemy.x, enemy.y, "particle_spark", {
+      speed: { min: 40, max: 120 },
+      angle: { min: 0, max: 360 },
+      lifespan: 250,
+      scale: { start: 1, end: 0 },
+      emitting: false,
+    });
+    deathSparks.explode(10);
+    this.time.delayedCall(300, () => deathSparks.destroy());
+
+    // Frame 1: recoil (stronger knockback)
     enemy.setTexture(`${type}_die_1`);
     this.tweens.add({
       targets: enemy,
-      x: enemy.x + hitDir * 8,
-      y: enemy.y - 4,
-      duration: 100,
+      x: enemy.x + hitDir * 16,
+      y: enemy.y - 6,
+      duration: 120,
     });
 
     // Frame 2: ragdoll
-    this.time.delayedCall(100, () => {
+    this.time.delayedCall(120, () => {
       if (!enemy.active) return;
       enemy.setTexture(`${type}_die_2`);
       this.tweens.add({
         targets: enemy,
-        x: enemy.x + hitDir * 6,
+        x: enemy.x + hitDir * 8,
         y: enemy.y + 4,
-        duration: 100,
+        duration: 120,
       });
     });
 
     // Frame 3: crumple
-    this.time.delayedCall(200, () => {
+    this.time.delayedCall(250, () => {
       if (!enemy.active) return;
       enemy.setTexture(`${type}_die_3`);
     });
 
-    // Frame 4: ground + explosion + cleanup
-    this.time.delayedCall(320, () => {
+    // Frame 4: ground
+    this.time.delayedCall(380, () => {
       if (!enemy.active) return;
       enemy.setTexture(`${type}_die_4`);
     });
 
-    this.time.delayedCall(420, () => {
+    // Explosion + score popup
+    this.time.delayedCall(500, () => {
       if (!enemy.active) return;
       this.showScorePopup(enemy.x, enemy.y, ENEMY_STATS[type].score);
       this.createExplosion(enemy.x, enemy.y);
-      enemy.destroy();
+      // Corpse lingers at half alpha before fading
+      enemy.setAlpha(0.5);
+    });
+
+    // Fade out corpse
+    this.time.delayedCall(1300, () => {
+      if (!enemy.active) return;
+      this.tweens.add({
+        targets: enemy,
+        alpha: 0,
+        duration: 200,
+        onComplete: () => enemy.destroy(),
+      });
     });
   }
 
@@ -1113,6 +1290,7 @@ export class ArcadeGameScene extends Phaser.Scene {
 
     if (this.boss) {
       this.boss.setTintFill(0xffffff);
+      this.cameras.main.shake(60, 0.01);
       this.time.delayedCall(60, () => {
         if (this.boss?.active) this.boss.clearTint();
       });
@@ -1124,7 +1302,8 @@ export class ArcadeGameScene extends Phaser.Scene {
       if (this.boss) {
         // Flash red for phase transition
         this.boss.setTint(0xff4444);
-        this.cameras.main.shake(300, 0.01);
+        this.cameras.main.shake(300, 0.03);
+        this.cameras.main.flash(200, 255, 255, 255);
         this.time.delayedCall(200, () => {
           if (this.boss?.active) {
             this.boss.clearTint();
@@ -1141,6 +1320,14 @@ export class ArcadeGameScene extends Phaser.Scene {
       this.score += ENEMY_STATS.boss.score;
 
       if (this.boss) {
+        // Boss death: massive shake + white flash + slow-mo
+        this.cameras.main.shake(500, 0.06);
+        this.cameras.main.flash(400, 255, 255, 255);
+        this.time.timeScale = 0.3;
+        this.time.delayedCall(500 * 0.3, () => {
+          this.time.timeScale = 1;
+        });
+
         // Multi-explosion death sequence
         for (let i = 0; i < 5; i++) {
           this.time.delayedCall(i * 200, () => {
@@ -1226,9 +1413,9 @@ export class ArcadeGameScene extends Phaser.Scene {
 
   private createExplosion(x: number, y: number): void {
     // Screen shake
-    this.cameras.main.shake(100, 0.005);
+    this.cameras.main.shake(120, 0.02);
 
-    // Spark particle burst
+    // Spark particle burst (increased from 8 to 14)
     const sparks = this.add.particles(x, y, "particle_spark", {
       speed: { min: 50, max: 150 },
       angle: { min: 0, max: 360 },
@@ -1236,8 +1423,53 @@ export class ArcadeGameScene extends Phaser.Scene {
       scale: { start: 1, end: 0 },
       emitting: false,
     });
-    sparks.explode(8);
+    sparks.explode(14);
     this.time.delayedCall(400, () => sparks.destroy());
+
+    // Fire particles
+    if (this.textures.exists("particle_fire")) {
+      const fire = this.add.particles(x, y, "particle_fire", {
+        speed: { min: 30, max: 80 },
+        angle: { min: 0, max: 360 },
+        lifespan: 350,
+        scale: { start: 1, end: 0 },
+        emitting: false,
+      });
+      fire.explode(6);
+      this.time.delayedCall(400, () => fire.destroy());
+    }
+
+    // Smoke puff after explosion
+    if (this.textures.exists("smoke_puff_1")) {
+      this.time.delayedCall(250, () => {
+        const smoke = this.add.sprite(x, y, "smoke_puff_1");
+        smoke.setDepth(19);
+        smoke.setAlpha(0.6);
+        this.tweens.add({
+          targets: smoke,
+          alpha: 0,
+          scaleX: 1.5,
+          scaleY: 1.5,
+          duration: 400,
+          onComplete: () => smoke.destroy(),
+        });
+      });
+    }
+
+    // Shockwave ring
+    if (this.textures.exists("explosion_ring")) {
+      const ring = this.add.sprite(x, y, "explosion_ring");
+      ring.setDepth(20);
+      ring.setScale(1);
+      this.tweens.add({
+        targets: ring,
+        scaleX: 3,
+        scaleY: 3,
+        alpha: 0,
+        duration: 150,
+        onComplete: () => ring.destroy(),
+      });
+    }
 
     // Explosion sprite animation
     const exp = this.add.sprite(x, y, "explosion_1");
@@ -1260,10 +1492,11 @@ export class ArcadeGameScene extends Phaser.Scene {
   }
 
   private createLargeExplosion(x: number, y: number): void {
-    // Heavy screen shake
-    this.cameras.main.shake(150, 0.008);
+    // Heavy screen shake + flash
+    this.cameras.main.shake(200, 0.04);
+    this.cameras.main.flash(80, 255, 180, 80);
 
-    // Spark particle burst (more particles than regular)
+    // Spark particle burst (increased from 14 to 24)
     const sparks = this.add.particles(x, y, "particle_spark", {
       speed: { min: 80, max: 200 },
       angle: { min: 0, max: 360 },
@@ -1271,8 +1504,73 @@ export class ArcadeGameScene extends Phaser.Scene {
       scale: { start: 1.5, end: 0 },
       emitting: false,
     });
-    sparks.explode(14);
+    sparks.explode(24);
     this.time.delayedCall(500, () => sparks.destroy());
+
+    // Fire particles (12 for large)
+    if (this.textures.exists("particle_fire")) {
+      const fire = this.add.particles(x, y, "particle_fire", {
+        speed: { min: 40, max: 120 },
+        angle: { min: 0, max: 360 },
+        lifespan: 450,
+        scale: { start: 1.5, end: 0 },
+        emitting: false,
+      });
+      fire.explode(12);
+      this.time.delayedCall(500, () => fire.destroy());
+    }
+
+    // Lingering smoke puffs (staggered)
+    for (let i = 0; i < 3; i++) {
+      const smokeKey = `smoke_puff_${i + 1}`;
+      if (this.textures.exists(smokeKey)) {
+        this.time.delayedCall(200 + i * 150, () => {
+          const ox = Phaser.Math.Between(-10, 10);
+          const oy = Phaser.Math.Between(-10, 5);
+          const smoke = this.add.sprite(x + ox, y + oy, smokeKey);
+          smoke.setDepth(19);
+          smoke.setAlpha(0.5);
+          this.tweens.add({
+            targets: smoke,
+            alpha: 0,
+            scaleX: 2,
+            scaleY: 2,
+            y: y + oy - 10,
+            duration: 500,
+            onComplete: () => smoke.destroy(),
+          });
+        });
+      }
+    }
+
+    // Shockwave ring (larger for big explosions)
+    if (this.textures.exists("explosion_ring")) {
+      const ring = this.add.sprite(x, y, "explosion_ring");
+      ring.setDepth(20);
+      ring.setScale(1);
+      this.tweens.add({
+        targets: ring,
+        scaleX: 4,
+        scaleY: 4,
+        alpha: 0,
+        duration: 200,
+        onComplete: () => ring.destroy(),
+      });
+    }
+
+    // Debris particles with gravity
+    if (this.textures.exists("particle_debris")) {
+      const debris = this.add.particles(x, y, "particle_debris", {
+        speed: { min: 60, max: 150 },
+        angle: { min: 200, max: 340 },
+        lifespan: 600,
+        gravityY: 200,
+        scale: { start: 1, end: 0 },
+        emitting: false,
+      });
+      debris.explode(8);
+      this.time.delayedCall(700, () => debris.destroy());
+    }
 
     // Large explosion sprite animation (6 frames, 32x32)
     const exp = this.add.sprite(x, y, "explosion_large_1");
@@ -1315,13 +1613,21 @@ export class ArcadeGameScene extends Phaser.Scene {
   }
 
   private showScorePopup(x: number, y: number, points: number): void {
+    const color =
+      points >= 1000
+        ? "#ef4444"
+        : points >= 500
+          ? "#f97316"
+          : points >= 200
+            ? "#fbbf24"
+            : "#4ade80";
     const text = this.add
       .text(x, y - 10, `+${points}`, {
         fontFamily: "monospace",
-        fontSize: "8px",
-        color: "#4ade80",
+        fontSize: "12px",
+        color,
         stroke: "#000",
-        strokeThickness: 1,
+        strokeThickness: 2,
       })
       .setOrigin(0.5)
       .setDepth(25);
@@ -1330,6 +1636,8 @@ export class ArcadeGameScene extends Phaser.Scene {
       targets: text,
       y: y - 30,
       alpha: 0,
+      scaleX: 1.3,
+      scaleY: 1.3,
       duration: 600,
       onComplete: () => text.destroy(),
     });

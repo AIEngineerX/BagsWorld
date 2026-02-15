@@ -108,7 +108,7 @@ export function ArcadeModal({ onClose }: ArcadeModalProps) {
 
         <div
           ref={containerRef}
-          className="w-full border-2 border-bags-green/40 rounded-lg overflow-hidden bg-black"
+          className="w-full border-2 border-bags-green/40 rounded-t-lg overflow-hidden bg-black"
           style={{
             aspectRatio: "16 / 9",
             imageRendering: "pixelated",

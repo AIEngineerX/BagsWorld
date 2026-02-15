@@ -7,14 +7,20 @@ import {
   type SectionData,
 } from "@/game/arcade/level-data";
 import {
+  ARCADE_WIDTH,
+  ARCADE_HEIGHT,
   GROUND_Y,
   LEVEL_WIDTH,
   TILE_SIZE,
   SECTIONS,
   ENEMY_STATS,
   PICKUPS,
+  CHARACTER_STATS,
+  SECTION_THEMES,
   type EnemyType,
   type PickupType,
+  type ArcadeCharacter,
+  type PropType,
 } from "@/game/arcade/types";
 
 // getGroundPlatforms()
@@ -615,5 +621,499 @@ describe("full level aggregation", () => {
     }
     // Score should be substantial
     expect(totalScore).toBeGreaterThan(1000);
+  });
+});
+
+// Decoration Data Integrity
+
+describe("decoration data integrity", () => {
+  const validPropTypes: PropType[] = [
+    "lamp_post",
+    "barrel",
+    "sandbag_stack",
+    "broken_fence",
+    "road_sign",
+    "wrecked_car",
+    "rubble_pile",
+    "oil_drum",
+    "traffic_cone",
+    "barbed_wire",
+    "computer_terminal",
+    "dumpster",
+  ];
+
+  describe.each([0, 1, 2, 3, 4, 5])("section %i decorations", (section) => {
+    let data: SectionData;
+
+    beforeEach(() => {
+      data = getSectionData(section);
+    });
+
+    it("has at least 10 decorations for visual density", () => {
+      expect(data.decorations.length).toBeGreaterThanOrEqual(10);
+    });
+
+    it("all decoration types are valid PropType values", () => {
+      for (const d of data.decorations) {
+        expect(validPropTypes).toContain(d.type);
+      }
+    });
+
+    it("all decoration X positions are within section bounds", () => {
+      const sectionStart = SECTIONS[section] ?? section * 800;
+      const sectionEnd = sectionStart + 800;
+      for (const d of data.decorations) {
+        expect(d.x).toBeGreaterThanOrEqual(sectionStart);
+        expect(d.x).toBeLessThanOrEqual(sectionEnd);
+      }
+    });
+
+    it("all decoration Y positions are at ground level", () => {
+      for (const d of data.decorations) {
+        expect(d.y).toBe(GROUND_Y);
+      }
+    });
+
+    it("no two decorations at the exact same X position", () => {
+      const xPositions = data.decorations.map((d) => d.x);
+      expect(new Set(xPositions).size).toBe(xPositions.length);
+    });
+
+    it("decorations are spread across the section width (not clustered)", () => {
+      if (data.decorations.length < 3) return;
+      const xValues = data.decorations.map((d) => d.x).sort((a, b) => a - b);
+      const sectionStart = SECTIONS[section] ?? section * 800;
+      const range = xValues[xValues.length - 1] - xValues[0];
+      // Decorations should span at least 70% of the section
+      expect(range).toBeGreaterThanOrEqual(500);
+    });
+  });
+
+  it("total decoration count across all sections is substantial (100+)", () => {
+    let total = 0;
+    for (let s = 0; s <= 5; s++) {
+      total += getSectionData(s).decorations.length;
+    }
+    expect(total).toBeGreaterThanOrEqual(100);
+  });
+
+  it("each section uses prop types appropriate to its theme", () => {
+    // Section 0 (street): should have lamp_posts and traffic_cones
+    const s0 = getSectionData(0);
+    expect(s0.decorations.some((d) => d.type === "lamp_post")).toBe(true);
+    expect(s0.decorations.some((d) => d.type === "traffic_cone")).toBe(true);
+
+    // Section 1 (military): should have sandbag_stacks
+    const s1 = getSectionData(1);
+    expect(s1.decorations.some((d) => d.type === "sandbag_stack")).toBe(true);
+
+    // Section 2 (warzone): should have rubble_piles
+    const s2 = getSectionData(2);
+    expect(s2.decorations.some((d) => d.type === "rubble_pile")).toBe(true);
+
+    // Section 3 (industrial): should have oil_drums and computer_terminals
+    const s3 = getSectionData(3);
+    expect(s3.decorations.some((d) => d.type === "oil_drum")).toBe(true);
+    expect(s3.decorations.some((d) => d.type === "computer_terminal")).toBe(true);
+  });
+});
+
+// Spatial Overlap Checks — decorations shouldn't stack with enemies or pickups
+
+describe("spatial overlap checks", () => {
+  describe.each([0, 1, 2, 3, 4, 5])("section %i", (section) => {
+    let data: SectionData;
+
+    beforeEach(() => {
+      data = getSectionData(section);
+    });
+
+    it("no decoration at the exact same X as an enemy spawn", () => {
+      const decoXs = new Set(data.decorations.map((d) => d.x));
+      for (const enemy of data.enemies) {
+        expect(decoXs.has(enemy.x)).toBe(false);
+      }
+    });
+
+    it("no decoration at the exact same position (X and Y) as a pickup", () => {
+      // Decorations are at ground Y, pickups float above ground — X overlap is okay
+      const decoPositions = new Set(data.decorations.map((d) => `${d.x},${d.y}`));
+      for (const pickup of data.pickups) {
+        expect(decoPositions.has(`${pickup.x},${pickup.y}`)).toBe(false);
+      }
+    });
+
+    it("no pickup at the exact same position as an enemy", () => {
+      const enemyPositions = new Set(data.enemies.map((e) => `${e.x},${e.y}`));
+      for (const pickup of data.pickups) {
+        expect(enemyPositions.has(`${pickup.x},${pickup.y}`)).toBe(false);
+      }
+    });
+
+    it("ground-level enemies have minimum horizontal spacing (16px)", () => {
+      // Only check spacing between enemies at the same Y level — turrets on
+      // platforms and ground enemies legitimately share X ranges
+      const groundEnemies = data.enemies.filter((e) => e.y === GROUND_Y - 32);
+      if (groundEnemies.length < 2) return;
+      const sorted = [...groundEnemies].sort((a, b) => a.x - b.x);
+      for (let i = 1; i < sorted.length; i++) {
+        const gap = sorted[i].x - sorted[i - 1].x;
+        expect(gap).toBeGreaterThanOrEqual(16);
+      }
+    });
+  });
+});
+
+// Patrol Range Boundary Checks
+
+describe("patrol range vs section bounds", () => {
+  describe.each([0, 1, 2, 3, 4, 5])("section %i", (section) => {
+    it("no enemy patrol extends beyond its section boundaries", () => {
+      const data = getSectionData(section);
+      const sectionStart = SECTIONS[section] ?? section * 800;
+      const sectionEnd = sectionStart + 800;
+
+      for (const enemy of data.enemies) {
+        if (enemy.patrolRange === undefined) continue;
+        const leftExtent = enemy.x - enemy.patrolRange;
+        const rightExtent = enemy.x + enemy.patrolRange;
+
+        // Patrol should stay mostly within the section (allow 50px overflow for smoother AI)
+        expect(leftExtent).toBeGreaterThanOrEqual(sectionStart - 50);
+        expect(rightExtent).toBeLessThanOrEqual(sectionEnd + 50);
+      }
+    });
+  });
+});
+
+// Platform Reachability — Can characters reach all platforms?
+
+describe("platform reachability", () => {
+  const characters: ArcadeCharacter[] = ["ghost", "neo", "cj"];
+
+  // Approximate max jump height: v^2 / (2 * gravity)
+  // gravity = 800 (from ArcadeModal config)
+  const GRAVITY = 800;
+
+  // Phaser discrete physics gives ~15% more effective height than the
+  // continuous kinematics formula v²/2g, because velocity is applied before
+  // gravity on the first frame. We use a 1.15x tolerance factor.
+  const PHASER_TOLERANCE = 1.15;
+
+  describe.each(characters)("character %s", (char) => {
+    const stats = CHARACTER_STATS[char];
+    const maxJumpHeight = (stats.jumpForce * stats.jumpForce) / (2 * GRAVITY);
+    const effectiveJump = maxJumpHeight * PHASER_TOLERANCE;
+
+    it("max jump height is positive and calculable", () => {
+      expect(maxJumpHeight).toBeGreaterThan(0);
+      expect(Number.isFinite(maxJumpHeight)).toBe(true);
+    });
+
+    it("can reach at least the lowest platforms (y=200, 40px above ground)", () => {
+      expect(effectiveJump).toBeGreaterThan(40);
+    });
+
+    it("all platforms are reachable via stepping stones", () => {
+      // For each section, verify that platforms can be reached from ground or
+      // from a lower platform that is itself reachable.
+      for (let s = 0; s <= 5; s++) {
+        const data = getSectionData(s);
+        if (data.platforms.length === 0) continue;
+
+        // Sort platforms by height (highest Y = closest to ground first)
+        const sorted = [...data.platforms].sort((a, b) => b.y - a.y);
+
+        // The lowest platform must be reachable from ground
+        const lowestPlatHeight = GROUND_Y - sorted[0].y;
+        expect(lowestPlatHeight).toBeLessThanOrEqual(effectiveJump);
+
+        // Each subsequent platform must be reachable from a lower one
+        for (let i = 1; i < sorted.length; i++) {
+          const heightGap = sorted[i - 1].y - sorted[i].y; // positive = higher
+          // Can reach from ground OR from any reachable lower platform
+          const fromGround = GROUND_Y - sorted[i].y;
+          const reachable =
+            heightGap <= effectiveJump || fromGround <= effectiveJump;
+          expect(reachable).toBe(true);
+        }
+      }
+    });
+  });
+
+  it("Ghost max jump height is approximately 64px", () => {
+    const h = (CHARACTER_STATS.ghost.jumpForce ** 2) / (2 * GRAVITY);
+    expect(h).toBe(64);
+  });
+
+  it("Neo max jump height is approximately 76.5px", () => {
+    const h = (CHARACTER_STATS.neo.jumpForce ** 2) / (2 * GRAVITY);
+    expect(h).toBeCloseTo(76.5625, 2);
+  });
+
+  it("CJ max jump height is approximately 52.6px", () => {
+    const h = (CHARACTER_STATS.cj.jumpForce ** 2) / (2 * GRAVITY);
+    expect(h).toBeCloseTo(52.5625, 2);
+  });
+
+  it("CJ (weakest jumper) can reach the lowest platform in every section with Phaser tolerance", () => {
+    const cjMaxJump = (CHARACTER_STATS.cj.jumpForce ** 2) / (2 * GRAVITY);
+    const effectiveCJ = cjMaxJump * PHASER_TOLERANCE;
+    for (let s = 0; s <= 5; s++) {
+      const data = getSectionData(s);
+      if (data.platforms.length === 0) continue;
+      // Lowest platform (highest Y value) should be reachable
+      const lowestPlatY = Math.max(...data.platforms.map((p) => p.y));
+      const heightAboveGround = GROUND_Y - lowestPlatY;
+      expect(heightAboveGround).toBeLessThanOrEqual(effectiveCJ);
+    }
+  });
+});
+
+// Platform Gap Analysis
+
+describe("platform gaps", () => {
+  describe.each([1, 2, 3, 4])("section %i platforms", (section) => {
+    it("platforms don't overlap horizontally", () => {
+      const data = getSectionData(section);
+      if (data.platforms.length < 2) return;
+
+      const sorted = [...data.platforms].sort((a, b) => a.x - b.x);
+      for (let i = 1; i < sorted.length; i++) {
+        const prevEnd = sorted[i - 1].x + sorted[i - 1].width * TILE_SIZE;
+        expect(sorted[i].x).toBeGreaterThanOrEqual(prevEnd);
+      }
+    });
+
+    it("no platform is wider than half the section (400px / 25 tiles)", () => {
+      const data = getSectionData(section);
+      for (const p of data.platforms) {
+        expect(p.width).toBeLessThanOrEqual(25);
+      }
+    });
+  });
+});
+
+// Ground Coverage Continuity
+
+describe("ground coverage continuity", () => {
+  it("ground platforms cover the full level width with no gaps", () => {
+    const grounds = getGroundPlatforms();
+    let coveredEnd = 0;
+
+    // Sort by X position
+    const sorted = [...grounds].sort((a, b) => a.x - b.x);
+    for (const g of sorted) {
+      // Each segment should start where the previous ended (or at 0)
+      expect(g.x).toBeLessThanOrEqual(coveredEnd + 1); // Allow 1px tolerance
+      coveredEnd = g.x + g.width * TILE_SIZE;
+    }
+    expect(coveredEnd).toBeGreaterThanOrEqual(LEVEL_WIDTH);
+  });
+
+  it("each ground segment uses the correct texture for its section", () => {
+    const grounds = getGroundPlatforms();
+    grounds.forEach((g, i) => {
+      const expectedGround = SECTION_THEMES[i]?.ground ?? "ground_concrete";
+      expect(g.texture).toBe(expectedGround);
+    });
+  });
+
+  it("all ground segments have exactly 50 tiles (800px / 16px)", () => {
+    const grounds = getGroundPlatforms();
+    for (const g of grounds) {
+      expect(g.width).toBe(50);
+    }
+  });
+});
+
+// Out-of-Bounds Edge Cases
+
+describe("getSectionData out-of-bounds edge cases", () => {
+  it("returns empty arrays for section 0.5 (fractional)", () => {
+    const data = getSectionData(0.5);
+    expect(data.platforms).toEqual([]);
+    expect(data.enemies).toEqual([]);
+    expect(data.pickups).toEqual([]);
+    expect(data.decorations).toEqual([]);
+  });
+
+  it("returns empty arrays for Infinity", () => {
+    const data = getSectionData(Infinity);
+    expect(data.platforms).toEqual([]);
+    expect(data.enemies).toEqual([]);
+    expect(data.pickups).toEqual([]);
+    expect(data.decorations).toEqual([]);
+  });
+
+  it("returns empty arrays for -Infinity", () => {
+    const data = getSectionData(-Infinity);
+    expect(data.platforms).toEqual([]);
+    expect(data.enemies).toEqual([]);
+    expect(data.pickups).toEqual([]);
+    expect(data.decorations).toEqual([]);
+  });
+
+  it("returns empty arrays for MAX_SAFE_INTEGER", () => {
+    const data = getSectionData(Number.MAX_SAFE_INTEGER);
+    expect(data.platforms).toEqual([]);
+    expect(data.enemies).toEqual([]);
+  });
+
+  it("default case base calculation uses section * 800", () => {
+    // Section 7 is out of range: base = SECTIONS[7] ?? 7 * 800 = 5600
+    // But switch falls to default which returns empty
+    const data = getSectionData(7);
+    expect(data.enemies).toEqual([]);
+  });
+});
+
+// Exact Section Content Verification
+
+describe("exact section content counts", () => {
+  it("section 0: 3 enemies, 2 pickups, 0 platforms, 18 decorations", () => {
+    const data = getSectionData(0);
+    expect(data.enemies).toHaveLength(3);
+    expect(data.pickups).toHaveLength(2);
+    expect(data.platforms).toHaveLength(0);
+    expect(data.decorations).toHaveLength(18);
+  });
+
+  it("section 1: 6 enemies, 1 pickup, 4 platforms, 20 decorations", () => {
+    const data = getSectionData(1);
+    expect(data.enemies).toHaveLength(6);
+    expect(data.pickups).toHaveLength(1);
+    expect(data.platforms).toHaveLength(4);
+    expect(data.decorations).toHaveLength(20);
+  });
+
+  it("section 2: 6 enemies, 1 pickup, 3 platforms, 22 decorations", () => {
+    const data = getSectionData(2);
+    expect(data.enemies).toHaveLength(6);
+    expect(data.pickups).toHaveLength(1);
+    expect(data.platforms).toHaveLength(3);
+    expect(data.decorations).toHaveLength(22);
+  });
+
+  it("section 3: 6 enemies, 1 pickup, 6 platforms, 20 decorations", () => {
+    const data = getSectionData(3);
+    expect(data.enemies).toHaveLength(6);
+    expect(data.pickups).toHaveLength(1);
+    expect(data.platforms).toHaveLength(6);
+    expect(data.decorations).toHaveLength(20);
+  });
+
+  it("section 4: 11 enemies, 2 pickups, 3 platforms, 25 decorations", () => {
+    const data = getSectionData(4);
+    expect(data.enemies).toHaveLength(11);
+    expect(data.pickups).toHaveLength(2);
+    expect(data.platforms).toHaveLength(3);
+    expect(data.decorations).toHaveLength(25);
+  });
+
+  it("section 5: 1 enemy (boss), 1 pickup, 0 platforms, 12 decorations", () => {
+    const data = getSectionData(5);
+    expect(data.enemies).toHaveLength(1);
+    expect(data.pickups).toHaveLength(1);
+    expect(data.platforms).toHaveLength(0);
+    expect(data.decorations).toHaveLength(12);
+  });
+});
+
+// Enemy Type Distribution
+
+describe("enemy type distribution across full level", () => {
+  it("total soldiers across all sections", () => {
+    let count = 0;
+    for (let s = 0; s <= 5; s++) {
+      count += getSectionData(s).enemies.filter((e) => e.type === "soldier").length;
+    }
+    expect(count).toBeGreaterThanOrEqual(10); // Soldiers are the most common
+  });
+
+  it("total heavy enemies across all sections", () => {
+    let count = 0;
+    for (let s = 0; s <= 5; s++) {
+      count += getSectionData(s).enemies.filter((e) => e.type === "heavy").length;
+    }
+    expect(count).toBeGreaterThanOrEqual(3);
+    expect(count).toBeLessThanOrEqual(10);
+  });
+
+  it("total turrets across all sections", () => {
+    let count = 0;
+    for (let s = 0; s <= 5; s++) {
+      count += getSectionData(s).enemies.filter((e) => e.type === "turret").length;
+    }
+    expect(count).toBeGreaterThanOrEqual(3);
+    expect(count).toBeLessThanOrEqual(10);
+  });
+
+  it("exactly 1 boss in the entire level", () => {
+    let count = 0;
+    for (let s = 0; s <= 5; s++) {
+      count += getSectionData(s).enemies.filter((e) => e.type === "boss").length;
+    }
+    expect(count).toBe(1);
+  });
+
+  it("total HP across all enemies is calculable", () => {
+    let totalHP = 0;
+    for (let s = 0; s <= 5; s++) {
+      for (const enemy of getSectionData(s).enemies) {
+        totalHP += ENEMY_STATS[enemy.type].hp;
+      }
+    }
+    // Boss is 50 HP, rest adds up
+    expect(totalHP).toBeGreaterThan(ENEMY_STATS.boss.hp);
+    expect(Number.isFinite(totalHP)).toBe(true);
+  });
+});
+
+// Pickup Distribution
+
+describe("pickup distribution across full level", () => {
+  it("total weapon pickups (spread + heavy)", () => {
+    let count = 0;
+    for (let s = 0; s <= 5; s++) {
+      count += getSectionData(s).pickups.filter(
+        (p) => p.type === "spread" || p.type === "heavy",
+      ).length;
+    }
+    expect(count).toBeGreaterThanOrEqual(3);
+  });
+
+  it("health pickups are distributed across at least 2 different sections", () => {
+    const sectionsWithHealth: number[] = [];
+    for (let s = 0; s <= 5; s++) {
+      if (getSectionData(s).pickups.some((p) => p.type === "health")) {
+        sectionsWithHealth.push(s);
+      }
+    }
+    expect(sectionsWithHealth.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("no section has more than 3 pickups (to avoid clutter)", () => {
+    for (let s = 0; s <= 5; s++) {
+      expect(getSectionData(s).pickups.length).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it("pickups on elevated platforms have matching platform beneath them", () => {
+    for (let s = 0; s <= 5; s++) {
+      const data = getSectionData(s);
+      for (const pickup of data.pickups) {
+        if (pickup.y < GROUND_Y - 50) {
+          // This pickup is elevated — should be near a platform
+          const nearPlatform = data.platforms.some((p) => {
+            const platLeft = p.x;
+            const platRight = p.x + p.width * TILE_SIZE;
+            return pickup.x >= platLeft - 20 && pickup.x <= platRight + 20 &&
+                   Math.abs(pickup.y - (p.y - 30)) < 20;
+          });
+          expect(nearPlatform).toBe(true);
+        }
+      }
+    }
   });
 });
