@@ -12,6 +12,7 @@ import {
   STARTING_GRENADES,
   GRENADE_DAMAGE,
   INVINCIBILITY_TIME,
+  GRENADE_RADIUS,
   TILE_SIZE,
   SECTION_THEMES,
   type ArcadeCharacter,
@@ -625,7 +626,10 @@ export class ArcadeGameScene extends Phaser.Scene {
 
       this.enemies.getChildren().forEach((obj) => {
         const e = obj as Phaser.Physics.Arcade.Sprite;
-        if (e.active && Phaser.Math.Distance.Between(grenade.x, grenade.y, e.x, e.y) < 60) {
+        if (
+          e.active &&
+          Phaser.Math.Distance.Between(grenade.x, grenade.y, e.x, e.y) < GRENADE_RADIUS
+        ) {
           if ((e as any).isBoss) {
             this.damageBoss(GRENADE_DAMAGE);
           } else {
@@ -676,13 +680,8 @@ export class ArcadeGameScene extends Phaser.Scene {
       });
     }
 
-    // Low HP continuous vignette pulse
-    if (
-      this.hp - amount <= 2 &&
-      this.hp - amount > 0 &&
-      this.vignetteSprite &&
-      !this.lowHPPulseTween
-    ) {
+    // Low HP continuous vignette pulse (hp is already decremented above)
+    if (this.hp <= 2 && this.hp > 0 && this.vignetteSprite && !this.lowHPPulseTween) {
       this.lowHPPulseTween = this.tweens.add({
         targets: this.vignetteSprite,
         alpha: { from: 0.6, to: 0.9 },

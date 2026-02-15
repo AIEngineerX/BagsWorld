@@ -130,6 +130,8 @@ export const STARTING_LIVES = 3;
 export const STARTING_GRENADES = 3;
 export const GRENADE_DAMAGE = 5;
 export const INVINCIBILITY_TIME = 1500; // ms after being hit
+export const GRENADE_RADIUS = 60; // px blast radius for grenade damage
+export const GRAVITY = 800; // px/s² arcade physics gravity
 
 export const TILE_SIZE = 16;
 

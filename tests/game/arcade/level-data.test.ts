@@ -17,6 +17,7 @@ import {
   PICKUPS,
   CHARACTER_STATS,
   SECTION_THEMES,
+  GRAVITY,
   type EnemyType,
   type PickupType,
   type ArcadeCharacter,
@@ -792,12 +793,13 @@ describe("platform reachability", () => {
   const characters: ArcadeCharacter[] = ["ghost", "neo", "cj"];
 
   // Approximate max jump height: v^2 / (2 * gravity)
-  // gravity = 800 (from ArcadeModal config)
-  const GRAVITY = 800;
 
-  // Phaser discrete physics gives ~15% more effective height than the
-  // continuous kinematics formula v²/2g, because velocity is applied before
-  // gravity on the first frame. We use a 1.15x tolerance factor.
+  // UNVALIDATED TOLERANCE: Phaser discrete physics gives more effective jump
+  // height than the continuous kinematics formula v²/2g. The 1.15x factor is
+  // an estimate, not measured from actual Phaser simulation. CJ's continuous
+  // max jump is 52.5px but platforms sit at 60px above ground. If this factor
+  // is wrong, either the platforms are unreachable in-game or the tolerance
+  // is too generous. Only runtime testing in the browser can confirm.
   const PHASER_TOLERANCE = 1.15;
 
   describe.each(characters)("character %s", (char) => {
