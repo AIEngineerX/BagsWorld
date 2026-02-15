@@ -240,40 +240,55 @@ export class SolanaService extends Service {
   }
 
   /**
-   * Send raw transaction to RPC
+   * Send raw transaction to RPC with retry on rate limits
    */
   private async sendRawTransaction(
     signedTransaction: Uint8Array,
     options?: SendTransactionOptions
   ): Promise<string> {
     const base64Tx = btoa(String.fromCharCode(...signedTransaction));
+    const maxAttempts = 3;
 
-    const response = await fetch(this.rpcUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "sendTransaction",
-        params: [
-          base64Tx,
-          {
-            encoding: "base64",
-            skipPreflight: options?.skipPreflight ?? false,
-            preflightCommitment: options?.preflightCommitment ?? "confirmed",
-            maxRetries: options?.maxRetries ?? 3,
-          },
-        ],
-      }),
-    });
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const response = await fetch(this.rpcUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "sendTransaction",
+          params: [
+            base64Tx,
+            {
+              encoding: "base64",
+              skipPreflight: options?.skipPreflight ?? false,
+              preflightCommitment: options?.preflightCommitment ?? "confirmed",
+              maxRetries: options?.maxRetries ?? 3,
+            },
+          ],
+        }),
+      });
 
-    const result = await response.json();
+      const result = await response.json();
 
-    if (result.error) {
-      throw new Error(result.error.message || JSON.stringify(result.error));
+      if (result.error) {
+        const msg = result.error.message || JSON.stringify(result.error);
+        const isRateLimit = msg.includes("max usage") || msg.includes("429") || response.status === 429;
+
+        if (isRateLimit && attempt < maxAttempts) {
+          const delayMs = attempt * 2000; // 2s, 4s
+          console.warn(`[SolanaService] sendTransaction rate limited (attempt ${attempt}/${maxAttempts}), retrying in ${delayMs / 1000}s...`);
+          await new Promise((r) => setTimeout(r, delayMs));
+          continue;
+        }
+
+        throw new Error(msg);
+      }
+
+      return result.result;
     }
 
-    return result.result;
+    throw new Error("sendTransaction failed after all retry attempts");
   }
 
   /**
