@@ -46,12 +46,16 @@ export async function getWalletBalance(walletAddress: string): Promise<WalletBal
 export async function getAgentBalances(agentId: string): Promise<WalletBalance[]> {
   const credentials = await getAgentCredentials(agentId);
   if (!credentials) {
-    console.error(`[Wallet] Agent ${agentId}: credentials not found or expired — balance will show 0`);
+    console.error(
+      `[Wallet] Agent ${agentId}: credentials not found or expired — balance will show 0`
+    );
     throw new Error(`Agent ${agentId} not found or credentials expired`);
   }
 
   if (credentials.wallets.length === 0) {
-    console.warn(`[Wallet] Agent ${agentId} (${credentials.moltbookUsername}): no wallets registered`);
+    console.warn(
+      `[Wallet] Agent ${agentId} (${credentials.moltbookUsername}): no wallets registered`
+    );
     return [];
   }
 
