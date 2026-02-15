@@ -720,6 +720,9 @@ export class WorldScene extends Phaser.Scene {
   private updateLocalPlayer(): void {
     if (!this.localPlayer || !this.playerEnabled) return;
 
+    // Skip all movement when a modal (arcade, casino, etc.) is open
+    if ((window as any).__bagsworld_modal_open) return;
+
     // Skip WASD movement when a text input or textarea is focused (chat boxes, modals, etc.)
     const activeTag = document.activeElement?.tagName;
     const isTyping = activeTag === "INPUT" || activeTag === "TEXTAREA" || activeTag === "SELECT";

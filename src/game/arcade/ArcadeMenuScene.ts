@@ -207,13 +207,13 @@ export class ArcadeMenuScene extends Phaser.Scene {
       if (now - lastNav < 200) return;
       lastNav = now;
 
-      if (event.key === "ArrowUp") {
+      if (event.key === "ArrowUp" || event.key === "w" || event.key === "W") {
         this.selectedIndex = (this.selectedIndex - 1 + 3) % 3;
         this.updateSelection();
-      } else if (event.key === "ArrowDown") {
+      } else if (event.key === "ArrowDown" || event.key === "s" || event.key === "S") {
         this.selectedIndex = (this.selectedIndex + 1) % 3;
         this.updateSelection();
-      } else if (event.key === "z" || event.key === "Z") {
+      } else if (event.key === "z" || event.key === "Z" || event.key === "Enter") {
         this.startGame();
       }
     });

@@ -70,6 +70,10 @@ export class ArcadeGameScene extends Phaser.Scene {
   private bossShootUntil = 0;
 
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  private keyW!: Phaser.Input.Keyboard.Key;
+  private keyA!: Phaser.Input.Keyboard.Key;
+  private keyS!: Phaser.Input.Keyboard.Key;
+  private keyD!: Phaser.Input.Keyboard.Key;
   private keyZ!: Phaser.Input.Keyboard.Key;
   private keyX!: Phaser.Input.Keyboard.Key;
   private keyC!: Phaser.Input.Keyboard.Key;
@@ -173,6 +177,10 @@ export class ArcadeGameScene extends Phaser.Scene {
     this.cameras.main.setDeadzone(60, 40);
 
     this.cursors = this.input.keyboard!.createCursorKeys();
+    this.keyW = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W);
+    this.keyA = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+    this.keyS = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+    this.keyD = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D);
     this.keyZ = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
     this.keyX = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.X);
     this.keyC = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.C);
@@ -278,15 +286,15 @@ export class ArcadeGameScene extends Phaser.Scene {
     const body = this.player.body as Phaser.Physics.Arcade.Body;
     const onGround = body.blocked.down;
 
-    this.isCrouching = this.cursors.down.isDown && onGround;
+    this.isCrouching = (this.cursors.down.isDown || this.keyS.isDown) && onGround;
 
     if (this.isCrouching) {
       body.setVelocityX(0);
-    } else if (this.cursors.left.isDown) {
+    } else if (this.cursors.left.isDown || this.keyA.isDown) {
       body.setVelocityX(-stats.speed);
       this.facing = "left";
       this.player.setFlipX(true);
-    } else if (this.cursors.right.isDown) {
+    } else if (this.cursors.right.isDown || this.keyD.isDown) {
       body.setVelocityX(stats.speed);
       this.facing = "right";
       this.player.setFlipX(false);
@@ -294,7 +302,7 @@ export class ArcadeGameScene extends Phaser.Scene {
       body.setVelocityX(0);
     }
 
-    if (Phaser.Input.Keyboard.JustDown(this.keyX) && onGround) {
+    if ((Phaser.Input.Keyboard.JustDown(this.keyX) || Phaser.Input.Keyboard.JustDown(this.keyW)) && onGround) {
       body.setVelocityY(stats.jumpForce);
     }
 
