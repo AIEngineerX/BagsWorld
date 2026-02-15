@@ -87,6 +87,8 @@ export function ArcadeModal({ onClose }: ArcadeModalProps) {
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
+      onKeyDown={(e) => e.stopPropagation()}
+      onKeyUp={(e) => e.stopPropagation()}
     >
       <div className="relative w-full max-w-4xl mx-4 pt-14 sm:pt-0">
         <button
@@ -99,7 +101,7 @@ export function ArcadeModal({ onClose }: ArcadeModalProps) {
         <div className="text-center mb-2">
           <h2 className="font-pixel text-lg text-bags-green">METAL BAGS</h2>
           <p className="font-pixel text-[8px] text-gray-500 hidden sm:block">
-            Arrow Keys: Move &nbsp; Z: Shoot &nbsp; X: Jump &nbsp; C: Grenade
+            WASD/Arrows: Move &nbsp; Z: Shoot &nbsp; W/X: Jump &nbsp; C: Grenade
           </p>
           <p className="font-pixel text-[8px] text-gray-500 sm:hidden">Tap to play</p>
         </div>
