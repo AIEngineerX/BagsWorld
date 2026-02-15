@@ -13,6 +13,7 @@ import {
   GRENADE_DAMAGE,
   INVINCIBILITY_TIME,
   TILE_SIZE,
+  SECTION_THEMES,
   type ArcadeCharacter,
   type WeaponType,
   type EnemyType,
@@ -225,22 +226,29 @@ export class ArcadeGameScene extends Phaser.Scene {
     this.enemyAnimTimer = 0;
     this.enemyAnimFrame = 0;
 
-    // Background flickering lights (world-space, parallax-independent)
-    for (let i = 0; i < 10; i++) {
-      const lx = Phaser.Math.Between(50, LEVEL_WIDTH - 50);
-      const ly = Phaser.Math.Between(40, 180);
-      const colors = [0x4ade80, 0x3b82f6, 0xfbbf24, 0x06b6d4];
-      const color = colors[i % colors.length];
-      const light = this.add.rectangle(lx, ly, 2, 2, color, 0.2);
-      light.setDepth(-0.5);
-      this.tweens.add({
-        targets: light,
-        alpha: { from: 0.05, to: 0.35 },
-        duration: Phaser.Math.Between(800, 2000),
-        yoyo: true,
-        repeat: -1,
-        delay: Phaser.Math.Between(0, 1500),
+    // Ambient dust mote particles (follow camera)
+    if (this.textures.exists("particle_dust_mote")) {
+      const dustEmitter = this.add.particles(0, 0, "particle_dust_mote", {
+        x: { min: 0, max: ARCADE_WIDTH },
+        y: { min: 0, max: ARCADE_HEIGHT },
+        lifespan: 4000,
+        speedX: { min: -5, max: 5 },
+        speedY: { min: -8, max: -2 },
+        alpha: { start: 0.3, end: 0 },
+        scale: { start: 1, end: 0.5 },
+        frequency: 1500,
+        maxParticles: 3,
       });
+      dustEmitter.setScrollFactor(0);
+      dustEmitter.setDepth(15);
+    }
+
+    // Vignette overlay
+    if (this.textures.exists("vignette")) {
+      const vignette = this.add.sprite(ARCADE_WIDTH / 2, ARCADE_HEIGHT / 2, "vignette");
+      vignette.setScrollFactor(0);
+      vignette.setDepth(90);
+      vignette.setAlpha(0.6);
     }
 
     this.emitHUD();
@@ -871,6 +879,50 @@ export class ArcadeGameScene extends Phaser.Scene {
         });
       });
 
+      // Spawn decorations (purely visual, no physics)
+      sectionData.decorations.forEach((d) => {
+        const deco = this.add.sprite(d.x, d.y, d.type);
+        deco.setOrigin(0.5, 1);
+        deco.setDepth(d.depth ?? 2);
+      });
+
+      // Spawn section-specific ember particles for warzone/fortress sections
+      if ((s === 2 || s === 4) && this.textures.exists("particle_ember")) {
+        const base = s * 800;
+        const embers = this.add.particles(base + 400, GROUND_Y, "particle_ember", {
+          x: { min: base, max: base + 800 },
+          y: { min: GROUND_Y - 40, max: GROUND_Y },
+          lifespan: 3000,
+          speedY: { min: -20, max: -8 },
+          speedX: { min: -5, max: 5 },
+          alpha: { start: 0.7, end: 0 },
+          scale: { start: 1, end: 0.3 },
+          frequency: 800,
+          maxParticles: 4,
+        });
+        embers.setDepth(15);
+      }
+
+      // Spawn section-specific ambient lights
+      const theme = SECTION_THEMES[s];
+      if (theme) {
+        for (let li = 0; li < 8; li++) {
+          const base = s * 800;
+          const lx = base + 50 + li * 95 + Phaser.Math.Between(-20, 20);
+          const ly = Phaser.Math.Between(60, 200);
+          const light = this.add.rectangle(lx, ly, 2, 2, theme.ambientColor, 0.15);
+          light.setDepth(-0.5);
+          this.tweens.add({
+            targets: light,
+            alpha: { from: 0.05, to: 0.3 },
+            duration: Phaser.Math.Between(800, 2000),
+            yoyo: true,
+            repeat: -1,
+            delay: Phaser.Math.Between(0, 1500),
+          });
+        }
+      }
+
       // Spawn crates for sections 2 and 3
       if (s === 2 || s === 3) {
         const base = s * 800;
@@ -1055,13 +1107,21 @@ export class ArcadeGameScene extends Phaser.Scene {
       });
     }
 
-    // Phase 2 at 50% HP
+    // Phase 2 at 50% HP — switch to damaged textures
     if (this.bossHP <= ENEMY_STATS.boss.hp / 2 && this.bossPhase === 1) {
       this.bossPhase = 2;
       if (this.boss) {
+        // Flash red for phase transition
         this.boss.setTint(0xff4444);
+        this.cameras.main.shake(300, 0.01);
         this.time.delayedCall(200, () => {
-          if (this.boss?.active) this.boss.clearTint();
+          if (this.boss?.active) {
+            this.boss.clearTint();
+            // Switch to damaged Phase 2 textures if they exist
+            if (this.textures.exists("boss_p2_idle")) {
+              this.boss.setTexture("boss_p2_idle");
+            }
+          }
         });
       }
     }
@@ -1104,6 +1164,10 @@ export class ArcadeGameScene extends Phaser.Scene {
     }
 
     const fireRate = this.bossPhase === 2 ? stats.fireRate / 2 : stats.fireRate;
+    // Texture prefix based on phase (use p2 damaged textures if available)
+    const p2 = this.bossPhase === 2 && this.textures.exists("boss_p2_idle");
+    const bp = p2 ? "boss_p2_" : "boss_";
+
     if (time - this.bossLastFire > fireRate) {
       this.bossLastFire = time;
       this.bossShootUntil = time + 200;
@@ -1123,7 +1187,7 @@ export class ArcadeGameScene extends Phaser.Scene {
         );
       } else {
         // Phase 2: Triple missile spread
-        this.boss.setTexture("boss_shoot_2");
+        this.boss.setTexture(`${bp}shoot_2`);
 
         for (let i = -1; i <= 1; i++) {
           const angle =
@@ -1142,9 +1206,9 @@ export class ArcadeGameScene extends Phaser.Scene {
     } else if (time > this.bossShootUntil) {
       // Boss walk/idle animation (only when not in shoot pose)
       if (Math.abs(body.velocity.x) > 5) {
-        this.boss.setTexture(this.animFrame % 2 === 0 ? "boss_walk_1" : "boss_walk_2");
+        this.boss.setTexture(this.animFrame % 2 === 0 ? `${bp}walk_1` : `${bp}walk_2`);
       } else {
-        this.boss.setTexture(this.enemyAnimFrame === 0 ? "boss_idle" : "boss_idle_2");
+        this.boss.setTexture(this.enemyAnimFrame === 0 ? `${bp}idle` : `${bp}idle_2`);
       }
     }
   }
