@@ -260,9 +260,13 @@ export class SolanaService extends Service {
     base64Tx: string,
     options?: SendTransactionOptions
   ): Promise<string> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout for transaction submission
+
     const response = await fetch(rpcUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
@@ -279,6 +283,7 @@ export class SolanaService extends Service {
       }),
     });
 
+    clearTimeout(timeout);
     const result = await response.json();
 
     if (result.error) {
@@ -456,14 +461,14 @@ export class SolanaService extends Service {
   }
 
   /**
-   * Get SOL balance — tries primary RPC, falls back to public RPC on rate limit
+   * Get SOL balance — tries primary RPC, falls back to public RPCs on rate limit
    */
   async getBalance(): Promise<number> {
     if (!this.publicKeyBytes) return 0;
 
     const publicKey = base58Encode(this.publicKeyBytes);
 
-    const rpcUrls = [this.rpcUrl, "https://api.mainnet-beta.solana.com"];
+    const rpcUrls = [this.rpcUrl, ...this.fallbackRpcUrls];
 
     for (const url of rpcUrls) {
       try {
