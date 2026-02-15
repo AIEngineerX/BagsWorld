@@ -133,6 +133,49 @@ export const INVINCIBILITY_TIME = 1500; // ms after being hit
 
 export const TILE_SIZE = 16;
 
+// --- Environment Props ---
+
+export type PropType =
+  | "lamp_post"
+  | "barrel"
+  | "sandbag_stack"
+  | "broken_fence"
+  | "road_sign"
+  | "wrecked_car"
+  | "rubble_pile"
+  | "oil_drum"
+  | "traffic_cone"
+  | "barbed_wire"
+  | "computer_terminal"
+  | "dumpster";
+
+export interface DecorationSpawn {
+  x: number;
+  y: number;
+  type: PropType;
+  depth?: number;
+}
+
+// --- Section Themes ---
+
+export type GroundType = "ground_concrete" | "ground_dirt" | "ground_metal_grate" | "ground_rubble";
+
+export interface SectionTheme {
+  skyTint: number;
+  accent: number;
+  ground: GroundType;
+  ambientColor: number;
+}
+
+export const SECTION_THEMES: Record<number, SectionTheme> = {
+  0: { skyTint: 0x0f172a, accent: 0x4ade80, ground: "ground_concrete", ambientColor: 0x4ade80 },
+  1: { skyTint: 0x0f2a1a, accent: 0x22c55e, ground: "ground_dirt", ambientColor: 0x22c55e },
+  2: { skyTint: 0x2a1a0f, accent: 0xf97316, ground: "ground_concrete", ambientColor: 0xf97316 },
+  3: { skyTint: 0x2a2a0f, accent: 0xfde047, ground: "ground_metal_grate", ambientColor: 0xfde047 },
+  4: { skyTint: 0x2a0f0f, accent: 0xef4444, ground: "ground_rubble", ambientColor: 0xef4444 },
+  5: { skyTint: 0x1a0f2a, accent: 0x9945ff, ground: "ground_metal_grate", ambientColor: 0x9945ff },
+};
+
 /** HUD event data emitted from ArcadeGameScene */
 export interface HUDData {
   hp: number;

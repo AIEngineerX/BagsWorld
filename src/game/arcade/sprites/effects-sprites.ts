@@ -9,6 +9,9 @@ export function generateEffectSprites(scene: Phaser.Scene): void {
   generateGrenadeSprite(scene);
   generateParticleTextures(scene);
   generateScanlineTexture(scene);
+  generateShockwaveSprites(scene);
+  generateSmokePuffs(scene);
+  generateVignetteTexture(scene);
 }
 
 // --- Bullets ---
@@ -280,7 +283,7 @@ function generateLargeExplosionSprites(scene: Phaser.Scene): void {
 function generatePickupSprites(scene: Phaser.Scene): void {
   const S = 16;
 
-  function drawPickupBox(g: Phaser.GameObjects.Graphics, color: number, label: string) {
+  function drawPickupBox(g: Phaser.GameObjects.Graphics, color: number) {
     // Outer box
     g.fillStyle(darken(color, 0.3));
     g.fillRect(0, 0, S, S);
@@ -295,43 +298,83 @@ function generatePickupSprites(scene: Phaser.Scene): void {
     g.fillStyle(darken(color, 0.2));
     g.fillRect(1, 14, 14, 1);
     g.fillRect(14, 1, 1, 14);
-    // Draw letter (crude 5x5 pixel font centered)
-    g.fillStyle(PALETTE.white);
-    drawPixelLetter(g, 6, 5, label);
     // Sparkle corners
     g.fillStyle(PALETTE.white);
     g.fillRect(2, 2, 1, 1);
     g.fillRect(13, 2, 1, 1);
   }
 
-  // pickup_spread — Red "S"
+  // pickup_spread — Red box with shotgun silhouette
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
-    drawPickupBox(g, PALETTE.brightRed, "S");
+    drawPickupBox(g, PALETTE.brightRed);
+    g.fillStyle(PALETTE.white);
+    // Angled barrel fanning into 3 spread lines
+    g.fillRect(4, 8, 5, 1); // barrel base
+    g.fillRect(9, 6, 2, 1); // top spread line
+    g.fillRect(9, 8, 2, 1); // middle spread line
+    g.fillRect(9, 10, 2, 1); // bottom spread line
+    g.fillRect(11, 5, 1, 1); // top spread tip
+    g.fillRect(11, 8, 1, 1); // middle spread tip
+    g.fillRect(11, 11, 1, 1); // bottom spread tip
+    g.fillRect(4, 9, 2, 1); // stock
     g.generateTexture("pickup_spread", S, S);
     g.destroy();
   }
 
-  // pickup_heavy — Blue "H"
+  // pickup_heavy — Blue box with machine gun silhouette
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
-    drawPickupBox(g, PALETTE.sky, "H");
+    drawPickupBox(g, PALETTE.sky);
+    g.fillStyle(PALETTE.white);
+    // Long barrel
+    g.fillRect(3, 6, 9, 1); // barrel
+    g.fillRect(3, 7, 7, 1); // body
+    g.fillRect(12, 5, 1, 2); // muzzle tip
+    // Ammo box underneath
+    g.fillRect(5, 8, 3, 3); // ammo box
+    g.fillRect(6, 8, 1, 1); // ammo highlight
+    // Stock
+    g.fillRect(3, 7, 1, 2); // rear grip
     g.generateTexture("pickup_heavy", S, S);
     g.destroy();
   }
 
-  // pickup_health — Green "+"
+  // pickup_health — Green box with medical cross (3px wide arms, white outline)
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
-    drawPickupBox(g, PALETTE.green, "+");
+    drawPickupBox(g, PALETTE.green);
+    // White outline of cross
+    g.fillStyle(PALETTE.white);
+    g.fillRect(5, 4, 5, 1); // top outline
+    g.fillRect(5, 12, 5, 1); // bottom outline
+    g.fillRect(4, 5, 1, 7); // left side outline (vertical)
+    g.fillRect(10, 5, 1, 7); // right side outline (vertical)
+    g.fillRect(4, 6, 7, 1); // left arm top outline
+    g.fillRect(4, 10, 7, 1); // left arm bottom outline
+    g.fillRect(3, 6, 1, 5); // far left outline
+    g.fillRect(11, 6, 1, 5); // far right outline
+    // Inner cross fill
+    g.fillStyle(PALETTE.white);
+    g.fillRect(6, 5, 3, 7); // vertical arm
+    g.fillRect(5, 7, 5, 3); // horizontal arm (overlaps center)
     g.generateTexture("pickup_health", S, S);
     g.destroy();
   }
 
-  // pickup_grenade — Orange "G"
+  // pickup_grenade — Orange box with grenade silhouette
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
-    drawPickupBox(g, PALETTE.orange, "G");
+    drawPickupBox(g, PALETTE.orange);
+    g.fillStyle(PALETTE.white);
+    // Oval body
+    g.fillRect(5, 7, 5, 4); // main body
+    g.fillRect(6, 6, 3, 6); // taller center body
+    // Pin on top
+    g.fillRect(7, 4, 1, 2); // lever stem
+    g.fillRect(6, 4, 3, 1); // lever top
+    g.fillRect(9, 4, 1, 2); // pin ring right
+    g.fillRect(8, 3, 2, 1); // pin ring top
     g.generateTexture("pickup_grenade", S, S);
     g.destroy();
   }
@@ -496,6 +539,26 @@ function generateParticleTextures(scene: Phaser.Scene): void {
     g.generateTexture("particle_debris", 3, 3);
     g.destroy();
   }
+
+  // particle_ember (3x3 orange-red)
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(PALETTE.orange, 0.7);
+    g.fillRect(0, 0, 3, 3);
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(1, 1, 1, 1);
+    g.generateTexture("particle_ember", 3, 3);
+    g.destroy();
+  }
+
+  // particle_dust_mote (2x2 subtle dust)
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(PALETTE.silver, 0.3);
+    g.fillRect(0, 0, 2, 2);
+    g.generateTexture("particle_dust_mote", 2, 2);
+    g.destroy();
+  }
 }
 
 // --- CRT scanline overlay ---
@@ -507,5 +570,134 @@ function generateScanlineTexture(scene: Phaser.Scene): void {
     g.fillRect(0, y, 480, 1);
   }
   g.generateTexture("scanlines", 480, 270);
+  g.destroy();
+}
+
+// --- Explosion shockwave ring (16x16) ---
+
+function generateShockwaveSprites(scene: Phaser.Scene): void {
+  const S = 16;
+  const g = scene.make.graphics({ x: 0, y: 0 });
+  // Draw a hollow ring ~12px diameter centered in 16x16
+  // Using individual white pixels to trace a circle perimeter
+  g.fillStyle(PALETTE.white);
+  // Top arc
+  g.fillRect(5, 1, 6, 1);
+  // Upper sides
+  g.fillRect(3, 2, 2, 1);
+  g.fillRect(11, 2, 2, 1);
+  // Upper-mid sides
+  g.fillRect(2, 3, 1, 2);
+  g.fillRect(13, 3, 1, 2);
+  // Mid sides
+  g.fillRect(1, 5, 1, 6);
+  g.fillRect(14, 5, 1, 6);
+  // Lower-mid sides
+  g.fillRect(2, 11, 1, 2);
+  g.fillRect(13, 11, 1, 2);
+  // Lower sides
+  g.fillRect(3, 13, 2, 1);
+  g.fillRect(11, 13, 2, 1);
+  // Bottom arc
+  g.fillRect(5, 14, 6, 1);
+  g.generateTexture("explosion_ring", S, S);
+  g.destroy();
+}
+
+// --- Smoke puff animation frames ---
+
+function generateSmokePuffs(scene: Phaser.Scene): void {
+  // smoke_puff_1 (8x8): Small gray cloud
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(PALETTE.midGray);
+    g.fillRect(1, 2, 5, 4); // base blob
+    g.fillRect(2, 1, 3, 6); // taller center
+    g.fillStyle(PALETTE.lightGray);
+    g.fillRect(2, 3, 3, 2); // lighter center
+    g.generateTexture("smoke_puff_1", 8, 8);
+    g.destroy();
+  }
+
+  // smoke_puff_2 (10x10): Medium expanding cloud
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(PALETTE.midGray);
+    g.fillRect(1, 2, 7, 6); // main blob
+    g.fillRect(2, 1, 6, 8); // taller center
+    g.fillStyle(PALETTE.lightGray);
+    g.fillRect(3, 3, 4, 4); // lighter inner
+    // Wispy edges
+    g.fillStyle(PALETTE.midGray);
+    g.fillRect(0, 4, 1, 2); // left wisp
+    g.fillRect(9, 3, 1, 3); // right wisp
+    g.fillRect(4, 0, 2, 1); // top wisp
+    g.fillRect(3, 9, 3, 1); // bottom wisp
+    g.generateTexture("smoke_puff_2", 10, 10);
+    g.destroy();
+  }
+
+  // smoke_puff_3 (12x12): Large dissipating cloud
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    // Semi-transparent edges
+    g.fillStyle(PALETTE.midGray, 0.5);
+    g.fillRect(0, 3, 12, 6); // wide faded base
+    g.fillRect(2, 1, 8, 10); // tall faded core
+    // Core cloud
+    g.fillStyle(PALETTE.midGray);
+    g.fillRect(2, 3, 8, 6); // main body
+    g.fillRect(3, 2, 6, 8); // taller center
+    g.fillStyle(PALETTE.lightGray);
+    g.fillRect(4, 4, 4, 4); // light center
+    // 0.5 alpha edges
+    g.fillStyle(PALETTE.lightGray, 0.5);
+    g.fillRect(1, 4, 1, 4); // left fade
+    g.fillRect(10, 4, 1, 4); // right fade
+    g.fillRect(4, 1, 4, 1); // top fade
+    g.fillRect(4, 10, 4, 1); // bottom fade
+    g.generateTexture("smoke_puff_3", 12, 12);
+    g.destroy();
+  }
+}
+
+// --- Vignette overlay (480x270) ---
+
+function generateVignetteTexture(scene: Phaser.Scene): void {
+  const W = 480;
+  const H = 270;
+  const g = scene.make.graphics({ x: 0, y: 0 });
+
+  // Outermost 20px border: alpha 0.3
+  g.fillStyle(0x000000, 0.3);
+  g.fillRect(0, 0, W, 20); // top
+  g.fillRect(0, H - 20, W, 20); // bottom
+  g.fillRect(0, 20, 20, H - 40); // left
+  g.fillRect(W - 20, 20, 20, H - 40); // right
+
+  // Next 15px: alpha 0.2
+  g.fillStyle(0x000000, 0.2);
+  g.fillRect(20, 20, W - 40, 15); // top
+  g.fillRect(20, H - 35, W - 40, 15); // bottom
+  g.fillRect(20, 35, 15, H - 70); // left
+  g.fillRect(W - 35, 35, 15, H - 70); // right
+
+  // Next 15px: alpha 0.1
+  g.fillStyle(0x000000, 0.1);
+  g.fillRect(35, 35, W - 70, 15); // top
+  g.fillRect(35, H - 50, W - 70, 15); // bottom
+  g.fillRect(35, 50, 15, H - 100); // left
+  g.fillRect(W - 50, 50, 15, H - 100); // right
+
+  // Next 10px: alpha 0.05
+  g.fillStyle(0x000000, 0.05);
+  g.fillRect(50, 50, W - 100, 10); // top
+  g.fillRect(50, H - 60, W - 100, 10); // bottom
+  g.fillRect(50, 60, 10, H - 120); // left
+  g.fillRect(W - 60, 60, 10, H - 120); // right
+
+  // Center is transparent (don't draw anything)
+
+  g.generateTexture("vignette", W, H);
   g.destroy();
 }

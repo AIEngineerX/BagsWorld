@@ -8,6 +8,22 @@ export function generateEnemySprites(scene: Phaser.Scene): void {
   generateBossSprites(scene);
 }
 
+// Helper: draw a filled rect with a 1px outline around it
+function drawOutlinedRect(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  fillColor: number,
+  outlineColor?: number
+) {
+  g.fillStyle(outlineColor ?? darken(fillColor, 0.5));
+  g.fillRect(x - 1, y - 1, w + 2, h + 2);
+  g.fillStyle(fillColor);
+  g.fillRect(x, y, w, h);
+}
+
 // --- Soldier → "Corrupted Agent" (24x32): Purple-tinted clothing with glitch artifacts ---
 
 function generateSoldierSprites(scene: Phaser.Scene): void {
@@ -17,8 +33,19 @@ function generateSoldierSprites(scene: Phaser.Scene): void {
   const visor = PALETTE.brightRed; // Red visor replacing face
   const boots = PALETTE.darkGray;
   const weapon = PALETTE.midGray;
+  const outlineColor = darken(body, 0.5);
 
   function drawSoldierBase(g: Phaser.GameObjects.Graphics, legOffsetL: number, legOffsetR: number) {
+    // --- 1px outline silhouette (drawn first, behind everything) ---
+    // Hood outline
+    g.fillStyle(outlineColor);
+    g.fillRect(7, 0, 10, 5);
+    // Body outline
+    g.fillRect(5, 9, 14, 10);
+    // Leg outlines
+    g.fillRect(6 + legOffsetL, 17, 6, 10);
+    g.fillRect(12 + legOffsetR, 17, 6, 10);
+
     // Hood 8x4
     g.fillStyle(body);
     g.fillRect(8, 0, 8, 4);
@@ -38,6 +65,18 @@ function generateSoldierSprites(scene: Phaser.Scene): void {
     g.fillRect(6, 9, 1, 9);
     g.fillStyle(darken(body, 0.2));
     g.fillRect(17, 9, 1, 9);
+
+    // Shoulder pad details (raised lighter areas at top of body)
+    g.fillStyle(lighten(body, 0.25));
+    g.fillRect(6, 9, 2, 2); // Left shoulder pad
+    g.fillRect(16, 9, 2, 2); // Right shoulder pad
+
+    // Hood wrinkle lines (subtle horizontal lines on body)
+    g.fillStyle(darken(body, 0.1));
+    g.fillRect(7, 11, 10, 1);
+    g.fillStyle(lighten(body, 0.05));
+    g.fillRect(7, 14, 10, 1);
+
     // Purple accent stripe
     g.fillStyle(PALETTE.purple);
     g.fillRect(11, 10, 2, 7);
@@ -47,6 +86,11 @@ function generateSoldierSprites(scene: Phaser.Scene): void {
     // Belt
     g.fillStyle(PALETTE.darkGray);
     g.fillRect(6, 16, 12, 1);
+
+    // Hip weapon (small pistol silhouette on belt)
+    g.fillStyle(darken(PALETTE.darkGray, 0.2));
+    g.fillRect(15, 16, 3, 2);
+
     // Legs
     g.fillStyle(body);
     g.fillRect(7 + legOffsetL, 18, 4, 8);
@@ -72,7 +116,7 @@ function generateSoldierSprites(scene: Phaser.Scene): void {
     g.destroy();
   }
 
-  // IDLE 2 (breathing — arms slightly lowered, glitch line shifted)
+  // IDLE 2 (breathing — arms slightly lowered, glitch line shifted differently)
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
     drawSoldierBase(g, 0, 0);
@@ -83,9 +127,10 @@ function generateSoldierSprites(scene: Phaser.Scene): void {
     g.fillStyle(PALETTE.midGray);
     g.fillRect(2, 17, 4, 2);
     g.fillRect(18, 17, 4, 2);
-    // Second glitch artifact shifted
+    // Second glitch artifact shifted to different position than base
     g.fillStyle(PALETTE.bagsGreen);
-    g.fillRect(8, 14, 8, 1);
+    g.fillRect(9, 15, 6, 1); // Shifted lower and narrower than idle_1's glitch
+    g.fillRect(6, 10, 3, 1); // Small extra glitch fragment at top
     g.generateTexture("soldier_idle_2", W, H);
     g.destroy();
   }
@@ -252,8 +297,16 @@ function generateHeavySprites(scene: Phaser.Scene): void {
   const armor = PALETTE.gray;
   const visor = PALETTE.brightRed;
   const boots = PALETTE.darkGray;
+  const outlineColor = darken(armor, 0.5);
 
   function drawHeavyBase(g: Phaser.GameObjects.Graphics, legOffsetL: number, legOffsetR: number) {
+    // --- 1px outline silhouette ---
+    g.fillStyle(outlineColor);
+    g.fillRect(10, 0, 12, 7); // Helmet outline
+    g.fillRect(6, 6, 20, 13); // Body outline
+    g.fillRect(8 + legOffsetL, 17, 7, 10); // Left leg outline
+    g.fillRect(17 + legOffsetR, 17, 7, 10); // Right leg outline
+
     // Helmet 10x6
     g.fillStyle(armor);
     g.fillRect(11, 0, 10, 6);
@@ -262,6 +315,12 @@ function generateHeavySprites(scene: Phaser.Scene): void {
     // Antenna nub
     g.fillStyle(PALETTE.midGray);
     g.fillRect(19, 0, 2, 1);
+
+    // Exhaust vents on back of helmet (2px dark slits)
+    g.fillStyle(darken(armor, 0.4));
+    g.fillRect(11, 1, 2, 1);
+    g.fillRect(11, 3, 2, 1);
+
     // Green status LED
     g.fillStyle(PALETTE.bagsGreen);
     g.fillRect(20, 1, 1, 1);
@@ -277,15 +336,41 @@ function generateHeavySprites(scene: Phaser.Scene): void {
     g.fillRect(7, 6, 1, 12);
     g.fillStyle(darken(armor, 0.25));
     g.fillRect(24, 6, 1, 12);
+
+    // Damage weathering: scattered 1px darker scratch marks on armor
+    g.fillStyle(darken(armor, 0.35));
+    g.fillRect(9, 8, 1, 1);
+    g.fillRect(15, 7, 1, 1);
+    g.fillRect(22, 10, 1, 1);
+    g.fillRect(10, 14, 1, 1);
+    g.fillRect(20, 13, 1, 1);
+
     // Chest plate detail with grid lines
     g.fillStyle(PALETTE.darkGray);
     g.fillRect(12, 8, 8, 6);
     g.fillStyle(darken(PALETTE.darkGray, 0.15));
     g.fillRect(15, 8, 1, 6); // Vertical grid
     g.fillRect(12, 10, 8, 1); // Horizontal grid
+
+    // Rivet dots at armor plate corners (1px lighter dots)
+    g.fillStyle(lighten(PALETTE.darkGray, 0.3));
+    g.fillRect(12, 8, 1, 1); // Top-left
+    g.fillRect(19, 8, 1, 1); // Top-right
+    g.fillRect(12, 13, 1, 1); // Bottom-left
+    g.fillRect(19, 13, 1, 1); // Bottom-right
+
     // Red reactor core
     g.fillStyle(PALETTE.brightRed);
     g.fillRect(15, 11, 2, 2);
+
+    // 3-LED status array on chest (green, yellow, red)
+    g.fillStyle(PALETTE.bagsGreen);
+    g.fillRect(21, 9, 1, 1);
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(21, 10, 1, 1);
+    g.fillStyle(PALETTE.brightRed);
+    g.fillRect(21, 11, 1, 1);
+
     // Belt (mechanical joint)
     g.fillStyle(PALETTE.darkGray);
     g.fillRect(7, 17, 18, 1);
@@ -293,6 +378,12 @@ function generateHeavySprites(scene: Phaser.Scene): void {
     g.fillStyle(armor);
     g.fillRect(9 + legOffsetL, 18, 5, 8);
     g.fillRect(18 + legOffsetR, 18, 5, 8);
+
+    // Hydraulic piston detail at leg joints (2x1px silver rectangles at knee area)
+    g.fillStyle(PALETTE.silver);
+    g.fillRect(9 + legOffsetL, 22, 2, 1);
+    g.fillRect(18 + legOffsetR, 22, 2, 1);
+
     // Boots
     g.fillStyle(boots);
     g.fillRect(8 + legOffsetL, 26, 6, 3);
@@ -513,8 +604,14 @@ function generateTurretSprites(scene: Phaser.Scene): void {
   const metal = PALETTE.midGray;
   const darkMetal = PALETTE.gray;
   const brick = 0x2a1a3e; // Dark brick matching arcade buildings
+  const outlineColor = darken(metal, 0.5);
 
   function drawTurretBase(g: Phaser.GameObjects.Graphics) {
+    // --- 1px outline around gun housing and base ---
+    g.fillStyle(outlineColor);
+    g.fillRect(0, 13, 24, 11); // Base outline
+    g.fillRect(7, 7, 10, 7); // Pedestal outline
+
     // Brick wall base
     g.fillStyle(brick);
     g.fillRect(1, 14, 22, 10);
@@ -523,13 +620,25 @@ function generateTurretSprites(scene: Phaser.Scene): void {
     g.fillRect(1, 14, 1, 10);
     g.fillStyle(darken(brick, 0.2));
     g.fillRect(22, 14, 1, 10);
-    // Brick mortar lines (now look like brick seams)
+
+    // Enhanced brick mortar with depth (alternating lighter/darker bricks)
     g.fillStyle(darken(brick, 0.25));
-    g.fillRect(1, 17, 22, 1);
+    g.fillRect(1, 17, 22, 1); // Mortar lines
     g.fillRect(1, 21, 22, 1);
     g.fillRect(6, 14, 1, 10);
     g.fillRect(12, 14, 1, 10);
     g.fillRect(18, 14, 1, 10);
+    // Lighter bricks for depth variation
+    g.fillStyle(lighten(brick, 0.1));
+    g.fillRect(2, 15, 3, 2); // Light brick
+    g.fillRect(13, 18, 4, 2); // Light brick
+    g.fillRect(7, 22, 4, 1); // Light brick
+    // Darker bricks for depth variation
+    g.fillStyle(darken(brick, 0.1));
+    g.fillRect(8, 15, 3, 2); // Dark brick
+    g.fillRect(2, 18, 3, 2); // Dark brick
+    g.fillRect(19, 22, 2, 1); // Dark brick
+
     // Green LED power indicator
     g.fillStyle(PALETTE.bagsGreen);
     g.fillRect(3, 15, 1, 1);
@@ -544,13 +653,24 @@ function generateTurretSprites(scene: Phaser.Scene): void {
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
     drawTurretBase(g);
-    // Gun barrel pointing right
+    // Gun housing
     g.fillStyle(metal);
     g.fillRect(10, 6, 4, 4);
+    // Barrel
     g.fillStyle(darkMetal);
     g.fillRect(14, 7, 6, 2);
     g.fillStyle(lighten(metal, 0.2));
     g.fillRect(14, 7, 6, 1);
+    // Barrel rifling (2 ring lines)
+    g.fillStyle(darken(darkMetal, 0.2));
+    g.fillRect(16, 7, 1, 2);
+    g.fillRect(19, 7, 1, 2);
+    // Ammo belt: small rectangles from housing to base
+    g.fillStyle(PALETTE.darkGray);
+    g.fillRect(10, 10, 2, 1);
+    g.fillRect(9, 11, 2, 1);
+    g.fillRect(8, 12, 2, 1);
+    g.fillRect(7, 13, 2, 1);
     g.generateTexture("turret_idle", W, H);
     g.destroy();
   }
@@ -559,13 +679,24 @@ function generateTurretSprites(scene: Phaser.Scene): void {
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
     drawTurretBase(g);
-    // Gun barrel shifted up 1px
+    // Gun housing shifted up 1px
     g.fillStyle(metal);
     g.fillRect(10, 5, 4, 4);
+    // Barrel shifted up 1px
     g.fillStyle(darkMetal);
     g.fillRect(14, 6, 6, 2);
     g.fillStyle(lighten(metal, 0.2));
     g.fillRect(14, 6, 6, 1);
+    // Barrel rifling
+    g.fillStyle(darken(darkMetal, 0.2));
+    g.fillRect(16, 6, 1, 2);
+    g.fillRect(19, 6, 1, 2);
+    // Ammo belt
+    g.fillStyle(PALETTE.darkGray);
+    g.fillRect(10, 9, 2, 1);
+    g.fillRect(9, 10, 2, 1);
+    g.fillRect(8, 11, 2, 1);
+    g.fillRect(7, 12, 2, 1);
     // LED flicker (dim)
     g.fillStyle(darken(PALETTE.bagsGreen, 0.4));
     g.fillRect(3, 15, 1, 1);
@@ -573,16 +704,31 @@ function generateTurretSprites(scene: Phaser.Scene): void {
     g.destroy();
   }
 
-  // SHOOT (muzzle flash)
+  // SHOOT (muzzle flash + targeting laser)
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
     drawTurretBase(g);
+    // Gun housing
     g.fillStyle(metal);
     g.fillRect(10, 6, 4, 4);
+    // Barrel
     g.fillStyle(darkMetal);
     g.fillRect(14, 7, 6, 2);
     g.fillStyle(lighten(metal, 0.2));
     g.fillRect(14, 7, 6, 1);
+    // Barrel rifling
+    g.fillStyle(darken(darkMetal, 0.2));
+    g.fillRect(16, 7, 1, 2);
+    g.fillRect(19, 7, 1, 2);
+    // Ammo belt
+    g.fillStyle(PALETTE.darkGray);
+    g.fillRect(10, 10, 2, 1);
+    g.fillRect(9, 11, 2, 1);
+    g.fillRect(8, 12, 2, 1);
+    g.fillRect(7, 13, 2, 1);
+    // Targeting laser (1px red line from barrel tip, 4px long)
+    g.fillStyle(PALETTE.brightRed);
+    g.fillRect(20, 8, 4, 1);
     // Muzzle flash
     g.fillStyle(PALETTE.yellow);
     g.fillRect(20, 5, 3, 4);
@@ -699,13 +845,19 @@ function generateBossSprites(scene: Phaser.Scene): void {
   const tread = PALETTE.darkGray;
   const cannon = PALETTE.lightGray;
 
-  function drawBossBase(g: Phaser.GameObjects.Graphics, treadOffset: number) {
+  function drawBossBase(
+    g: Phaser.GameObjects.Graphics,
+    treadOffset: number,
+    phase2: boolean = false
+  ) {
     // Tank treads
     g.fillStyle(tread);
     g.fillRect(4, 48, 56, 14);
     g.fillStyle(darken(tread, 0.3));
-    // Tread segments
+    // Individual track links: alternate between two shades
     for (let i = 0; i < 7; i++) {
+      const shade = i % 2 === 0 ? darken(tread, 0.3) : darken(tread, 0.15);
+      g.fillStyle(shade);
       g.fillRect(6 + i * 8 + treadOffset, 50, 2, 10);
     }
     g.fillStyle(lighten(tread, 0.15));
@@ -729,12 +881,57 @@ function generateBossSprites(scene: Phaser.Scene): void {
     g.fillStyle(PALETTE.bagsGreen);
     g.fillRect(8, 46, 48, 1);
 
+    // Rivets along hull top and bottom edges (1px lighter dots every 8px)
+    g.fillStyle(lighten(hull, 0.25));
+    for (let i = 0; i < 6; i++) {
+      g.fillRect(12 + i * 8, 24, 1, 1); // Top edge
+      g.fillRect(12 + i * 8, 47, 1, 1); // Bottom edge
+    }
+
     // Armor plating detail
     g.fillStyle(armorPlate);
     g.fillRect(12, 28, 40, 16);
     g.fillStyle(darken(armorPlate, 0.15));
     g.fillRect(12, 36, 40, 1);
     g.fillRect(32, 28, 1, 16);
+
+    // Reactive armor plates: 1px gap lines between armor sections
+    g.fillStyle(darken(hull, 0.3));
+    g.fillRect(12, 28, 40, 1); // Top gap
+    g.fillRect(12, 43, 40, 1); // Bottom gap
+    g.fillRect(12, 28, 1, 16); // Left gap
+    g.fillRect(51, 28, 1, 16); // Right gap
+    g.fillRect(22, 28, 1, 16); // Inner vertical gap
+
+    // Headlights at front of hull (2px yellow squares with 1px glow aura)
+    g.fillStyle(PALETTE.yellow, 0.4);
+    g.fillRect(53, 29, 4, 4); // Glow aura top
+    g.fillStyle(PALETTE.yellow, 0.4);
+    g.fillRect(53, 39, 4, 4); // Glow aura bottom
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(54, 30, 2, 2); // Top headlight
+    g.fillRect(54, 40, 2, 2); // Bottom headlight
+
+    // Exhaust pipes on back of hull (3x2 shapes with 1px smoke)
+    g.fillStyle(PALETTE.midGray);
+    g.fillRect(8, 30, 3, 2); // Top exhaust pipe
+    g.fillRect(8, 38, 3, 2); // Bottom exhaust pipe
+    g.fillStyle(darken(PALETTE.midGray, 0.3));
+    g.fillRect(9, 30, 1, 2); // Pipe interior darkness
+    g.fillRect(9, 38, 1, 2);
+    // Smoke pixels above pipes
+    g.fillStyle(PALETTE.midGray, 0.5);
+    g.fillRect(7, 29, 1, 1);
+    g.fillRect(7, 37, 1, 1);
+
+    if (phase2) {
+      // Phase 2: additional smoke from exhaust
+      g.fillStyle(PALETTE.lightGray, 0.4);
+      g.fillRect(6, 28, 1, 1);
+      g.fillRect(6, 36, 1, 1);
+      g.fillRect(5, 27, 1, 1);
+      g.fillRect(5, 35, 1, 1);
+    }
 
     // Turret housing on top
     g.fillStyle(hull);
@@ -744,38 +941,85 @@ function generateBossSprites(scene: Phaser.Scene): void {
     g.fillStyle(lighten(hull, 0.1));
     g.fillRect(16, 12, 1, 14);
 
+    // Hull kill marks on turret housing (3 small tally marks, 1px white lines)
+    g.fillStyle(PALETTE.white);
+    g.fillRect(34, 14, 1, 3);
+    g.fillRect(36, 14, 1, 3);
+    g.fillRect(38, 14, 1, 3);
+
     // Green LED accents on turret
     g.fillStyle(PALETTE.bagsGreen);
     g.fillRect(18, 14, 1, 1);
     g.fillRect(46, 14, 1, 1);
 
+    if (phase2) {
+      // Phase 2: cracks across armor plates (diagonal dark lines)
+      g.fillStyle(darken(armorPlate, 0.5));
+      g.fillRect(14, 30, 1, 1);
+      g.fillRect(15, 31, 1, 1);
+      g.fillRect(16, 32, 1, 1);
+      g.fillRect(35, 33, 1, 1);
+      g.fillRect(36, 34, 1, 1);
+      g.fillRect(37, 35, 1, 1);
+      g.fillRect(44, 29, 1, 1);
+      g.fillRect(45, 30, 1, 1);
+
+      // Phase 2: sparks at hull-turret junction
+      g.fillStyle(PALETTE.yellow);
+      g.fillRect(18, 25, 2, 2);
+      g.fillStyle(PALETTE.white);
+      g.fillRect(42, 25, 2, 2);
+
+      // Phase 2: missing armor plate (one section replaced with darker hull)
+      g.fillStyle(darken(hull, 0.15));
+      g.fillRect(24, 29, 8, 7);
+      // Show internal structure lines
+      g.fillStyle(darken(hull, 0.35));
+      g.fillRect(25, 31, 6, 1);
+      g.fillRect(28, 29, 1, 7);
+    }
+
     // Cockpit (glowing red) with green border
+    const cockpitColor = phase2 ? PALETTE.orange : cockpit;
+    const cockpitGlow = phase2 ? 0xffddaa : 0xff6666;
+    const cockpitGlowSize = phase2 ? 12 : 10;
+    const cockpitGlowOffset = phase2 ? -1 : 0;
+
     g.fillStyle(PALETTE.bagsGreen);
     g.fillRect(21, 14, 10, 8); // Green border
-    g.fillStyle(cockpit);
+    g.fillStyle(cockpitGlow, 0.5);
+    g.fillRect(
+      21 + cockpitGlowOffset,
+      14 + cockpitGlowOffset,
+      cockpitGlowSize,
+      8 - cockpitGlowOffset * 2
+    ); // Glow aura
+    g.fillStyle(cockpitColor);
     g.fillRect(22, 15, 8, 6);
-    g.fillStyle(lighten(cockpit, 0.3));
+    g.fillStyle(lighten(cockpitColor, 0.3));
     g.fillRect(23, 16, 2, 2);
-    // Cockpit glow aura
-    g.fillStyle(0xff6666, 0.5);
-    g.fillRect(21, 14, 10, 8);
-    g.fillStyle(cockpit);
-    g.fillRect(22, 15, 8, 6);
-    g.fillStyle(lighten(cockpit, 0.3));
-    g.fillRect(23, 16, 2, 2);
+
+    if (phase2) {
+      // Phase 2: brighter reactor center (orange-white)
+      g.fillStyle(PALETTE.white, 0.6);
+      g.fillRect(25, 17, 2, 2);
+    }
+  }
+
+  function drawCannon(g: Phaser.GameObjects.Graphics, yOff: number = 0) {
+    g.fillStyle(cannon);
+    g.fillRect(48, 16 + yOff, 16, 4);
+    g.fillStyle(lighten(cannon, 0.2));
+    g.fillRect(48, 16 + yOff, 16, 1);
+    g.fillStyle(darken(cannon, 0.3));
+    g.fillRect(48, 19 + yOff, 16, 1);
   }
 
   // IDLE
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
     drawBossBase(g, 0);
-    // Main cannon
-    g.fillStyle(cannon);
-    g.fillRect(48, 16, 16, 4);
-    g.fillStyle(lighten(cannon, 0.2));
-    g.fillRect(48, 16, 16, 1);
-    g.fillStyle(darken(cannon, 0.3));
-    g.fillRect(48, 19, 16, 1);
+    drawCannon(g);
     g.generateTexture("boss_idle", W, H);
     g.destroy();
   }
@@ -784,13 +1028,7 @@ function generateBossSprites(scene: Phaser.Scene): void {
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
     drawBossBase(g, 0);
-    // Main cannon shifted 1px
-    g.fillStyle(cannon);
-    g.fillRect(48, 15, 16, 4);
-    g.fillStyle(lighten(cannon, 0.2));
-    g.fillRect(48, 15, 16, 1);
-    g.fillStyle(darken(cannon, 0.3));
-    g.fillRect(48, 18, 16, 1);
+    drawCannon(g, -1);
     // Brighter cockpit pulse
     g.fillStyle(lighten(cockpit, 0.5));
     g.fillRect(23, 16, 3, 3);
@@ -864,6 +1102,100 @@ function generateBossSprites(scene: Phaser.Scene): void {
     g.fillRect(40, 3, 2, 2);
     g.fillRect(44, 4, 2, 2);
     g.generateTexture("boss_shoot_2", W, H);
+    g.destroy();
+  }
+
+  // ============================================================
+  // Boss Phase 2 damaged textures (6 new textures)
+  // ============================================================
+
+  // PHASE 2 IDLE
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    drawBossBase(g, 0, true);
+    drawCannon(g);
+    g.generateTexture("boss_p2_idle", W, H);
+    g.destroy();
+  }
+
+  // PHASE 2 IDLE 2
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    drawBossBase(g, 0, true);
+    drawCannon(g, -1);
+    // Brighter cockpit pulse (Phase 2 orange-white)
+    g.fillStyle(lighten(PALETTE.orange, 0.5));
+    g.fillRect(23, 16, 3, 3);
+    g.generateTexture("boss_p2_idle_2", W, H);
+    g.destroy();
+  }
+
+  // PHASE 2 WALK 1
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    drawBossBase(g, 0, true);
+    g.fillStyle(cannon);
+    g.fillRect(48, 16, 16, 4);
+    g.fillStyle(lighten(cannon, 0.2));
+    g.fillRect(48, 16, 16, 1);
+    g.generateTexture("boss_p2_walk_1", W, H);
+    g.destroy();
+  }
+
+  // PHASE 2 WALK 2
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    drawBossBase(g, 3, true);
+    g.fillStyle(cannon);
+    g.fillRect(48, 16, 16, 4);
+    g.fillStyle(lighten(cannon, 0.2));
+    g.fillRect(48, 16, 16, 1);
+    g.generateTexture("boss_p2_walk_2", W, H);
+    g.destroy();
+  }
+
+  // PHASE 2 SHOOT 1
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    drawBossBase(g, 0, true);
+    // Cannon with muzzle flash
+    g.fillStyle(cannon);
+    g.fillRect(48, 16, 14, 4);
+    g.fillStyle(lighten(cannon, 0.2));
+    g.fillRect(48, 16, 14, 1);
+    // Big muzzle flash
+    g.fillStyle(PALETTE.white);
+    g.fillRect(62, 13, 2, 10);
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(60, 14, 4, 8);
+    g.fillStyle(PALETTE.orange);
+    g.fillRect(58, 15, 6, 6);
+    g.generateTexture("boss_p2_shoot_1", W, H);
+    g.destroy();
+  }
+
+  // PHASE 2 SHOOT 2
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    drawBossBase(g, 0, true);
+    g.fillStyle(cannon);
+    g.fillRect(48, 16, 16, 4);
+    g.fillStyle(lighten(cannon, 0.2));
+    g.fillRect(48, 16, 16, 1);
+    // Missile pods on top opening
+    g.fillStyle(PALETTE.darkGray);
+    g.fillRect(34, 8, 12, 5);
+    // Missiles emerging
+    g.fillStyle(PALETTE.silver);
+    g.fillRect(36, 6, 2, 4);
+    g.fillRect(40, 5, 2, 5);
+    g.fillRect(44, 6, 2, 4);
+    // Missile flames
+    g.fillStyle(PALETTE.orange);
+    g.fillRect(36, 4, 2, 2);
+    g.fillRect(40, 3, 2, 2);
+    g.fillRect(44, 4, 2, 2);
+    g.generateTexture("boss_p2_shoot_2", W, H);
     g.destroy();
   }
 }
