@@ -111,9 +111,6 @@ class MoltbookClient {
     };
   }
 
-  /**
-   * Check if we can make a request (rate limiting)
-   */
   private checkRateLimit(type: "request" | "post" | "comment"): {
     allowed: boolean;
     retryAfterMs?: number;
@@ -164,9 +161,6 @@ class MoltbookClient {
     }
   }
 
-  /**
-   * Make authenticated API request with retry logic
-   */
   private async fetch<T>(
     endpoint: string,
     options: RequestInit = {},
@@ -258,11 +252,8 @@ class MoltbookClient {
     }
   }
 
-  // ============ POSTS ============
+  // Posts
 
-  /**
-   * Create a new post
-   */
   async createPost(params: CreatePostParams): Promise<MoltbookPost> {
     const rateCheck = this.checkRateLimit("post");
     if (!rateCheck.allowed) {
@@ -280,23 +271,16 @@ class MoltbookClient {
     return result;
   }
 
-  /**
-   * Get feed posts
-   */
   async getFeed(sort: FeedSort = "hot", limit: number = 25): Promise<MoltbookPost[]> {
     return this.fetch<MoltbookPost[]>(`/feed?sort=${sort}&limit=${limit}`);
   }
 
-  /**
-   * Get posts from a specific submolt
-   * Note: Moltbook returns posts inside the submolt detail response (not wrapped in 'data')
-   */
+  /** Moltbook returns posts inside the submolt detail response (not wrapped in 'data'). */
   async getSubmoltPosts(
     submolt: string,
     sort: FeedSort = "hot",
     limit: number = 25
   ): Promise<MoltbookPost[]> {
-    // Check general rate limit
     const rateCheck = this.checkRateLimit("request");
     if (!rateCheck.allowed) {
       throw new Error(
@@ -305,7 +289,6 @@ class MoltbookClient {
     }
 
     const url = `${this.baseUrl}/submolts/${submolt}?sort=${sort}&limit=${limit}`;
-
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
@@ -317,7 +300,6 @@ class MoltbookClient {
       throw new Error(`Moltbook API error: ${response.status} ${response.statusText}`);
     }
 
-    // Moltbook returns { success, submolt, posts } directly (not wrapped in 'data')
     const data = (await response.json()) as {
       success: boolean;
       submolt: MoltbookSubmolt;
@@ -339,7 +321,6 @@ class MoltbookClient {
       throw new Error(data.error || "Failed to fetch submolt posts");
     }
 
-    // Map the response format to MoltbookPost
     return (data.posts || []).map((p) => ({
       id: p.id,
       title: p.title,
@@ -369,11 +350,8 @@ class MoltbookClient {
     await this.fetch<void>(`/posts/${postId}`, { method: "DELETE" });
   }
 
-  // ============ COMMENTS ============
+  // Comments
 
-  /**
-   * Add a comment to a post
-   */
   async createComment(params: CreateCommentParams): Promise<MoltbookComment> {
     const rateCheck = this.checkRateLimit("comment");
     if (!rateCheck.allowed) {
@@ -394,41 +372,26 @@ class MoltbookClient {
     return result;
   }
 
-  /**
-   * Get comments for a post
-   */
   async getComments(postId: string, sort: CommentSort = "top"): Promise<MoltbookComment[]> {
     return this.fetch<MoltbookComment[]>(`/posts/${postId}/comments?sort=${sort}`);
   }
 
-  // ============ VOTING ============
+  // Voting
 
-  /**
-   * Upvote a post
-   */
   async upvotePost(postId: string): Promise<void> {
     await this.fetch<void>(`/posts/${postId}/upvote`, { method: "POST" });
   }
 
-  /**
-   * Downvote a post
-   */
   async downvotePost(postId: string): Promise<void> {
     await this.fetch<void>(`/posts/${postId}/downvote`, { method: "POST" });
   }
 
-  /**
-   * Upvote a comment
-   */
   async upvoteComment(commentId: string): Promise<void> {
     await this.fetch<void>(`/comments/${commentId}/upvote`, { method: "POST" });
   }
 
-  // ============ SUBMOLTS ============
+  // Submolts
 
-  /**
-   * Create a new submolt (community)
-   */
   async createSubmolt(
     name: string,
     displayName: string,
@@ -440,53 +403,32 @@ class MoltbookClient {
     });
   }
 
-  /**
-   * Get submolt info
-   */
   async getSubmolt(name: string): Promise<MoltbookSubmolt> {
     return this.fetch<MoltbookSubmolt>(`/submolts/${name}`);
   }
 
-  /**
-   * List all submolts
-   */
   async listSubmolts(): Promise<MoltbookSubmolt[]> {
     return this.fetch<MoltbookSubmolt[]>("/submolts");
   }
 
-  /**
-   * Subscribe to a submolt
-   */
   async subscribeSubmolt(name: string): Promise<void> {
     await this.fetch<void>(`/submolts/${name}/subscribe`, { method: "POST" });
   }
 
-  /**
-   * Unsubscribe from a submolt
-   */
   async unsubscribeSubmolt(name: string): Promise<void> {
     await this.fetch<void>(`/submolts/${name}/subscribe`, { method: "DELETE" });
   }
 
-  // ============ AGENTS (PROFILES) ============
+  // Agent profiles
 
-  /**
-   * Get own agent profile
-   */
   async getMyProfile(): Promise<MoltbookAgent> {
     return this.fetch<MoltbookAgent>("/agents/me");
   }
 
-  /**
-   * Get another agent's profile
-   */
   async getAgentProfile(name: string): Promise<MoltbookAgent> {
     return this.fetch<MoltbookAgent>(`/agents/profile?name=${encodeURIComponent(name)}`);
   }
 
-  /**
-   * Update own profile
-   */
   async updateProfile(
     description?: string,
     metadata?: Record<string, unknown>
@@ -497,25 +439,16 @@ class MoltbookClient {
     });
   }
 
-  /**
-   * Follow an agent
-   */
   async followAgent(name: string): Promise<void> {
     await this.fetch<void>(`/agents/${name}/follow`, { method: "POST" });
   }
 
-  /**
-   * Unfollow an agent
-   */
   async unfollowAgent(name: string): Promise<void> {
     await this.fetch<void>(`/agents/${name}/follow`, { method: "DELETE" });
   }
 
-  // ============ SEARCH ============
+  // Search
 
-  /**
-   * Semantic search across posts and comments
-   */
   async search(
     query: string,
     type: "all" | "posts" | "comments" = "all",
@@ -526,18 +459,12 @@ class MoltbookClient {
     );
   }
 
-  // ============ DMs (Direct Messages) ============
+  // DMs
 
-  /**
-   * Check for DM activity (pending requests, unread messages)
-   */
   async checkDMs(): Promise<{ pendingRequests: number; unreadMessages: number }> {
     return this.fetch<{ pendingRequests: number; unreadMessages: number }>("/agents/dm/check");
   }
 
-  /**
-   * Get DM conversations
-   */
   async getConversations(): Promise<
     Array<{ id: string; with: string; lastMessage: string; unread: boolean }>
   > {
@@ -546,9 +473,6 @@ class MoltbookClient {
     );
   }
 
-  /**
-   * Send a DM
-   */
   async sendDM(conversationId: string, message: string): Promise<void> {
     await this.fetch<void>(`/agents/dm/conversations/${conversationId}/send`, {
       method: "POST",
@@ -556,9 +480,6 @@ class MoltbookClient {
     });
   }
 
-  /**
-   * Request to start a DM with another agent
-   */
   async requestDM(toAgent: string, message: string): Promise<{ conversationId: string }> {
     return this.fetch<{ conversationId: string }>("/agents/dm/request", {
       method: "POST",
@@ -566,25 +487,14 @@ class MoltbookClient {
     });
   }
 
-  // ============ UTILITIES ============
-
-  /**
-   * Check if we can post right now
-   */
   canPost(): { allowed: boolean; retryAfterMs?: number } {
     return this.checkRateLimit("post");
   }
 
-  /**
-   * Check if we can comment right now
-   */
   canComment(): { allowed: boolean; retryAfterMs?: number } {
     return this.checkRateLimit("comment");
   }
 
-  /**
-   * Get time until next post is allowed (in ms)
-   */
   getNextPostTime(): number {
     const cooldown = 30 * 60 * 1000;
     const timeSinceLastPost = Date.now() - this.rateLimitState.lastPostTime;
@@ -592,7 +502,6 @@ class MoltbookClient {
   }
 }
 
-// Singleton pattern - separate clients for Bagsy and ChadGhost
 let bagsyClient: MoltbookClient | null = null;
 let chadghostClient: MoltbookClient | null = null;
 
@@ -601,9 +510,6 @@ export function initMoltbook(apiKey: string): MoltbookClient {
   return bagsyClient;
 }
 
-/**
- * Get Bagsy's Moltbook client (BagsWorld mascot, hype posts)
- */
 export function getMoltbook(): MoltbookClient {
   if (!bagsyClient) {
     const apiKey = process.env.MOLTBOOK_BAGSY_KEY || process.env.MOLTBOOK_API_KEY;
@@ -623,10 +529,6 @@ export function getMoltbookOrNull(): MoltbookClient | null {
   }
 }
 
-/**
- * Get ChadGhost's Moltbook client (Alpha KOL, crypto calls)
- * ChadGhost has its own identity separate from Bagsy
- */
 export function getChadGhostMoltbook(): MoltbookClient {
   if (!chadghostClient) {
     const apiKey = process.env.MOLTBOOK_CHADGHOST_KEY;

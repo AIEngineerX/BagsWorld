@@ -7,9 +7,7 @@ const ELIZA_API_BASE = process.env.NEXT_PUBLIC_ELIZA_API_URL || "http://localhos
 // Proxy base: use Next.js API route so client-side fetches don't hit cross-origin directly
 const ELIZA_PROXY_BASE = "/api/eliza-proxy";
 
-// ============================================================================
 // Types
-// ============================================================================
 
 export interface AgentStatus {
   agentId: string;
@@ -154,9 +152,7 @@ export interface ServerHealth {
   agents?: number;
 }
 
-// ============================================================================
-// API Client
-// ============================================================================
+// Client
 
 export class ElizaApiClient {
   private baseUrl: string;
@@ -183,7 +179,7 @@ export class ElizaApiClient {
     return response.json();
   }
 
-  /** Fetch via server-side proxy to avoid CORS on client-side calls */
+  /** Proxy via /api/eliza-proxy to avoid CORS on client-side calls. */
   private async fetchProxy<T>(endpoint: string): Promise<T> {
     const url = `${ELIZA_PROXY_BASE}?endpoint=${encodeURIComponent(endpoint)}`;
     const response = await fetch(url, {
@@ -198,17 +194,9 @@ export class ElizaApiClient {
     return response.json();
   }
 
-  // -------------------------------------------------------------------------
-  // Health
-  // -------------------------------------------------------------------------
-
   async getHealth(): Promise<ServerHealth> {
     return this.fetchProxy<ServerHealth>("/health");
   }
-
-  // -------------------------------------------------------------------------
-  // Agent Coordination
-  // -------------------------------------------------------------------------
 
   async getAgentStatuses(): Promise<{
     success: boolean;
@@ -258,10 +246,6 @@ export class ElizaApiClient {
       body: JSON.stringify({ from, type, content, data }),
     });
   }
-
-  // -------------------------------------------------------------------------
-  // Ghost Trading
-  // -------------------------------------------------------------------------
 
   async getGhostStatus(): Promise<{ success: boolean } & GhostTradingStatus> {
     return this.fetch("/api/ghost/status");
@@ -364,10 +348,6 @@ export class ElizaApiClient {
     });
   }
 
-  // -------------------------------------------------------------------------
-  // Autonomous Tasks
-  // -------------------------------------------------------------------------
-
   async getTaskStatus(): Promise<{
     success: boolean;
     status: string;
@@ -408,10 +388,6 @@ export class ElizaApiClient {
       method: "POST",
     });
   }
-
-  // -------------------------------------------------------------------------
-  // Twitter
-  // -------------------------------------------------------------------------
 
   async getTwitterStatus(): Promise<{ success: boolean } & TwitterStatus> {
     return this.fetch("/api/twitter/status");
@@ -460,10 +436,6 @@ export class ElizaApiClient {
       body: JSON.stringify(mintOrSymbol),
     });
   }
-
-  // -------------------------------------------------------------------------
-  // Agents
-  // -------------------------------------------------------------------------
 
   async getAgents(): Promise<{
     success: boolean;
