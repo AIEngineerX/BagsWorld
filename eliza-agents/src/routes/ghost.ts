@@ -109,12 +109,15 @@ router.get("/status", async (req: Request, res: Response) => {
   const stats = trader.getStats();
   const config = trader.getConfig();
 
-  // Fetch wallet balance
+  // Fetch wallet balance (falls back to public RPC if primary is rate-limited)
   let walletBalance = 0;
+  let balanceError: string | undefined;
   try {
     walletBalance = await solanaService.getBalance();
   } catch (error) {
-    console.error("[Ghost] Failed to fetch wallet balance:", error);
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("[Ghost] Failed to fetch wallet balance:", msg);
+    balanceError = msg;
   }
 
   res.json({
@@ -122,6 +125,7 @@ router.get("/status", async (req: Request, res: Response) => {
     wallet: {
       address: solanaService.getPublicKey() || null,
       balanceSol: walletBalance,
+      ...(balanceError && { balanceError }),
     },
     trading: {
       enabled: stats.enabled,
