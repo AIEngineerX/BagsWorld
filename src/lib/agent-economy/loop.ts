@@ -252,7 +252,21 @@ async function processAgent(
   // STEP 2: GET BALANCE FOR TRADING
   // =========================================================================
 
-  const { sol: currentBalance } = await economy.getBalance();
+  let currentBalance = 0;
+  try {
+    const balanceResult = await economy.getBalance();
+    currentBalance = balanceResult.sol;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[Loop] ${agent.username}: Balance fetch FAILED — ${msg}. Skipping trade.`);
+    result.tradeDecision = {
+      action: "hold",
+      reason: `Balance fetch failed: ${msg}`,
+      confidence: 100,
+      riskLevel: "low",
+    };
+    return result;
+  }
   const reinvestAmount = currentBalance * (config.reinvestmentRate / 100);
 
   console.log(

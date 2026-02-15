@@ -59,9 +59,14 @@ export class HeliusService {
   private processedSignatures: Set<string> = new Set();
   private static readonly MAX_PROCESSED_SIGNATURES = 500;
 
-  // Rate limiting for Helius API calls (free tier: ~120 req/min)
+  // Rate limiting for Helius API calls
   private lastRequestTime = 0;
-  private readonly MIN_REQUEST_INTERVAL_MS = 500;
+  private readonly MIN_REQUEST_INTERVAL_MS = 1000;
+
+  // Exponential backoff on 429s
+  private backoffUntil = 0;
+  private consecutiveRateLimits = 0;
+  private readonly MAX_BACKOFF_MS = 5 * 60 * 1000; // 5 min cap
 
   constructor() {
     this.apiKey = process.env.HELIUS_API_KEY || null;
@@ -115,8 +120,8 @@ export class HeliusService {
     }
 
     try {
-      // Use Helius parsed transaction history
-      const response = await fetch(
+      // Use Helius parsed transaction history (rate-limited with backoff)
+      const response = await this.rateLimitedFetch(
         `${HELIUS_API_URL}/addresses/${wallet}/transactions?api-key=${this.apiKey}&limit=${limit}`
       );
 
@@ -315,15 +320,44 @@ export class HeliusService {
   }
 
   /**
-   * Rate-limited fetch wrapper for Helius API
+   * Rate-limited fetch wrapper for Helius API with exponential backoff on 429
    */
   private async rateLimitedFetch(url: string): Promise<Response> {
-    const elapsed = Date.now() - this.lastRequestTime;
+    // Check if we're in backoff from a previous 429
+    const now = Date.now();
+    if (now < this.backoffUntil) {
+      const waitSec = Math.ceil((this.backoffUntil - now) / 1000);
+      throw new Error(`Rate limited — backing off for ${waitSec}s`);
+    }
+
+    const elapsed = now - this.lastRequestTime;
     if (elapsed < this.MIN_REQUEST_INTERVAL_MS) {
       await new Promise((r) => setTimeout(r, this.MIN_REQUEST_INTERVAL_MS - elapsed));
     }
     this.lastRequestTime = Date.now();
-    return fetch(url);
+
+    const response = await fetch(url);
+
+    if (response.status === 429) {
+      this.consecutiveRateLimits++;
+      const backoffMs = Math.min(
+        this.MAX_BACKOFF_MS,
+        Math.pow(2, this.consecutiveRateLimits) * 5000 // 10s, 20s, 40s, 80s, 160s, cap 300s
+      );
+      this.backoffUntil = Date.now() + backoffMs;
+      console.warn(
+        `[HeliusService] 429 rate limited (streak: ${this.consecutiveRateLimits}), backing off ${(backoffMs / 1000).toFixed(0)}s`
+      );
+      throw new Error(`Helius API rate limited (429) — backoff ${(backoffMs / 1000).toFixed(0)}s`);
+    }
+
+    // Reset streak on successful request
+    if (this.consecutiveRateLimits > 0) {
+      console.log(`[HeliusService] Rate limit cleared after ${this.consecutiveRateLimits} consecutive 429s`);
+      this.consecutiveRateLimits = 0;
+    }
+
+    return response;
   }
 
   /**
@@ -498,10 +532,23 @@ export class HeliusService {
       return [];
     }
 
+    // If we're in backoff, skip the entire poll cycle
+    if (Date.now() < this.backoffUntil) {
+      const waitSec = Math.ceil((this.backoffUntil - Date.now()) / 1000);
+      console.log(`[HeliusService] Skipping poll — rate limit backoff (${waitSec}s remaining)`);
+      return [];
+    }
+
     const newAlerts: TradeAlert[] = [];
     const lastCheckTime = Date.now() - 5 * 60 * 1000; // Last 5 minutes
 
     for (const [address, label] of this.trackedWallets) {
+      // Abort remaining wallets if we hit rate limit mid-loop
+      if (Date.now() < this.backoffUntil) {
+        console.log(`[HeliusService] Rate limited mid-poll, skipping remaining wallets`);
+        break;
+      }
+
       try {
         const history = await this.getWalletTrades(address, 10);
 
@@ -524,7 +571,11 @@ export class HeliusService {
           }
         }
       } catch (error) {
-        console.error(`[HeliusService] Failed to poll wallet ${label}:`, error);
+        // Don't log rate-limit errors per-wallet (already logged in rateLimitedFetch)
+        const msg = error instanceof Error ? error.message : "";
+        if (!msg.includes("Rate limited") && !msg.includes("429")) {
+          console.error(`[HeliusService] Failed to poll wallet ${label}:`, error);
+        }
       }
     }
 

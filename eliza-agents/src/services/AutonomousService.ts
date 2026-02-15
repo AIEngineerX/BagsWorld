@@ -586,9 +586,17 @@ export class AutonomousService extends Service {
         task.lastRun = now;
         task.nextRun = now + task.interval;
       } catch (error) {
-        console.error(`[AutonomousService] Task ${task.name} failed:`, error);
-        // Retry after half interval on failure
-        task.nextRun = now + task.interval / 2;
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error(`[AutonomousService] Task ${task.name} failed:`, msg);
+
+        // On rate limit errors, back off with DOUBLE interval instead of half
+        if (msg.includes("429") || msg.includes("rate limit") || msg.includes("max usage")) {
+          task.nextRun = now + task.interval * 2;
+          console.warn(`[AutonomousService] Rate limited — delaying ${task.name} to ${(task.interval * 2 / 1000 / 60).toFixed(1)} min`);
+        } else {
+          // Other errors: retry after full interval (not half — half causes cascading failures)
+          task.nextRun = now + task.interval;
+        }
       }
     }
   }

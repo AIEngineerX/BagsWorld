@@ -18,15 +18,26 @@ function getConnection(): Connection {
  */
 export async function getWalletBalance(walletAddress: string): Promise<WalletBalance> {
   const connection = getConnection();
-  const publicKey = new PublicKey(walletAddress);
+  let publicKey: PublicKey;
+  try {
+    publicKey = new PublicKey(walletAddress);
+  } catch {
+    console.error(`[Wallet] Invalid wallet address: ${walletAddress}`);
+    throw new Error(`Invalid wallet address: ${walletAddress}`);
+  }
 
-  const lamports = await connection.getBalance(publicKey);
-
-  return {
-    address: walletAddress,
-    lamports,
-    sol: lamportsToSol(lamports),
-  };
+  try {
+    const lamports = await connection.getBalance(publicKey);
+    return {
+      address: walletAddress,
+      lamports,
+      sol: lamportsToSol(lamports),
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[Wallet] RPC getBalance failed for ${walletAddress}: ${msg}`);
+    throw err;
+  }
 }
 
 /**
@@ -35,7 +46,13 @@ export async function getWalletBalance(walletAddress: string): Promise<WalletBal
 export async function getAgentBalances(agentId: string): Promise<WalletBalance[]> {
   const credentials = await getAgentCredentials(agentId);
   if (!credentials) {
+    console.error(`[Wallet] Agent ${agentId}: credentials not found or expired — balance will show 0`);
     throw new Error(`Agent ${agentId} not found or credentials expired`);
+  }
+
+  if (credentials.wallets.length === 0) {
+    console.warn(`[Wallet] Agent ${agentId} (${credentials.moltbookUsername}): no wallets registered`);
+    return [];
   }
 
   const balances = await Promise.all(credentials.wallets.map((wallet) => getWalletBalance(wallet)));
