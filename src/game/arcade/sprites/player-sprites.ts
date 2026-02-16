@@ -46,6 +46,10 @@ function drawHead(
     g.fillRect(x - 1, y - 2, 10, 2);
     g.fillStyle(0x2d1b4e);
     g.fillRect(x, y - 1, 8, 1);
+    // Hood shadow on face sides
+    g.fillStyle(darken(0x2d1b4e, 0.4));
+    g.fillRect(x, y + 2, 1, 2);
+    g.fillRect(x + 7, y + 2, 1, 2);
     // Dark hair on top
     g.fillStyle(0x1a1a2e);
     g.fillRect(x, y, 8, 3);
@@ -53,6 +57,9 @@ function drawHead(
     g.fillStyle(0x3b82f6);
     g.fillRect(x + 1, y + 4, 2, 1);
     g.fillRect(x + 5, y + 4, 2, 1);
+    // Glasses glint (top-left of left lens)
+    g.fillStyle(lighten(0x3b82f6, 0.6));
+    g.fillRect(x + 1, y + 4, 1, 1);
     // Glasses bridge
     g.fillStyle(0x374151);
     g.fillRect(x + 3, y + 4, 2, 1);
@@ -66,10 +73,19 @@ function drawHead(
     g.fillStyle(0x0a0a0f);
     g.fillRect(x + 1, y + 4, 3, 1);
     g.fillRect(x + 5, y + 4, 2, 1);
+    // Sunglasses reflection
+    g.fillStyle(lighten(0x0a0a0f, 0.25));
+    g.fillRect(x + 1, y + 4, 1, 1);
+    // Green earpiece
+    g.fillStyle(0x22c55e);
+    g.fillRect(x + 7, y + 3, 1, 1);
   } else if (id === "cj") {
     // Bald - no hair pixels, just a highlight on top of head
     g.fillStyle(lighten(skinColor, 0.15));
     g.fillRect(x + 2, y, 4, 1);
+    // Brow ridge
+    g.fillStyle(darken(skinColor, 0.12));
+    g.fillRect(x + 1, y + 3, 6, 1);
   }
 
   // Eyes (skip if sunglasses/glasses already drawn)
@@ -78,6 +94,10 @@ function drawHead(
     g.fillRect(x + 2, y + 4, 1, 1);
     g.fillRect(x + 5, y + 4, 1, 1);
   }
+
+  // Chin shadow (all characters)
+  g.fillStyle(darken(skinColor, 0.15));
+  g.fillRect(x + 2, y + 7, 4, 1);
 }
 
 function drawTorso(
@@ -94,10 +114,13 @@ function drawTorso(
   g.fillStyle(outlineColor);
   g.fillRect(x - 1, y - 1, 14, 12);
 
-  // 3-zone shading: left 25% (3px), middle 50% (6px), right 25% (3px)
+  // 4-zone shading: edge highlight (1px), light (2px), base (6px), shadow (3px)
+  // Extra-bright left edge (catches light)
+  g.fillStyle(lighten(color, 0.35));
+  g.fillRect(x, y, 1, 10);
   // Left highlight zone
   g.fillStyle(lighten(color, 0.2));
-  g.fillRect(x, y, 3, 10);
+  g.fillRect(x + 1, y, 2, 10);
   // Middle base zone
   g.fillStyle(color);
   g.fillRect(x + 3, y, 6, 10);
@@ -151,17 +174,23 @@ function drawTorso(
     g.fillStyle(0x374151);
     g.fillRect(x + 1, y + 7, 2, 2);
     g.fillRect(x + 9, y + 7, 2, 2);
+    // Coat hem flare: extends 1px past torso on each side
+    g.fillStyle(darken(color, 0.2));
+    g.fillRect(x - 1, y + 9, 14, 1);
   } else if (id === "cj") {
-    // Tank top straps: shoulder lines
+    // Tank top straps: wider shoulders
     g.fillStyle(darken(color, 0.15));
-    g.fillRect(x + 1, y, 2, 2);
-    g.fillRect(x + 9, y, 2, 2);
+    g.fillRect(x, y, 3, 2);
+    g.fillRect(x + 9, y, 3, 2);
     // Gold chain
     g.fillStyle(secondaryColor);
     g.fillRect(x + 3, y + 1, 6, 1);
     g.fillRect(x + 3, y + 2, 1, 1);
     g.fillRect(x + 8, y + 2, 1, 1);
     g.fillRect(x + 5, y + 2, 2, 2); // Chain pendant
+    // Chain shimmer on pendant
+    g.fillStyle(lighten(secondaryColor, 0.5));
+    g.fillRect(x + 5, y + 2, 1, 1);
     // Muscle definition on torso
     g.fillStyle(lighten(color, 0.1));
     g.fillRect(x + 4, y + 4, 1, 4);
@@ -343,7 +372,7 @@ function generateCharacterFrames(
   // ---- RUN 1 (left leg forward) ----
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
-    drawHead(g, 8, 0, skinColor, id);
+    drawHead(g, 9, 0, skinColor, id); // +1px forward lean
     drawTorso(g, 6, 8, color, secondaryColor, id, skinColor);
     drawLeftArm(g, 2, 8, color, skinColor, id); // Left arm back
     drawArm(g, 17, 10, color, skinColor, id); // Right arm forward
@@ -355,7 +384,7 @@ function generateCharacterFrames(
   // ---- RUN 2 (right leg forward) ----
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
-    drawHead(g, 8, 0, skinColor, id);
+    drawHead(g, 9, 0, skinColor, id); // +1px forward lean
     drawTorso(g, 6, 8, color, secondaryColor, id, skinColor);
     drawLeftArm(g, 2, 10, color, skinColor, id); // Left arm forward
     drawArm(g, 17, 8, color, skinColor, id); // Right arm back
@@ -584,10 +613,72 @@ function generateCharacterFrames(
     g.destroy();
   }
 
-  // ---- RUN 3 (mid-stride contact, wide legs) ----
+  // ---- IDLE 5 (character quirk start) ----
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
     drawHead(g, 8, 0, skinColor, id);
+    drawTorso(g, 6, 8, color, secondaryColor, id, skinColor);
+    if (id === "ghost") {
+      // Adjusting glasses: right arm raised toward face
+      drawLeftArm(g, 1, 9, color, skinColor, id);
+      drawArm(g, 16, 6, color, skinColor, id);
+    } else if (id === "neo") {
+      // Cracking knuckles: arms come together
+      drawLeftArm(g, 4, 9, color, skinColor, id);
+      drawArm(g, 15, 9, color, skinColor, id);
+    } else {
+      // CJ flex: arms up slightly
+      drawLeftArm(g, 0, 7, color, skinColor, id);
+      drawArm(g, 19, 7, color, skinColor, id);
+    }
+    drawLegs(g, 6, 18, pantsColor, shoeColor, 0, 0);
+    g.generateTexture(`${id}_idle_5`, W, H);
+    g.destroy();
+  }
+
+  // ---- IDLE 6 (character quirk peak) ----
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    if (id === "ghost") {
+      // Glasses pushed up: glasses shifted 1px higher, arm near face
+      drawHead(g, 8, 0, skinColor, id);
+      // Redraw glasses 1px higher as quirk detail
+      g.fillStyle(0x3b82f6);
+      g.fillRect(9, 3, 2, 1);
+      g.fillRect(13, 3, 2, 1);
+      g.fillStyle(lighten(0x3b82f6, 0.6));
+      g.fillRect(9, 3, 1, 1);
+      g.fillStyle(0x374151);
+      g.fillRect(11, 3, 2, 1);
+      drawTorso(g, 6, 8, color, secondaryColor, id, skinColor);
+      drawLeftArm(g, 1, 9, color, skinColor, id);
+      drawArm(g, 15, 5, color, skinColor, id); // Arm at face level
+    } else if (id === "neo") {
+      // Head tilted, fists together center
+      drawHead(g, 7, 0, skinColor, id);
+      drawTorso(g, 6, 8, color, secondaryColor, id, skinColor);
+      drawLeftArm(g, 5, 10, color, skinColor, id);
+      drawArm(g, 14, 10, color, skinColor, id);
+    } else {
+      // CJ full flex: arms up showing biceps
+      drawHead(g, 8, 0, skinColor, id);
+      drawTorso(g, 6, 8, color, secondaryColor, id, skinColor);
+      drawLeftArm(g, 0, 5, color, skinColor, id);
+      drawArm(g, 20, 5, color, skinColor, id);
+      // Bicep highlight
+      g.fillStyle(lighten(skinColor, 0.2));
+      g.fillRect(1, 7, 2, 1);
+      g.fillRect(21, 7, 2, 1);
+    }
+    drawLegs(g, 6, 18, pantsColor, shoeColor, 0, 0);
+    g.generateTexture(`${id}_idle_6`, W, H);
+    g.destroy();
+  }
+
+  // ---- RUN 3 (mid-stride contact, wide legs) ----
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    drawHead(g, 9, 0, skinColor, id); // +1px forward lean
     drawTorso(g, 6, 8, color, secondaryColor, id, skinColor);
     drawLeftArm(g, 1, 9, color, skinColor, id);
     drawArm(g, 18, 9, color, skinColor, id);
@@ -599,7 +690,7 @@ function generateCharacterFrames(
   // ---- RUN 4 (passing phase, legs together) ----
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
-    drawHead(g, 8, 1, skinColor, id); // Head bob
+    drawHead(g, 9, 1, skinColor, id); // Head bob + forward lean
     drawTorso(g, 6, 8, color, secondaryColor, id, skinColor);
     drawLeftArm(g, 2, 10, color, skinColor, id);
     drawArm(g, 17, 10, color, skinColor, id);

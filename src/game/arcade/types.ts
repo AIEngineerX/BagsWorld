@@ -25,7 +25,7 @@ export const CHARACTER_STATS: Record<ArcadeCharacter, CharacterStats> = {
     speed: 150,
     fireRate: 250,
     maxHP: 5,
-    jumpForce: -320,
+    jumpForce: -380,
     color: 0x2d1b4e, // Dark hoodie
     secondaryColor: 0x9945ff, // Purple ghost logo
     skinColor: 0xffdbac,
@@ -35,7 +35,7 @@ export const CHARACTER_STATS: Record<ArcadeCharacter, CharacterStats> = {
     speed: 180,
     fireRate: 300,
     maxHP: 4,
-    jumpForce: -350,
+    jumpForce: -410,
     color: 0x111111, // Black trench coat
     secondaryColor: 0x22c55e, // Green tint
     skinColor: 0xf1c27d,
@@ -45,7 +45,7 @@ export const CHARACTER_STATS: Record<ArcadeCharacter, CharacterStats> = {
     speed: 128,
     fireRate: 180,
     maxHP: 6,
-    jumpForce: -290,
+    jumpForce: -350,
     color: 0xffffff, // White tank top
     secondaryColor: 0xfbbf24, // Gold chain
     skinColor: 0x8d5524,
@@ -103,10 +103,10 @@ export interface EnemyStats {
 }
 
 export const ENEMY_STATS: Record<EnemyType, EnemyStats> = {
-  soldier: { hp: 2, speed: 40, damage: 1, fireRate: 1500, score: 100, width: 24, height: 32 },
-  heavy: { hp: 5, speed: 20, damage: 2, fireRate: 2000, score: 300, width: 32, height: 32 },
-  turret: { hp: 3, speed: 0, damage: 1, fireRate: 800, score: 200, width: 24, height: 24 },
-  boss: { hp: 50, speed: 15, damage: 3, fireRate: 1000, score: 5000, width: 64, height: 64 },
+  soldier: { hp: 3, speed: 55, damage: 1, fireRate: 1000, score: 100, width: 24, height: 32 },
+  heavy: { hp: 8, speed: 30, damage: 2, fireRate: 1400, score: 300, width: 32, height: 32 },
+  turret: { hp: 5, speed: 0, damage: 1, fireRate: 600, score: 200, width: 24, height: 24 },
+  boss: { hp: 80, speed: 25, damage: 3, fireRate: 800, score: 5000, width: 64, height: 64 },
 };
 
 export type PickupType = "spread" | "heavy" | "health" | "grenade";
@@ -131,7 +131,7 @@ export const STARTING_GRENADES = 3;
 export const GRENADE_DAMAGE = 5;
 export const INVINCIBILITY_TIME = 1500; // ms after being hit
 export const GRENADE_RADIUS = 60; // px blast radius for grenade damage
-export const GRAVITY = 800; // px/s² arcade physics gravity
+export const GRAVITY = 700; // px/s² arcade physics gravity
 
 // Box2D grenade physics constants
 export const BOX2D_SCALE = 30; // pixels per meter
