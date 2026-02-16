@@ -331,6 +331,26 @@ function getShoeColor(id: ArcadeCharacter): number {
   return 0x451a03;
 }
 
+function drawKnife(g: Phaser.GameObjects.Graphics, handX: number, handY: number) {
+  // 6px blade extending from hand, silver with white edge highlight
+  const bladeSilver = 0x9ca3af;
+  const bladeEdge = 0xd1d5db;
+  const handleDark = 0x374151;
+
+  // Handle (at hand)
+  g.fillStyle(handleDark);
+  g.fillRect(handX, handY, 2, 2);
+  // Blade: 4px extending right
+  g.fillStyle(bladeSilver);
+  g.fillRect(handX + 2, handY, 4, 1);
+  // Edge highlight on top
+  g.fillStyle(bladeEdge);
+  g.fillRect(handX + 2, handY - 1, 4, 1);
+  // Tip 1px brighter
+  g.fillStyle(0xe5e7eb);
+  g.fillRect(handX + 5, handY, 1, 1);
+}
+
 // --- Frame generators ---
 
 function generateCharacterFrames(
@@ -787,6 +807,66 @@ function generateCharacterFrames(
     g.fillStyle(fadePants2);
     g.fillRect(20, 24, 4, 4);
     g.generateTexture(`${id}_die_5`, W, H);
+    g.destroy();
+  }
+
+  // ---- MELEE 1 (wind-up — arm pulled back, body leaning forward, knife visible) ----
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    drawHead(g, 9, 0, skinColor, id); // Lean forward
+    drawTorso(g, 6, 8, color, secondaryColor, id, skinColor);
+    // Left arm pulled back holding knife
+    drawLeftArm(g, 0, 8, color, skinColor, id);
+    drawKnife(g, 0, 13); // Knife behind
+    // Right arm normal
+    drawArm(g, 18, 9, color, skinColor, id);
+    drawLegs(g, 6, 18, pantsColor, shoeColor, -1, 0);
+    g.generateTexture(`${id}_melee_1`, W, H);
+    g.destroy();
+  }
+
+  // ---- MELEE 2 (slash — arm extended forward, knife at full reach, motion lines) ----
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    drawHead(g, 10, 0, skinColor, id); // Strong lean
+    drawTorso(g, 6, 8, color, secondaryColor, id, skinColor);
+    // Left arm back
+    drawLeftArm(g, 1, 10, color, skinColor, id);
+    // Right arm extended with knife
+    const armOutline = darken(color, 0.4);
+    g.fillStyle(armOutline);
+    g.fillRect(17, 9, 6, 5);
+    g.fillStyle(color);
+    g.fillRect(18, 10, 4, 3);
+    g.fillStyle(id === "neo" ? darken(0x111111, 0.2) : skinColor);
+    g.fillRect(22, 10, 2, 3);
+    drawKnife(g, 22, 11); // Knife at full reach
+    // Motion lines (1px white streaks)
+    g.fillStyle(0xffffff, 0.5);
+    g.fillRect(16, 10, 3, 1);
+    g.fillRect(15, 12, 4, 1);
+    drawLegs(g, 6, 18, pantsColor, shoeColor, 1, -1);
+    g.generateTexture(`${id}_melee_2`, W, H);
+    g.destroy();
+  }
+
+  // ---- MELEE 3 (follow-through — arm sweeping down, body recovering) ----
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    drawHead(g, 8, 0, skinColor, id); // Returning to normal
+    drawTorso(g, 6, 8, color, secondaryColor, id, skinColor);
+    drawLeftArm(g, 1, 9, color, skinColor, id);
+    // Right arm sweeping down
+    const armOutline = darken(color, 0.4);
+    g.fillStyle(armOutline);
+    g.fillRect(17, 12, 6, 5);
+    g.fillStyle(color);
+    g.fillRect(18, 13, 4, 3);
+    g.fillStyle(id === "neo" ? darken(0x111111, 0.2) : skinColor);
+    g.fillRect(22, 13, 2, 3);
+    drawKnife(g, 22, 15); // Knife sweeping down
+    drawLegs(g, 6, 18, pantsColor, shoeColor, 0, 0);
+    g.generateTexture(`${id}_melee_3`, W, H);
     g.destroy();
   }
 }

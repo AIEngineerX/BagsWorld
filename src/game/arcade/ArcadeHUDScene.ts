@@ -39,6 +39,11 @@ export class ArcadeHUDScene extends Phaser.Scene {
   private bossBarFill?: Phaser.GameObjects.Graphics;
   private bossBarVisible = false;
 
+  // Combo
+  private comboText?: Phaser.GameObjects.Text;
+  private lastComboMultiplier = 0;
+  private comboFadeTween?: Phaser.Tweens.Tween;
+
   // HP
   private lastHP = -1;
 
@@ -60,6 +65,8 @@ export class ArcadeHUDScene extends Phaser.Scene {
     this.livesSprites = [];
     this.grenadeSprites = [];
     this.bossBarVisible = false;
+    this.lastComboMultiplier = 0;
+    this.comboFadeTween = undefined;
 
     const char = this.character!;
     const stats = CHARACTER_STATS[char];
@@ -151,6 +158,18 @@ export class ArcadeHUDScene extends Phaser.Scene {
 
     // --- Grenades (bottom-right) ---
     this.drawGrenades(3);
+
+    // --- Combo Counter (top-center, hidden until active) ---
+    this.comboText = this.add
+      .text(ARCADE_WIDTH / 2, 28, "", {
+        fontFamily: "monospace",
+        fontSize: "12px",
+        color: "#fbbf24",
+        stroke: "#000",
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5)
+      .setAlpha(0);
 
     // --- Boss HP Bar (top-center, hidden off-screen) ---
     this.bossBarContainer = this.add.container(ARCADE_WIDTH / 2, -16);
@@ -296,6 +315,50 @@ export class ArcadeHUDScene extends Phaser.Scene {
     if (data.grenades !== this.lastGrenades) {
       this.drawGrenades(data.grenades);
       this.lastGrenades = data.grenades;
+    }
+
+    // Combo counter
+    if (this.comboText) {
+      if (data.comboMultiplier > 1) {
+        const color =
+          data.comboMultiplier >= 8
+            ? "#9945ff"
+            : data.comboMultiplier >= 5
+              ? "#ef4444"
+              : data.comboMultiplier >= 3
+                ? "#f97316"
+                : "#fbbf24";
+        this.comboText.setText(`\u00D7${data.comboMultiplier} COMBO`);
+        this.comboText.setColor(color);
+        this.comboText.setAlpha(1);
+
+        // Pulse on multiplier change
+        if (data.comboMultiplier !== this.lastComboMultiplier) {
+          // Cancel any pending fade
+          if (this.comboFadeTween) {
+            this.comboFadeTween.stop();
+            this.comboFadeTween = undefined;
+          }
+          this.tweens.add({
+            targets: this.comboText,
+            scaleX: 1.5,
+            scaleY: 1.5,
+            duration: 80,
+            yoyo: true,
+          });
+        }
+      } else if (this.lastComboMultiplier > 1) {
+        // Combo reset — fade out
+        if (this.comboFadeTween) {
+          this.comboFadeTween.stop();
+        }
+        this.comboFadeTween = this.tweens.add({
+          targets: this.comboText,
+          alpha: 0,
+          duration: 300,
+        });
+      }
+      this.lastComboMultiplier = data.comboMultiplier;
     }
 
     // Boss HP bar — slide in when boss spawns
