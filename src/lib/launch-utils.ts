@@ -15,6 +15,7 @@ import {
   type LaunchedToken,
 } from "@/lib/token-registry";
 import { getEcosystemFeeShare } from "@/lib/config";
+import { getWriteRpcUrl } from "@/lib/env-utils";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -262,9 +263,7 @@ export async function executeLaunchFlow(opts: {
 
     if (feeResult.needsCreation && feeResult.transactions?.length > 0) {
       onStatus("Creating fee share config on-chain...");
-      const connection = new Connection(
-        process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana"
-      );
+      const connection = new Connection(getWriteRpcUrl());
 
       for (let i = 0; i < feeResult.transactions.length; i++) {
         const txData = feeResult.transactions[i];

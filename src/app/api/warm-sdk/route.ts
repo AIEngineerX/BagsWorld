@@ -22,7 +22,8 @@ async function initSDK(): Promise<boolean> {
   sdkInitPromise = (async () => {
     try {
       const { BagsSDK } = await import("@bagsfm/bags-sdk");
-      const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana";
+      const { getReadRpcUrl } = await import("@/lib/env-utils");
+      const rpcUrl = getReadRpcUrl();
       const connection = new Connection(rpcUrl, "confirmed");
       sdkInstance = new BagsSDK(process.env.BAGS_API_KEY!, connection, "processed");
       return sdkInstance;

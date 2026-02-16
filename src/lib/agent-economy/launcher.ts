@@ -404,7 +404,7 @@ const BAGS_JWT_TOKEN = process.env.BAGS_JWT_TOKEN || ""; // Optional - only for 
 // Fall back to AGENT_WALLET_PRIVATE_KEY if no dedicated launcher key
 const BAGSWORLD_PRIVATE_KEY =
   process.env.BAGSWORLD_LAUNCHER_PRIVATE_KEY || process.env.AGENT_WALLET_PRIVATE_KEY!;
-const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+import { getWriteRpcUrl } from "@/lib/env-utils";
 
 // ============================================================================
 // TYPES
@@ -489,7 +489,7 @@ function getBagsWorldKeypair(): Keypair {
 }
 
 function getConnection(): Connection {
-  return new Connection(RPC_URL, "confirmed");
+  return new Connection(getWriteRpcUrl(), "confirmed");
 }
 
 async function callBagsApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {

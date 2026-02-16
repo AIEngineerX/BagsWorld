@@ -133,8 +133,8 @@ export async function getExternalBalance(ctx: ExternalAgentContext): Promise<{
   totalSol: number;
   wallets: Array<{ address: string; sol: number }>;
 }> {
-  const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
-  const connection = new Connection(rpcUrl, "confirmed");
+  const { getReadRpcUrl } = await import("@/lib/env-utils");
+  const connection = new Connection(getReadRpcUrl(), "confirmed");
 
   const balances = await Promise.all(
     ctx.wallets.map(async (address) => {
@@ -315,8 +315,8 @@ export class ExternalAgent {
    * Get token balances
    */
   async getTokenBalances(): Promise<Array<{ mint: string; balance: number }>> {
-    const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
-    const connection = new Connection(rpcUrl, "confirmed");
+    const { getReadRpcUrl } = await import("@/lib/env-utils");
+    const connection = new Connection(getReadRpcUrl(), "confirmed");
 
     const publicKey = new PublicKey(this.ctx.primaryWallet);
 

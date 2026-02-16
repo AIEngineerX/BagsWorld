@@ -8,6 +8,7 @@ import {
 } from "@/lib/transaction-utils";
 import { saveLaunchedToken, saveTokenGlobally, type LaunchedToken } from "@/lib/token-registry";
 import { getEcosystemFeeShare } from "@/lib/config";
+import { getWriteRpcUrl } from "@/lib/env-utils";
 
 export interface LaunchFlowParams {
   tokenData: {
@@ -63,9 +64,7 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
 
   const ecosystemFee = getEcosystemFeeShare();
 
-  const connection = new Connection(
-    process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana"
-  );
+  const connection = new Connection(getWriteRpcUrl());
 
   try {
     // -----------------------------------------------------------------------
