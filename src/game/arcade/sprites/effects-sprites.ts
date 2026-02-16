@@ -10,6 +10,7 @@ export function generateEffectSprites(scene: Phaser.Scene): void {
   generateParticleTextures(scene);
   generateCrateChunkSprites(scene);
   generateRagdollSprites(scene);
+  generateBossRagdollSprites(scene);
   generateScanlineTexture(scene);
   generateShockwaveSprites(scene);
   generateSmokePuffs(scene);
@@ -781,6 +782,116 @@ function generateRagdollSprites(scene: Phaser.Scene): void {
     g.fillStyle(darken(PALETTE.darkGray, 0.2));
     g.fillRect(0, 13, 6, 1);
     g.generateTexture("heavy_leg", 6, 14);
+    g.destroy();
+  }
+}
+
+// --- Boss ragdoll parts (Mega Mech — deep purple hull, purple armor, red cockpit) ---
+
+function generateBossRagdollSprites(scene: Phaser.Scene): void {
+  const hull = PALETTE.deepPurple;
+  const armorPlate = PALETTE.purple;
+  const cockpit = PALETTE.brightRed;
+  const tread = PALETTE.darkGray;
+  const cannon = PALETTE.lightGray;
+
+  // boss_hull (24x16) — main hull body
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(hull);
+    g.fillRect(0, 0, 24, 16);
+    g.fillStyle(lighten(hull, 0.12));
+    g.fillRect(0, 0, 1, 16);
+    g.fillStyle(darken(hull, 0.2));
+    g.fillRect(23, 0, 1, 16);
+    // Armor plating
+    g.fillStyle(armorPlate);
+    g.fillRect(2, 2, 20, 10);
+    g.fillStyle(darken(armorPlate, 0.15));
+    g.fillRect(2, 7, 20, 1);
+    g.fillRect(12, 2, 1, 10);
+    // Reactor
+    g.fillStyle(cockpit);
+    g.fillRect(10, 4, 4, 4);
+    g.fillStyle(lighten(cockpit, 0.3));
+    g.fillRect(11, 5, 2, 2);
+    // Green accent
+    g.fillStyle(PALETTE.bagsGreen);
+    g.fillRect(0, 14, 24, 1);
+    g.generateTexture("boss_hull", 24, 16);
+    g.destroy();
+  }
+
+  // boss_turret (16x10) — turret housing + cockpit
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(hull);
+    g.fillRect(0, 0, 16, 10);
+    g.fillStyle(lighten(hull, 0.15));
+    g.fillRect(0, 0, 16, 1);
+    // Cockpit
+    g.fillStyle(PALETTE.bagsGreen);
+    g.fillRect(3, 2, 6, 5);
+    g.fillStyle(cockpit);
+    g.fillRect(4, 3, 4, 3);
+    g.fillStyle(lighten(cockpit, 0.3));
+    g.fillRect(5, 4, 1, 1);
+    // Kill marks
+    g.fillStyle(PALETTE.white);
+    g.fillRect(11, 2, 1, 2);
+    g.fillRect(13, 2, 1, 2);
+    g.generateTexture("boss_turret", 16, 10);
+    g.destroy();
+  }
+
+  // boss_cannon (12x4) — main gun barrel
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(cannon);
+    g.fillRect(0, 0, 12, 4);
+    g.fillStyle(lighten(cannon, 0.2));
+    g.fillRect(0, 0, 12, 1);
+    g.fillStyle(darken(cannon, 0.3));
+    g.fillRect(0, 3, 12, 1);
+    g.generateTexture("boss_cannon", 12, 4);
+    g.destroy();
+  }
+
+  // boss_tread (20x8) — track section
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(tread);
+    g.fillRect(0, 0, 20, 8);
+    g.fillStyle(lighten(tread, 0.15));
+    g.fillRect(0, 0, 20, 1);
+    // Track links
+    for (let i = 0; i < 5; i++) {
+      g.fillStyle(i % 2 === 0 ? darken(tread, 0.3) : darken(tread, 0.15));
+      g.fillRect(2 + i * 4, 2, 2, 5);
+    }
+    // Wheels
+    g.fillStyle(PALETTE.midGray);
+    g.fillRect(2, 3, 4, 4);
+    g.fillRect(14, 3, 4, 4);
+    g.generateTexture("boss_tread", 20, 8);
+    g.destroy();
+  }
+
+  // boss_armor_plate (10x8) — detached armor fragment
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(armorPlate);
+    g.fillRect(0, 0, 10, 8);
+    g.fillStyle(darken(armorPlate, 0.15));
+    g.fillRect(0, 4, 10, 1);
+    g.fillRect(5, 0, 1, 8);
+    // Rivets
+    g.fillStyle(lighten(armorPlate, 0.3));
+    g.fillRect(1, 1, 1, 1);
+    g.fillRect(8, 1, 1, 1);
+    g.fillRect(1, 6, 1, 1);
+    g.fillRect(8, 6, 1, 1);
+    g.generateTexture("boss_armor_plate", 10, 8);
     g.destroy();
   }
 }
