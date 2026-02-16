@@ -362,9 +362,7 @@ export async function executeLaunchFlow(opts: {
   }
 
   const transaction = deserializeTransaction(txBase64, "launch-transaction");
-  const connection = new Connection(
-    process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana"
-  );
+  const connection = new Connection(getWriteRpcUrl());
   const preSigned = checkExistingSignatures(transaction);
 
   let blockhash: string;
