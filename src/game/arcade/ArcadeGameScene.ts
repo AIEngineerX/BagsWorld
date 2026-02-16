@@ -24,6 +24,8 @@ import { getGroundPlatforms, getSectionData, type EnemySpawn } from "./level-dat
 import {
   initBox2DWorld,
   spawnGrenade,
+  spawnDebrisField,
+  spawnRagdoll,
   stepBox2DWorld,
   destroyGrenade,
   destroyAllBodies,
@@ -652,6 +654,7 @@ export class ArcadeGameScene extends Phaser.Scene {
           Phaser.Math.Distance.Between(grenade.x, grenade.y, c.x, c.y) < GRENADE_RADIUS
         ) {
           this.createExplosion(c.x, c.y);
+          spawnDebrisField(this, c.x, c.y, Phaser.Math.Between(5, 8), "crate_chunk");
           c.destroy();
           this.score += 25;
         }
@@ -928,6 +931,8 @@ export class ArcadeGameScene extends Phaser.Scene {
       });
       debris.explode(Phaser.Math.Between(6, 8));
       this.time.delayedCall(500, () => debris.destroy());
+      // Box2D crate debris chunks
+      spawnDebrisField(this, c.x, c.y, Phaser.Math.Between(4, 8), "crate_chunk");
       this.showScorePopup(c.x, c.y, 25);
       c.destroy();
       this.score += 25;
@@ -970,7 +975,7 @@ export class ArcadeGameScene extends Phaser.Scene {
     // Screen shake on each enemy death
     this.cameras.main.shake(60, 0.008);
 
-    // Spark burst on death frame 1
+    // Spark burst
     const deathSparks = this.add.particles(enemy.x, enemy.y, "particle_spark", {
       speed: { min: 40, max: 120 },
       angle: { min: 0, max: 360 },
@@ -981,57 +986,17 @@ export class ArcadeGameScene extends Phaser.Scene {
     deathSparks.explode(10);
     this.time.delayedCall(300, () => deathSparks.destroy());
 
-    // Frame 1: recoil (stronger knockback)
-    enemy.setTexture(`${type}_die_1`);
-    this.tweens.add({
-      targets: enemy,
-      x: enemy.x + hitDir * 16,
-      y: enemy.y - 6,
-      duration: 120,
-    });
+    // Score popup + explosion
+    this.showScorePopup(enemy.x, enemy.y, ENEMY_STATS[type].score);
+    this.createExplosion(enemy.x, enemy.y);
 
-    // Frame 2: ragdoll
-    this.time.delayedCall(120, () => {
-      if (!enemy.active) return;
-      enemy.setTexture(`${type}_die_2`);
-      this.tweens.add({
-        targets: enemy,
-        x: enemy.x + hitDir * 8,
-        y: enemy.y + 4,
-        duration: 120,
-      });
-    });
+    // Spawn Box2D ragdoll (linked body parts that tumble and settle)
+    spawnRagdoll(this, enemy.x, enemy.y, type, hitDir);
 
-    // Frame 3: crumple
-    this.time.delayedCall(250, () => {
-      if (!enemy.active) return;
-      enemy.setTexture(`${type}_die_3`);
-    });
-
-    // Frame 4: ground
-    this.time.delayedCall(380, () => {
-      if (!enemy.active) return;
-      enemy.setTexture(`${type}_die_4`);
-    });
-
-    // Explosion + score popup
-    this.time.delayedCall(500, () => {
-      if (!enemy.active) return;
-      this.showScorePopup(enemy.x, enemy.y, ENEMY_STATS[type].score);
-      this.createExplosion(enemy.x, enemy.y);
-      // Corpse lingers at half alpha before fading
-      enemy.setAlpha(0.5);
-    });
-
-    // Fade out corpse
-    this.time.delayedCall(1300, () => {
-      if (!enemy.active) return;
-      this.tweens.add({
-        targets: enemy,
-        alpha: 0,
-        duration: 200,
-        onComplete: () => enemy.destroy(),
-      });
+    // Hide the original enemy sprite immediately and destroy after a short delay
+    enemy.setVisible(false);
+    this.time.delayedCall(200, () => {
+      if (enemy.active) enemy.destroy();
     });
   }
 
