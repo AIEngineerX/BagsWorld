@@ -100,15 +100,13 @@ interface OakIntroWizardProps {
 
 export function OakIntroWizard({ onClose, onLaunchSuccess }: OakIntroWizardProps) {
   const [state, dispatch] = useReducer(wizardReducer, initialState);
-  const { publicKey, connected, mobileSignTransaction, mobileSignAndSend } = useMobileWallet();
+  const { publicKey, connected, mobileSignAndSend } = useMobileWallet();
 
-  // Keep refs to wallet signing functions so the launch effect always uses current versions
-  const signTxRef = useRef(mobileSignTransaction);
+  // Keep ref to wallet signing function so the launch effect always uses current version
   const signAndSendRef = useRef(mobileSignAndSend);
   useEffect(() => {
-    signTxRef.current = mobileSignTransaction;
     signAndSendRef.current = mobileSignAndSend;
-  }, [mobileSignTransaction, mobileSignAndSend]);
+  }, [mobileSignAndSend]);
 
   // Keep ref to state for use inside effects without re-triggering them
   const stateRef = useRef(state);
@@ -198,7 +196,6 @@ export function OakIntroWizard({ onClose, onLaunchSuccess }: OakIntroWizardProps
           feeShares: feeClaimers,
           initialBuySOL: s.initialBuySOL,
           walletPublicKey: publicKey,
-          signTransaction: (tx) => signTxRef.current(tx),
           signAndSendTransaction: (tx, opts) => signAndSendRef.current(tx, opts),
           onStatus: (msg: string) => {
             if (cancelled) return;

@@ -6,7 +6,6 @@ import {
   deserializeTransaction,
   hasExistingSignatures as checkExistingSignatures,
   preSimulateTransaction,
-  sendSignedTransaction,
 } from "@/lib/transaction-utils";
 import {
   saveLaunchedToken,
@@ -156,11 +155,6 @@ export const generateBanner = (concept: string, style: string) =>
 // Launch flow
 // ---------------------------------------------------------------------------
 
-interface SignTransaction {
-  (
-    tx: VersionedTransaction | import("@solana/web3.js").Transaction
-  ): Promise<VersionedTransaction | import("@solana/web3.js").Transaction>;
-}
 interface SignAndSend {
   (
     tx: VersionedTransaction | import("@solana/web3.js").Transaction,
@@ -175,7 +169,6 @@ export async function executeLaunchFlow(opts: {
   feeShares: FeeShareEntry[];
   initialBuySOL: number;
   walletPublicKey: string;
-  signTransaction: SignTransaction;
   signAndSend: SignAndSend;
   onStatus: (msg: string) => void;
 }): Promise<LaunchResult> {
@@ -186,7 +179,6 @@ export async function executeLaunchFlow(opts: {
     feeShares,
     initialBuySOL,
     walletPublicKey,
-    signTransaction,
     signAndSend,
     onStatus,
   } = opts;
@@ -300,13 +292,7 @@ export async function executeLaunchFlow(opts: {
         }
 
         let txid: string;
-        if (preSigned) {
-          const signedTx = await signTransaction(transaction);
-          onStatus(`Broadcasting fee config ${i + 1}/${feeResult.transactions.length}...`);
-          txid = await sendSignedTransaction(connection, signedTx, { maxRetries: 5 });
-        } else {
-          txid = await signAndSend(transaction, { maxRetries: 5 });
-        }
+        txid = await signAndSend(transaction, { maxRetries: 5 });
 
         onStatus(`Confirming fee config ${i + 1}/${feeResult.transactions.length}...`);
         await connection.confirmTransaction(
@@ -393,11 +379,8 @@ export async function executeLaunchFlow(opts: {
     // Non-fatal for pre-signed txs
   }
 
-  onStatus("Please sign the transaction in your wallet...");
-  const signedTx = await signTransaction(transaction);
-
-  onStatus("Broadcasting to Solana...");
-  const txid = await sendSignedTransaction(connection, signedTx, { maxRetries: 5 });
+  onStatus("Please approve the transaction in your wallet...");
+  const txid = await signAndSend(transaction, { maxRetries: 5 });
 
   onStatus("Confirming transaction...");
   await connection.confirmTransaction(

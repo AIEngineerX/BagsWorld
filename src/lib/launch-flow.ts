@@ -4,7 +4,6 @@ import {
   deserializeTransaction,
   hasExistingSignatures as checkExistingSignatures,
   preSimulateTransaction,
-  sendSignedTransaction,
 } from "@/lib/transaction-utils";
 import { saveLaunchedToken, saveTokenGlobally, type LaunchedToken } from "@/lib/token-registry";
 import { getEcosystemFeeShare } from "@/lib/config";
@@ -23,9 +22,6 @@ export interface LaunchFlowParams {
   feeShares: { provider: string; providerUsername: string; bps: number }[];
   initialBuySOL: string;
   walletPublicKey: PublicKey;
-  signTransaction: (
-    tx: Transaction | VersionedTransaction
-  ) => Promise<Transaction | VersionedTransaction>;
   signAndSendTransaction: (
     tx: Transaction | VersionedTransaction,
     opts?: { maxRetries?: number }
@@ -57,7 +53,6 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
     feeShares,
     initialBuySOL,
     walletPublicKey,
-    signTransaction,
     signAndSendTransaction,
     onStatus,
   } = params;
@@ -196,22 +191,12 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
 
           let txid: string;
           try {
-            if (preSigned) {
-              // Multi-signer (API pre-signed): must use signTransaction per
-              // Phantom docs to avoid "Signature verification failed" error.
-              const signedTx = await signTransaction(transaction);
-              onStatus(
-                `Broadcasting fee config transaction ${i + 1}/${feeResult.transactions.length}...`
-              );
-              txid = await sendSignedTransaction(connection, signedTx, {
-                maxRetries: 5,
-              });
-            } else {
-              // Single-signer: use signAndSendTransaction (Phantom recommended)
-              txid = await signAndSendTransaction(transaction, {
-                maxRetries: 5,
-              });
-            }
+            // Use signAndSendTransaction for all cases — Phantom preferred
+            // method that avoids Blowfish "malicious dapp" warning.
+            // Phantom preserves existing signatures on pre-signed transactions.
+            txid = await signAndSendTransaction(transaction, {
+              maxRetries: 5,
+            });
           } catch (signError: unknown) {
             const signErrorMsg = signError instanceof Error ? signError.message : String(signError);
             if (
@@ -345,18 +330,18 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
         // Non-fatal for pre-signed txs - Phantom will run its own simulation
       }
 
-      onStatus("Please sign the transaction in your wallet...");
+      onStatus("Please approve the transaction in your wallet...");
 
-      // Launch transactions are pre-signed by the Bags API (multi-signer:
-      // API signs with token mint keypair, user signs second).
-      // Per Phantom docs, multi-signer txs MUST use signTransaction - not
-      // signAndSendTransaction - to avoid "Signature verification failed".
-      let signedTx;
+      // Use signAndSendTransaction (Phantom preferred) — avoids Blowfish
+      // "malicious dapp" warning that signTransaction triggers.
+      // Phantom preserves existing signatures (API's mint keypair) and
+      // adds the user's signature before sending.
+      let txid: string;
       try {
-        signedTx = await signTransaction(transaction);
+        txid = await signAndSendTransaction(transaction, { maxRetries: 5 });
       } catch (signError: unknown) {
         const signErrorMsg = signError instanceof Error ? signError.message : String(signError);
-        console.error("Transaction signing failed:", signErrorMsg);
+        console.error("Transaction failed:", signErrorMsg);
 
         if (signErrorMsg.includes("User rejected") || signErrorMsg.includes("rejected")) {
           throw new Error(
@@ -371,110 +356,10 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
             `Transaction simulation failed: ${signErrorMsg}. This may be a temporary network issue - please try again.`
           );
         }
-        throw new Error(`Wallet signing failed: ${signErrorMsg}`);
+        throw new Error(`Transaction failed: ${signErrorMsg}`);
       }
 
       onStatus("Broadcasting to Solana...");
-
-      // Send signed transaction with retry logic for blockhash issues
-      let txid: string | undefined;
-      let sendAttempts = 0;
-      const maxSendAttempts = 3;
-      let currentSignedTx = signedTx;
-
-      while (sendAttempts < maxSendAttempts) {
-        sendAttempts++;
-        try {
-          txid = await sendSignedTransaction(connection, currentSignedTx, {
-            maxRetries: 5,
-          });
-          break; // Success, exit loop
-        } catch (sendError: unknown) {
-          const errorMessage = sendError instanceof Error ? sendError.message : String(sendError);
-          console.error(`Send attempt ${sendAttempts} failed:`, errorMessage);
-
-          // If blockhash error and we haven't hit max attempts, request fresh transaction from API
-          if (
-            sendAttempts < maxSendAttempts &&
-            (errorMessage.includes("Blockhash not found") ||
-              errorMessage.includes("block height exceeded"))
-          ) {
-            onStatus(`Retrying (${sendAttempts}/${maxSendAttempts})...`);
-
-            // Request a completely new transaction from the API with fresh blockhash
-            const retryResponse = await fetch("/api/launch-token", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                action: "create-launch-tx",
-                data: {
-                  ipfs: tokenMetadata,
-                  tokenMint: tokenMint,
-                  wallet: walletPublicKey.toBase58(),
-                  initialBuyLamports: Math.floor(parseFloat(initialBuySOL || "0") * 1_000_000_000),
-                  configKey: configKey,
-                },
-              }),
-            });
-
-            if (!retryResponse.ok) {
-              const retryErr = await retryResponse.json();
-              throw new Error(retryErr.error || "Failed to create retry transaction");
-            }
-
-            const retryResult = await retryResponse.json();
-            let retryTxBase64 = retryResult.transaction;
-            if (
-              retryTxBase64 &&
-              typeof retryTxBase64 === "object" &&
-              "transaction" in retryTxBase64
-            ) {
-              retryTxBase64 = retryTxBase64.transaction;
-            }
-
-            const retryTransaction = deserializeTransaction(
-              retryTxBase64,
-              "retry-launch-transaction"
-            );
-
-            // Get fresh blockhash for confirmation tracking
-            const freshBlockhash = await connection.getLatestBlockhash("confirmed");
-            blockhash = freshBlockhash.blockhash;
-            lastValidBlockHeight = freshBlockhash.lastValidBlockHeight;
-
-            // Pre-simulate retry transaction
-            try {
-              await preSimulateTransaction(connection, retryTransaction);
-            } catch (simError) {
-              console.warn("Retry tx simulation warning:", simError);
-            }
-
-            // Sign the fresh transaction (multi-signer: must use signTransaction)
-            onStatus("Please sign the transaction...");
-            try {
-              currentSignedTx = await signTransaction(retryTransaction);
-            } catch (retrySignError: unknown) {
-              const retrySignMsg =
-                retrySignError instanceof Error ? retrySignError.message : String(retrySignError);
-              if (
-                retrySignMsg.includes("User rejected") ||
-                retrySignMsg.includes("rejected") ||
-                retrySignMsg.includes("closed")
-              ) {
-                throw new Error("Transaction cancelled. Please try again.");
-              }
-              throw new Error(`Wallet signing failed: ${retrySignMsg}`);
-            }
-            onStatus("Broadcasting to Solana...");
-          } else {
-            throw sendError;
-          }
-        }
-      }
-
-      if (!txid) {
-        throw new Error("Failed to send transaction after multiple attempts");
-      }
 
       onStatus("Confirming transaction...");
 

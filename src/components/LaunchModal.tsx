@@ -24,7 +24,7 @@ interface LaunchModalProps {
 }
 
 export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
-  const { publicKey, connected, mobileSignTransaction, mobileSignAndSend } = useMobileWallet();
+  const { publicKey, connected, mobileSignAndSend } = useMobileWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const { translateY, isDismissing, handlers: swipeHandlers } = useSwipeToDismiss(onClose);
   const guardAction = useActionGuard();
@@ -423,7 +423,6 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         feeShares: feeClaimers,
         initialBuySOL,
         walletPublicKey: publicKey,
-        signTransaction: mobileSignTransaction,
         signAndSendTransaction: mobileSignAndSend,
         onStatus: setLaunchStatus,
       });
