@@ -43,6 +43,11 @@ const MIN_BURN_SOL = 0.005; // Minimum SOL worth burning (below this, tx fees ar
 // Default token decimals for Bags.fm tokens (Meteora DBC uses 6 decimals, same as pump.fun)
 const DEFAULT_TOKEN_DECIMALS = 6;
 
+// Approximate SOL price in USD — used for price impact estimates.
+// Doesn't need to be exact since impact calc is relative (over/under-estimate by 2x still safe).
+// Update periodically or replace with a live feed if SOL moves significantly from this range.
+const APPROX_SOL_PRICE_USD = 170;
+
 // Default trading configuration (BagBot-inspired, tuned for Bags.fm reality)
 // Reference: https://github.com/BagBotX/bagbot + DexScreener Bags runner analysis
 // Updated Jan 2025: Relaxed filters based on GAS token success patterns
@@ -1125,17 +1130,32 @@ export class GhostTrader {
       }
 
       // Always check DexScreener for more accurate volume/liquidity data (via shared cache)
+      let dexPriceSol = 0;
       try {
         const dexData = await getDexScreenerCache().getTokenData(position.tokenMint);
         if (dexData) {
-          if (dexData.priceNative && !currentPriceSol) {
-            currentPriceSol = dexData.priceNative;
+          dexPriceSol = dexData.priceNative || 0;
+          if (dexPriceSol && !currentPriceSol) {
+            currentPriceSol = dexPriceSol;
           }
           volume24hUsd = dexData.volume24hUsd || volume24hUsd;
           liquidityUsd = dexData.liquidityUsd || 0;
         }
       } catch {
         console.warn(`[GhostTrader] Failed to get DexScreener data for ${position.tokenSymbol}`);
+      }
+
+      // Cross-validate price sources: if Bags API and DexScreener both have a price
+      // but they differ by >10x, one is likely in wrong units. Prefer DexScreener
+      // (priceNative is well-documented as SOL per whole token).
+      if (currentPriceSol > 0 && dexPriceSol > 0) {
+        const ratio = currentPriceSol / dexPriceSol;
+        if (ratio > 10 || ratio < 0.1) {
+          console.warn(
+            `[GhostTrader] Price mismatch for ${position.tokenSymbol}: Bags=${currentPriceSol}, DexScreener=${dexPriceSol} (ratio ${ratio.toFixed(1)}x) — using DexScreener`
+          );
+          currentPriceSol = dexPriceSol;
+        }
       }
 
       if (currentPriceSol === 0) {
@@ -1419,7 +1439,7 @@ export class GhostTrader {
 
     // === PRICE IMPACT CHECK ===
     // Use minimum position size for impact estimate (actual size adjusted later by score)
-    const estimatedImpact = (this.config.minPositionSol * 170) / (liquidityUsd || 1) * 100;
+    const estimatedImpact = (this.config.minPositionSol * APPROX_SOL_PRICE_USD) / (liquidityUsd || 1) * 100;
     if (estimatedImpact > this.config.maxPriceImpactPercent) {
       return reject(`high price impact (est ${estimatedImpact.toFixed(1)}% > ${this.config.maxPriceImpactPercent}%)`);
     }
@@ -1694,27 +1714,25 @@ export class GhostTrader {
     const remainingExposure = this.config.maxTotalExposureSol - this.getTotalExposure();
     let suggestedAmount: number;
 
-    // Position sizing based on score (65-120 range)
+    // Position sizing based on score (65+ range, since shouldBuy requires >= 65)
     if (score >= 95) {
       suggestedAmount = this.config.maxPositionSol; // Max conviction
     } else if (score >= 80) {
       suggestedAmount = this.config.maxPositionSol * 0.75; // High conviction
-    } else if (score >= 65) {
-      suggestedAmount = (this.config.minPositionSol + this.config.maxPositionSol) / 2; // Medium
     } else {
-      suggestedAmount = this.config.minPositionSol; // Minimum size for borderline
+      suggestedAmount = (this.config.minPositionSol + this.config.maxPositionSol) / 2; // Medium (65-79)
     }
 
     suggestedAmount = Math.min(suggestedAmount, remainingExposure);
 
     // Cap position size by maximum acceptable price impact (3%)
     const maxImpactPercent = 3.0;
-    const maxSolByImpact = (maxImpactPercent / 100) * ((liquidityUsd || 1) / 170);
+    const maxSolByImpact = (maxImpactPercent / 100) * ((liquidityUsd || 1) / APPROX_SOL_PRICE_USD);
     if (maxSolByImpact < this.config.minPositionSol) {
       // Even minimum position would cause too much impact — reject
       return {
         launch, token, score, reasons,
-        redFlags: [...redFlags, `insufficient liquidity for min position (impact: ${((this.config.minPositionSol * 170) / (liquidityUsd || 1) * 100).toFixed(1)}%)`],
+        redFlags: [...redFlags, `insufficient liquidity for min position (impact: ${((this.config.minPositionSol * APPROX_SOL_PRICE_USD) / (liquidityUsd || 1) * 100).toFixed(1)}%)`],
         shouldBuy: false, suggestedAmount: 0, metrics,
       };
     } else if (maxSolByImpact < suggestedAmount) {
@@ -1739,6 +1757,17 @@ export class GhostTrader {
 
     const { launch, suggestedAmount, reasons } = evaluation;
     const amountLamports = Math.floor(suggestedAmount * LAMPORTS_PER_SOL);
+
+    // Check SOL balance before hitting Jupiter APIs (need trade amount + ~0.01 SOL for tx fees)
+    if (this.solanaService) {
+      const balance = await this.solanaService.getBalance();
+      if (balance < suggestedAmount + 0.01) {
+        console.warn(
+          `[GhostTrader] Skipping buy of ${launch.symbol}: insufficient balance (${balance.toFixed(4)} SOL, need ${(suggestedAmount + 0.01).toFixed(4)})`
+        );
+        return false;
+      }
+    }
 
     console.log(
       `[GhostTrader] Executing buy: ${suggestedAmount} SOL of ${launch.symbol} (${launch.mint})`
