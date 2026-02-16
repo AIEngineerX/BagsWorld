@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useActionGuard } from "@/hooks/useActionGuard";
 import { useConnection } from "@solana/wallet-adapter-react";
@@ -71,6 +71,329 @@ function PixelFire({ size = 28, burning = false }: { size?: number; burning?: bo
   );
 }
 
+/* Pixel coin dissolve animation for Close / Close All operations */
+function PixelDissolve({
+  size = 48,
+  playing = false,
+  label,
+}: {
+  size?: number;
+  playing?: boolean;
+  label?: string;
+}) {
+  // 8x8 circular coin pattern (1 = visible pixel)
+  const grid = useMemo(
+    () => [
+      [0, 0, 1, 1, 1, 1, 0, 0],
+      [0, 1, 1, 1, 1, 1, 1, 0],
+      [1, 1, 1, 1, 1, 1, 1, 1],
+      [1, 1, 1, 1, 1, 1, 1, 1],
+      [1, 1, 1, 1, 1, 1, 1, 1],
+      [1, 1, 1, 1, 1, 1, 1, 1],
+      [0, 1, 1, 1, 1, 1, 1, 0],
+      [0, 0, 1, 1, 1, 1, 0, 0],
+    ],
+    []
+  );
+
+  // Stable random values per pixel (direction, rotation, delay)
+  const randoms = useRef<{ tx: number; ty: number; rot: number; delay: number }[]>([]);
+  if (randoms.current.length === 0) {
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 40 + Math.random() * 60;
+        randoms.current.push({
+          tx: Math.cos(angle) * dist,
+          ty: Math.sin(angle) * dist,
+          rot: (Math.random() - 0.5) * 720,
+          delay: Math.random() * 0.4,
+        });
+      }
+    }
+  }
+
+  const pxSize = size / 8;
+
+  return (
+    <div className="flex flex-col items-center gap-1" aria-label="Account closing animation">
+      <div
+        className="relative"
+        style={{ width: size, height: size }}
+      >
+        {grid.flatMap((row, r) =>
+          row.map((on, c) => {
+            if (!on) return null;
+            const idx = r * 8 + c;
+            const rand = randoms.current[idx];
+            const isEdge = r === 0 || r === 7 || c === 0 || c === 7 || !grid[r - 1]?.[c] || !grid[r + 1]?.[c];
+            return (
+              <div
+                key={`${r}-${c}`}
+                className={playing ? "pixel-dissolve-active" : ""}
+                style={{
+                  position: "absolute",
+                  left: c * pxSize,
+                  top: r * pxSize,
+                  width: pxSize,
+                  height: pxSize,
+                  backgroundColor: isEdge ? "#22c55e" : "#4ade80",
+                  ["--tx-end" as string]: `${rand.tx}px`,
+                  ["--ty-end" as string]: `${rand.ty}px`,
+                  ["--rotate" as string]: `${rand.rot}deg`,
+                  animationDelay: playing ? `${rand.delay}s` : undefined,
+                }}
+              />
+            );
+          })
+        )}
+      </div>
+      {label && <span className="text-green-400 text-xs font-pixel">{label}</span>}
+      <style jsx>{`
+        @keyframes pixelDissolve {
+          0% {
+            transform: translate(0, 0) rotate(0deg) scale(1);
+            opacity: 1;
+          }
+          30% {
+            transform: translate(0, 0) rotate(0deg) scale(1.1);
+            opacity: 1;
+          }
+          100% {
+            transform: translate(var(--tx-end), var(--ty-end)) rotate(var(--rotate)) scale(0);
+            opacity: 0;
+          }
+        }
+        .pixel-dissolve-active {
+          animation: pixelDissolve 1.8s ease-in-out infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .pixel-dissolve-active {
+            animation: pixelDissolveFade 1.8s ease-in-out infinite;
+          }
+          @keyframes pixelDissolveFade {
+            0%,
+            30% {
+              opacity: 1;
+            }
+            80%,
+            100% {
+              opacity: 0.2;
+            }
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+/* Pixel furnace animation for Burn operations */
+function PixelFurnace({ size = 64, playing = false }: { size?: number; playing?: boolean }) {
+  return (
+    <div className="flex flex-col items-center gap-1" aria-label="Token burning animation">
+      <div style={{ width: size, height: size }} className="relative">
+        <svg viewBox="0 0 32 32" width={size} height={size} className="block">
+          {/* Brick body */}
+          <rect x="4" y="8" width="24" height="20" fill="#7f1d1d" />
+          {/* Mortar lines */}
+          <line x1="4" y1="12" x2="28" y2="12" stroke="#ea580c" strokeWidth="0.5" />
+          <line x1="4" y1="16" x2="28" y2="16" stroke="#ea580c" strokeWidth="0.5" />
+          <line x1="4" y1="20" x2="28" y2="20" stroke="#ea580c" strokeWidth="0.5" />
+          <line x1="4" y1="24" x2="28" y2="24" stroke="#ea580c" strokeWidth="0.5" />
+          <line x1="16" y1="8" x2="16" y2="12" stroke="#ea580c" strokeWidth="0.5" />
+          <line x1="10" y1="12" x2="10" y2="16" stroke="#ea580c" strokeWidth="0.5" />
+          <line x1="22" y1="12" x2="22" y2="16" stroke="#ea580c" strokeWidth="0.5" />
+
+          {/* Interior void */}
+          <rect x="8" y="12" width="16" height="12" fill="#0a0a0a" />
+
+          {/* Flames - 3 layers */}
+          <g className={playing ? "furnace-flames" : ""}>
+            {/* Red outer */}
+            <rect x="9" y="18" width="4" height="5" fill="#dc2626" />
+            <rect x="19" y="17" width="4" height="6" fill="#dc2626" />
+            <rect x="14" y="19" width="3" height="4" fill="#dc2626" />
+            {/* Orange middle */}
+            <rect x="10" y="16" width="3" height="6" fill="#ea580c" />
+            <rect x="16" y="17" width="3" height="5" fill="#ea580c" />
+            <rect x="20" y="15" width="3" height="7" fill="#ea580c" />
+            {/* Yellow core */}
+            <rect x="12" y="17" width="2" height="4" fill="#fbbf24" />
+            <rect x="17" y="18" width="2" height="3" fill="#fbbf24" />
+            {/* White hot center */}
+            <rect x="14" y="20" width="4" height="2" fill="#fef3c7" />
+          </g>
+
+          {/* Token dropping in */}
+          <g className={playing ? "furnace-token" : ""} opacity={playing ? 1 : 0}>
+            <rect x="14" y="2" width="4" height="4" rx="1" fill="#4ade80" />
+            <rect x="15" y="3" width="2" height="2" fill="#22c55e" />
+          </g>
+
+          {/* Door (left half + right half that opens) */}
+          <rect x="8" y="12" width="7" height="12" fill="#1a1a1a" opacity="0.3" />
+          <g className={playing ? "furnace-door" : ""}>
+            <rect x="15" y="12" width="9" height="12" fill="#1a1a1a" />
+            {/* Rivets */}
+            <rect x="17" y="14" width="1" height="1" fill="#fbbf24" />
+            <rect x="21" y="14" width="1" height="1" fill="#fbbf24" />
+            <rect x="17" y="21" width="1" height="1" fill="#fbbf24" />
+            <rect x="21" y="21" width="1" height="1" fill="#fbbf24" />
+            {/* Handle */}
+            <rect x="16" y="17" width="1" height="3" fill="#a8a29e" />
+          </g>
+
+          {/* Embers rising */}
+          {playing && (
+            <g>
+              <rect className="furnace-ember furnace-ember-1" x="11" y="11" width="1" height="1" fill="#fbbf24" />
+              <rect className="furnace-ember furnace-ember-2" x="15" y="10" width="1" height="1" fill="#f97316" />
+              <rect className="furnace-ember furnace-ember-3" x="20" y="11" width="1" height="1" fill="#fde047" />
+              <rect className="furnace-ember furnace-ember-4" x="13" y="9" width="1" height="1" fill="#ef4444" />
+              <rect className="furnace-ember furnace-ember-5" x="18" y="10" width="1" height="1" fill="#fbbf24" />
+              <rect className="furnace-ember furnace-ember-6" x="22" y="9" width="1" height="1" fill="#f97316" />
+            </g>
+          )}
+
+          {/* Top frame */}
+          <rect x="3" y="7" width="26" height="2" fill="#451a03" />
+          <rect x="3" y="27" width="26" height="2" fill="#451a03" />
+        </svg>
+      </div>
+      <style jsx>{`
+        @keyframes doorOpen {
+          0% {
+            transform: scaleX(1);
+            transform-origin: right center;
+          }
+          25% {
+            transform: scaleX(0);
+            transform-origin: right center;
+          }
+          75% {
+            transform: scaleX(0);
+            transform-origin: right center;
+          }
+          85% {
+            transform: scaleX(1.05);
+            transform-origin: right center;
+          }
+          90% {
+            transform: scaleX(0.97);
+            transform-origin: right center;
+          }
+          100% {
+            transform: scaleX(1);
+            transform-origin: right center;
+          }
+        }
+        @keyframes tokenDrop {
+          0%,
+          25% {
+            transform: translateY(0);
+            opacity: 1;
+          }
+          35% {
+            transform: translateY(0);
+            opacity: 1;
+          }
+          55% {
+            transform: translateY(14px);
+            opacity: 1;
+          }
+          60% {
+            transform: translateY(14px);
+            opacity: 0;
+          }
+          100% {
+            transform: translateY(14px);
+            opacity: 0;
+          }
+        }
+        @keyframes flamesRoar {
+          0%,
+          30% {
+            transform: scaleY(1);
+            filter: brightness(1);
+          }
+          50% {
+            transform: scaleY(1.3);
+            transform-origin: bottom center;
+            filter: brightness(1.4);
+          }
+          75% {
+            transform: scaleY(1.1);
+            filter: brightness(1.2);
+          }
+          100% {
+            transform: scaleY(1);
+            filter: brightness(1);
+          }
+        }
+        @keyframes emberRise {
+          0% {
+            transform: translateY(0);
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(-10px);
+            opacity: 0;
+          }
+        }
+        .furnace-door {
+          animation: doorOpen 3s ease-in-out infinite;
+        }
+        .furnace-token {
+          animation: tokenDrop 3s ease-in infinite;
+        }
+        .furnace-flames {
+          animation: flamesRoar 3s ease-in-out infinite;
+          transform-origin: bottom center;
+        }
+        .furnace-ember {
+          animation: emberRise 1.5s ease-out infinite;
+        }
+        .furnace-ember-1 {
+          animation-delay: 0s;
+        }
+        .furnace-ember-2 {
+          animation-delay: 0.3s;
+        }
+        .furnace-ember-3 {
+          animation-delay: 0.6s;
+        }
+        .furnace-ember-4 {
+          animation-delay: 0.9s;
+        }
+        .furnace-ember-5 {
+          animation-delay: 1.2s;
+        }
+        .furnace-ember-6 {
+          animation-delay: 1.5s;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .furnace-door,
+          .furnace-token,
+          .furnace-flames,
+          .furnace-ember {
+            animation: furnaceFade 3s ease-in-out infinite;
+          }
+          @keyframes furnaceFade {
+            0%,
+            40% {
+              opacity: 1;
+            }
+            70%,
+            100% {
+              opacity: 0.5;
+            }
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 export function IncineratorModal({ onClose }: IncineratorModalProps) {
   const { publicKey, connected, mobileSignAndSend } = useMobileWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
@@ -84,6 +407,10 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
   const [success, setSuccess] = useState<string | null>(null);
   const [burnConfirmed, setBurnConfirmed] = useState(false);
   const [apiOnline, setApiOnline] = useState<boolean | null>(null);
+
+  // Animation state
+  const [animPhase, setAnimPhase] = useState<"idle" | "dissolve" | "furnace">("idle");
+  const [txProgress, setTxProgress] = useState({ current: 0, total: 0 });
 
   // Preview state
   const [burnPreview, setBurnPreview] = useState<BurnPreviewResponse | null>(null);
@@ -209,6 +536,7 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
     resetState();
     setBurnConfirmed(false);
     setIsLoading(true);
+    setAnimPhase("furnace");
     try {
       const result: BurnResponse = await apiRequest("burn", {
         userPublicKey: publicKey.toBase58(),
@@ -223,6 +551,7 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
       setError(err instanceof Error ? err.message : "Burn failed");
     } finally {
       setIsLoading(false);
+      setAnimPhase("idle");
     }
   };
 
@@ -255,6 +584,7 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
     }
     resetState();
     setIsLoading(true);
+    setAnimPhase("dissolve");
     try {
       const result: CloseResponse = await apiRequest("close", {
         userPublicKey: publicKey.toBase58(),
@@ -269,6 +599,7 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
       setError(err instanceof Error ? err.message : "Close failed");
     } finally {
       setIsLoading(false);
+      setAnimPhase("idle");
     }
   };
 
@@ -292,6 +623,7 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
     if (!connected || !publicKey) return;
     resetState();
     setIsLoading(true);
+    setAnimPhase("dissolve");
     try {
       const result: BatchCloseAllResponse = await apiRequest("batch-close-all", {
         userPublicKey: publicKey.toBase58(),
@@ -302,10 +634,13 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
         return;
       }
 
+      setTxProgress({ current: 0, total: result.transactions.length });
+
       let completed = 0;
       for (const serializedTx of result.transactions) {
         await signAndSend(serializedTx);
         completed++;
+        setTxProgress({ current: completed, total: result.transactions.length });
         setSuccess(`Processing: ${completed}/${result.transactions.length} transactions signed...`);
       }
 
@@ -317,6 +652,8 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
       setError(err instanceof Error ? err.message : "Batch close failed");
     } finally {
       setIsLoading(false);
+      setAnimPhase("idle");
+      setTxProgress({ current: 0, total: 0 });
     }
   };
 
@@ -476,15 +813,30 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
                       </div>
 
                       {closeAllPreview.accountsToClose > 0 ? (
-                        <button
-                          onClick={() => guardAction(handleCloseAll)}
-                          disabled={isLoading}
-                          className="w-full bg-green-600 hover:bg-green-500 disabled:bg-green-900 text-white py-3 rounded font-pixel text-sm"
-                        >
-                          {isLoading
-                            ? "SIGNING TRANSACTIONS..."
-                            : `CLOSE ALL & RECLAIM ${closeAllPreview.totalSolanaReclaimed.toFixed(4)} SOL`}
-                        </button>
+                        <>
+                          {isLoading && animPhase === "dissolve" && (
+                            <div className="flex flex-col items-center py-2">
+                              <PixelDissolve
+                                size={48}
+                                playing
+                                label={
+                                  txProgress.total > 0
+                                    ? `${txProgress.current}/${txProgress.total} accounts`
+                                    : "Preparing..."
+                                }
+                              />
+                            </div>
+                          )}
+                          <button
+                            onClick={() => guardAction(handleCloseAll)}
+                            disabled={isLoading}
+                            className="w-full bg-green-600 hover:bg-green-500 disabled:bg-green-900 text-white py-3 rounded font-pixel text-sm"
+                          >
+                            {isLoading
+                              ? "SIGNING TRANSACTIONS..."
+                              : `CLOSE ALL & RECLAIM ${closeAllPreview.totalSolanaReclaimed.toFixed(4)} SOL`}
+                          </button>
+                        </>
                       ) : (
                         <p className="text-green-700 text-center text-sm">
                           No empty accounts found.
@@ -559,6 +911,13 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
                     </span>
                   </label>
 
+                  {isLoading && animPhase === "furnace" && (
+                    <div className="flex flex-col items-center py-2">
+                      <PixelFurnace size={64} playing />
+                      <span className="text-red-400 text-xs font-pixel mt-1">Incinerating...</span>
+                    </div>
+                  )}
+
                   <div className="flex gap-2">
                     <button
                       onClick={handleBurnPreview}
@@ -618,6 +977,12 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
                         <span className="text-green-600">Destructive:</span>
                         <span className="text-green-400">NO</span>
                       </div>
+                    </div>
+                  )}
+
+                  {isLoading && animPhase === "dissolve" && (
+                    <div className="flex flex-col items-center py-2">
+                      <PixelDissolve size={48} playing label="Closing Account..." />
                     </div>
                   )}
 
