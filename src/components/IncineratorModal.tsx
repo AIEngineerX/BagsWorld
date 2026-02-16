@@ -187,6 +187,104 @@ function PixelDissolve({
   );
 }
 
+/* Pixel coin with scanning line or ready-pulse — for preview/pre-close states */
+function PixelCoinScan({ size = 48, mode = "scan" }: { size?: number; mode?: "scan" | "ready" }) {
+  const pxSize = size / 8;
+  return (
+    <div
+      className="flex flex-col items-center gap-1"
+      aria-label={mode === "scan" ? "Scanning account" : "Ready to close"}
+    >
+      <div
+        className={mode === "ready" ? "coin-ready-pulse" : ""}
+        style={{ position: "relative", width: size, height: size, overflow: "hidden" }}
+      >
+        {COIN_GRID.flatMap((row, r) =>
+          row.map((on, c) => {
+            if (!on) return null;
+            const isEdge =
+              r === 0 ||
+              r === 7 ||
+              c === 0 ||
+              c === 7 ||
+              !COIN_GRID[r - 1]?.[c] ||
+              !COIN_GRID[r + 1]?.[c];
+            return (
+              <div
+                key={`${r}-${c}`}
+                style={{
+                  position: "absolute",
+                  left: c * pxSize,
+                  top: r * pxSize,
+                  width: pxSize,
+                  height: pxSize,
+                  backgroundColor: isEdge ? "#22c55e" : "#4ade80",
+                }}
+              />
+            );
+          })
+        )}
+        {mode === "scan" && (
+          <div
+            className="coin-scan-line"
+            style={{
+              position: "absolute",
+              left: 0,
+              width: "100%",
+              height: pxSize,
+              backgroundColor: "#86efac",
+              opacity: 0.7,
+              boxShadow: "0 0 8px #4ade80, 0 0 16px #22c55e",
+            }}
+          />
+        )}
+      </div>
+      <span className="text-green-400 text-xs font-pixel">
+        {mode === "scan" ? "Scanning..." : "Ready to close"}
+      </span>
+      <style jsx>{`
+        @keyframes scanDown {
+          0%,
+          100% {
+            top: 0;
+          }
+          50% {
+            top: ${size - pxSize}px;
+          }
+        }
+        .coin-scan-line {
+          animation: scanDown 1.2s ease-in-out infinite;
+        }
+        @keyframes readyPulse {
+          0%,
+          100% {
+            filter: drop-shadow(0 0 4px #22c55e);
+            transform: scale(1);
+          }
+          50% {
+            filter: drop-shadow(0 0 12px #4ade80);
+            transform: scale(1.05);
+          }
+        }
+        .coin-ready-pulse {
+          animation: readyPulse 2s ease-in-out infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .coin-scan-line {
+            animation: none;
+            top: 50%;
+            opacity: 0.5;
+          }
+          .coin-ready-pulse {
+            animation: none;
+            filter: drop-shadow(0 0 6px #22c55e);
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 /* Pixel furnace animation for Burn operations */
 function PixelFurnace({ size = 64, playing = false }: { size?: number; playing?: boolean }) {
   return (
@@ -772,13 +870,20 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
                   </div>
 
                   {!closeAllPreview ? (
-                    <button
-                      onClick={handleCloseAllPreview}
-                      disabled={isLoading}
-                      className="w-full bg-green-600 hover:bg-green-500 disabled:bg-green-900 text-white py-3 rounded font-pixel text-sm"
-                    >
-                      {isLoading ? "SCANNING..." : "SCAN EMPTY ACCOUNTS"}
-                    </button>
+                    <>
+                      {isLoading && (
+                        <div className="flex flex-col items-center py-3">
+                          <PixelCoinScan size={48} mode="scan" />
+                        </div>
+                      )}
+                      <button
+                        onClick={handleCloseAllPreview}
+                        disabled={isLoading}
+                        className="w-full bg-green-600 hover:bg-green-500 disabled:bg-green-900 text-white py-3 rounded font-pixel text-sm"
+                      >
+                        {isLoading ? "SCANNING..." : "SCAN EMPTY ACCOUNTS"}
+                      </button>
+                    </>
                   ) : (
                     <div className="space-y-3">
                       <div className="bg-[#0d2b0d] rounded p-3 space-y-2">
@@ -974,6 +1079,13 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
                     />
                   </div>
 
+                  {/* Scanning animation during preview loading */}
+                  {isLoading && animPhase === "idle" && !closePreview && (
+                    <div className="flex flex-col items-center py-3">
+                      <PixelCoinScan size={48} mode="scan" />
+                    </div>
+                  )}
+
                   {closePreview && (
                     <div className="bg-[#0d2b0d] rounded p-3 space-y-2">
                       <div className="flex justify-between text-sm">
@@ -993,6 +1105,14 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
                     </div>
                   )}
 
+                  {/* Ready-to-close pulse when preview loaded, before signing */}
+                  {closePreview && !isLoading && (
+                    <div className="flex flex-col items-center py-2">
+                      <PixelCoinScan size={48} mode="ready" />
+                    </div>
+                  )}
+
+                  {/* Dissolve animation during signing */}
                   {isLoading && animPhase === "dissolve" && (
                     <div className="flex flex-col items-center py-2">
                       <PixelDissolve size={48} playing label="Closing Account..." />
