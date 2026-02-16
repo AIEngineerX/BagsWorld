@@ -6,11 +6,11 @@ import bs58 from "bs58";
 import { LAMPORTS_PER_SOL, lamportsToSol, type WalletBalance } from "./types";
 import { getAgentCredentials, logAgentAction } from "./credentials";
 import { exportPrivateKey } from "./auth";
+import { getWriteRpcUrl } from "@/lib/env-utils";
 
 // Get RPC connection
 function getConnection(): Connection {
-  const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
-  return new Connection(rpcUrl, "confirmed");
+  return new Connection(getWriteRpcUrl(), "confirmed");
 }
 
 /**

@@ -211,8 +211,8 @@ async function fetchAgentTokenBalances(walletAddress: string): Promise<
     decimals: number;
   }>
 > {
-  const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
-  const connection = new Connection(rpcUrl, "confirmed");
+  const { getReadRpcUrl } = await import("@/lib/env-utils");
+  const connection = new Connection(getReadRpcUrl(), "confirmed");
 
   const publicKey = new PublicKey(walletAddress);
 

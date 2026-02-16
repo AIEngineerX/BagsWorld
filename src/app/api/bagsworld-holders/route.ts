@@ -211,11 +211,8 @@ export async function GET(): Promise<NextResponse> {
 
   // If Helius didn't work, try other RPCs
   if (holders.length === 0) {
-    const rpcUrls = [
-      process.env.SOLANA_RPC_URL,
-      process.env.NEXT_PUBLIC_SOLANA_RPC_URL,
-      "https://api.mainnet-beta.solana.com",
-    ].filter(Boolean) as string[];
+    const { getReadRpcUrl } = await import("@/lib/env-utils");
+    const rpcUrls = [process.env.SOLANA_RPC_URL, getReadRpcUrl()].filter(Boolean) as string[];
 
     for (const rpcUrl of rpcUrls) {
       if (holders.length > 0) break;

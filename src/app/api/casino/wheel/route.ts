@@ -9,13 +9,11 @@ import {
   BAGSWORLD_TOKEN_SYMBOL,
   BAGSWORLD_BUY_URL,
 } from "@/lib/token-balance";
+import { getWriteRpcUrl } from "@/lib/env-utils";
 
 function getRpcUrl(): string {
-  return (
-    process.env.SOLANA_RPC_URL ||
-    process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
-    "https://api.mainnet-beta.solana.com"
-  );
+  // Casino sends transactions — use write RPC (Helius)
+  return getWriteRpcUrl();
 }
 
 // Wheel segments with probabilities

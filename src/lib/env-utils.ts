@@ -113,6 +113,21 @@ export function getEnvList(name: string): string[] {
     .filter(Boolean);
 }
 
+// --- Solana RPC helpers ---
+// Split RPCs to save Helius credits: free RPC for reads, Helius for transactions.
+
+const FREE_RPC = "https://rpc.ankr.com/solana";
+
+/** Server-side read queries (getAccountInfo, getBalance, etc.) — free RPC. */
+export function getReadRpcUrl(): string {
+  return process.env.SERVER_READ_RPC_URL || FREE_RPC;
+}
+
+/** Transaction signing/sending — premium RPC (Helius). */
+export function getWriteRpcUrl(): string {
+  return process.env.SOLANA_RPC_URL || process.env.NEXT_PUBLIC_SOLANA_RPC_URL || FREE_RPC;
+}
+
 // SSRF protection
 const BLOCKED_IP_PATTERNS = [
   /^127\./,
