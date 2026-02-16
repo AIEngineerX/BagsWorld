@@ -1,4 +1,7 @@
 const SOL_INCINERATOR_API_URL = "https://v1.api.sol-incinerator.com";
+const REQUEST_TIMEOUT_MS = 30_000;
+const RETRY_DELAY_MS = 5_000;
+const RATE_LIMIT_MSG = "Sol Incinerator's RPC is at capacity. Please try again in ~30 seconds.";
 
 // --- Response Types ---
 
@@ -11,14 +14,8 @@ export interface BurnResponse {
   isDestructiveAction: boolean;
 }
 
-export interface CloseResponse {
-  assetId: string;
-  serializedTransaction: string;
-  lamportsReclaimed: number;
-  solanaReclaimed: number;
-  transactionType: string;
-  isDestructiveAction: boolean;
-}
+// Identical shape — separate type for semantic clarity
+export type CloseResponse = BurnResponse;
 
 export interface BatchCloseAllResponse {
   transactions: string[];
@@ -63,25 +60,9 @@ export interface BurnPreviewResponse {
   feeBreakdown: FeeBreakdown;
 }
 
-export interface ClosePreviewResponse {
-  assetId: string;
-  transactionType: string;
-  lamportsReclaimed: number;
-  solanaReclaimed: number;
-  isDestructiveAction: boolean;
-  assetInfo: AssetInfo;
-  feeBreakdown: FeeBreakdown;
-}
-
-export interface BatchAccountPreview {
-  assetId: string;
-  transactionType: string;
-  lamportsReclaimed: number;
-  solanaReclaimed: number;
-  isDestructiveAction: boolean;
-  assetInfo: AssetInfo;
-  feeBreakdown: FeeBreakdown;
-}
+// Identical shapes — separate types for semantic clarity
+export type ClosePreviewResponse = BurnPreviewResponse;
+export type BatchAccountPreview = BurnPreviewResponse;
 
 export interface BatchCloseAllPreviewResponse {
   accountPreviews: BatchAccountPreview[];
@@ -99,96 +80,67 @@ export interface BatchCloseAllPreviewResponse {
 
 // --- Client ---
 
-class SolIncineratorClient {
-  private apiKey: string;
+function isRpcRateLimit(msg: string): boolean {
+  return msg.includes("max usage reached") || msg.includes("-32429");
+}
 
-  constructor(apiKey: string) {
-    this.apiKey = apiKey;
+class SolIncineratorClient {
+  constructor(private apiKey: string) {}
+
+  /** Single fetch with timeout. Throws on any error. */
+  private async fetchApi<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(`${SOL_INCINERATOR_API_URL}${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": this.apiKey },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => "");
+        let msg = `API error: ${response.status} ${response.statusText}`;
+        try {
+          const parsed = JSON.parse(text);
+          msg = parsed.error?.message || parsed.error || msg;
+        } catch {
+          if (text) msg += ` - ${text}`;
+        }
+        throw new Error(msg);
+      }
+
+      const json = await response.json();
+      if (json?.error?.message) throw new Error(json.error.message);
+      return json as T;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
+  /** Fetch with a single retry on rate-limit or network errors. */
   private async request<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
-    const maxRetries = 1; // Single retry — fail fast, let client decide
-    let lastError: Error | null = null;
+    try {
+      return await this.fetchApi<T>(endpoint, body);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      const retryable = isRpcRateLimit(msg) || msg.includes("fetch") || msg.includes("network");
+      if (!retryable) throw err;
 
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      console.warn(`[Sol Incinerator] ${msg}, retrying in ${RETRY_DELAY_MS}ms`);
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+
       try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 30_000); // 30s hard timeout
-
-        const response = await fetch(`${SOL_INCINERATOR_API_URL}${endpoint}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": this.apiKey,
-          },
-          body: JSON.stringify(body),
-          signal: controller.signal,
-        });
-        clearTimeout(timeout);
-
-        if (!response.ok) {
-          const errorBody = await response.text().catch(() => "");
-          let errorMessage = `API error: ${response.status} ${response.statusText}`;
-          try {
-            const parsed = JSON.parse(errorBody);
-            if (parsed.error?.message) errorMessage = parsed.error.message;
-            else if (parsed.error) errorMessage = parsed.error;
-          } catch {
-            if (errorBody) errorMessage += ` - ${errorBody}`;
-          }
-
-          // Retry once on upstream RPC rate limit — HTTP 429 or JSON-RPC -32429
-          const isRateLimit =
-            response.status === 429 || errorMessage.includes("max usage reached") || errorMessage.includes("-32429");
-          if (isRateLimit && attempt < maxRetries) {
-            const delay = 5000;
-            console.warn(`[Sol Incinerator] RPC rate limited, retry in ${delay}ms`);
-            await new Promise((resolve) => setTimeout(resolve, delay));
-            continue;
-          }
-
-          // Friendly message for persistent rate limits
-          if (isRateLimit) {
-            throw new Error("Sol Incinerator's RPC is at capacity. Please try again in ~30 seconds.");
-          }
-
-          if (response.status >= 500 && attempt < maxRetries) {
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-            continue;
-          }
-
-          throw new Error(errorMessage);
+        return await this.fetchApi<T>(endpoint, body);
+      } catch (retryErr) {
+        if (retryErr instanceof Error && isRpcRateLimit(retryErr.message)) {
+          throw new Error(RATE_LIMIT_MSG);
         }
-
-        const json = await response.json();
-
-        // Detect JSON-RPC errors passed through on 200 responses
-        if (json?.error?.message) {
-          const rpcMsg: string = json.error.message;
-          if (rpcMsg.includes("max usage reached") || json.error?.code === -32429) {
-            throw new Error("Sol Incinerator's RPC is at capacity. Please try again in ~30 seconds.");
-          }
-          throw new Error(rpcMsg);
-        }
-
-        return json as T;
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-        if (
-          error instanceof TypeError &&
-          (error.message.includes("fetch") || error.message.includes("network")) &&
-          attempt < maxRetries
-        ) {
-          const delay = Math.pow(2, attempt) * 1000;
-          await new Promise((resolve) => setTimeout(resolve, delay));
-          continue;
-        }
-        if (attempt === maxRetries) break;
-        throw error;
+        throw retryErr;
       }
     }
-
-    throw lastError || new Error("Request failed after retries");
   }
 
   async burn(params: {
@@ -242,27 +194,24 @@ class SolIncineratorClient {
   }
 
   async status(): Promise<{ status: string }> {
-    const response = await fetch(`${SOL_INCINERATOR_API_URL}/`, {
-      method: "GET",
-    });
-    return (await response.json()) as { status: string };
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+    try {
+      const response = await fetch(`${SOL_INCINERATOR_API_URL}/`, { signal: controller.signal });
+      return (await response.json()) as { status: string };
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 }
 
-// Singleton
+// Singleton — lazy-initialized from env
 let client: SolIncineratorClient | null = null;
-
-export function initSolIncinerator(apiKey: string): SolIncineratorClient {
-  client = new SolIncineratorClient(apiKey);
-  return client;
-}
 
 export function getSolIncinerator(): SolIncineratorClient {
   if (!client) {
     const apiKey = process.env.SOL_INCINERATOR_API_KEY;
-    if (!apiKey) {
-      throw new Error("SOL_INCINERATOR_API_KEY not configured");
-    }
+    if (!apiKey) throw new Error("SOL_INCINERATOR_API_KEY not configured");
     client = new SolIncineratorClient(apiKey);
   }
   return client;
