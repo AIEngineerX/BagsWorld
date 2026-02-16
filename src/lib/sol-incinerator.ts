@@ -132,10 +132,13 @@ class SolIncineratorClient {
             if (errorBody) errorMessage += ` - ${errorBody}`;
           }
 
-          // Retry on 429 (upstream RPC rate limit) with longer backoff
-          if (response.status === 429 && attempt < maxRetries) {
+          // Retry on upstream RPC rate limit — HTTP 429 or JSON-RPC -32429 "max usage reached"
+          const isRateLimit =
+            response.status === 429 || errorMessage.includes("max usage reached") || errorMessage.includes("-32429");
+          if (isRateLimit && attempt < maxRetries) {
             const retryAfter = response.headers.get("Retry-After");
-            const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : Math.pow(2, attempt + 1) * 2000;
+            const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : Math.pow(2, attempt + 1) * 3000;
+            console.warn(`[Sol Incinerator] RPC rate limited, retry ${attempt + 1}/${maxRetries} in ${delay}ms`);
             await new Promise((resolve) => setTimeout(resolve, delay));
             continue;
           }
@@ -149,7 +152,24 @@ class SolIncineratorClient {
           throw new Error(errorMessage);
         }
 
-        return (await response.json()) as T;
+        const json = await response.json();
+
+        // Detect JSON-RPC errors passed through on 200 responses
+        if (json?.error?.message) {
+          const rpcMsg: string = json.error.message;
+          if (
+            (rpcMsg.includes("max usage reached") || json.error?.code === -32429) &&
+            attempt < maxRetries
+          ) {
+            const delay = Math.pow(2, attempt + 1) * 3000;
+            console.warn(`[Sol Incinerator] RPC error in 200 body, retry ${attempt + 1}/${maxRetries} in ${delay}ms`);
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            continue;
+          }
+          throw new Error(rpcMsg);
+        }
+
+        return json as T;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
         if (
