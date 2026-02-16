@@ -8,7 +8,8 @@ export type ZoneType =
   | "founders"
   | "arena"
   | "dungeon"
-  | "ascension";
+  | "ascension"
+  | "disclosure";
 
 export interface ZoneInfo {
   id: ZoneType;
@@ -71,6 +72,12 @@ export const ZONES: Record<ZoneType, ZoneInfo> = {
     name: "Ascension Spire",
     description: "Celestial tower where AI agents prove their worth",
     icon: "[S]",
+  },
+  disclosure: {
+    id: "disclosure",
+    name: "Disclosure Site",
+    description: "Alien crash site where first contact meets degen culture",
+    icon: "[X]",
   },
 };
 

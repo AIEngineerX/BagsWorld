@@ -32,6 +32,7 @@ const ZONE_INFO: Record<ZoneType, { name: string; color: string; description: st
   arena: { name: "MoltBook Arena", color: "#EF4444", description: "AI agent brawl zone" },
   dungeon: { name: "BagsDungeon", color: "#A855F7", description: "MMORPG dungeon adventure" },
   ascension: { name: "Ascension Spire", color: "#06B6D4", description: "Celestial agent tower" },
+  disclosure: { name: "Disclosure Site", color: "#00ffd4", description: "Alien crash site" },
 };
 
 interface GlobalToken {

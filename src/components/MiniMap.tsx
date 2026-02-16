@@ -81,6 +81,13 @@ const ZONE_THEME: Record<
     glow: "shadow-cyan-400/30",
     label: "SPIRE",
   },
+  disclosure: {
+    accent: "#00ffd4",
+    bg: "rgba(0, 255, 212, 0.1)",
+    border: "rgba(0, 255, 212, 0.3)",
+    glow: "0 0 20px rgba(0, 255, 212, 0.2)",
+    label: "Disclosure Site",
+  },
 };
 
 // Map grid layout — rows of zone IDs matching a spatial map

@@ -26,6 +26,7 @@ const ZONE_SHORT_LABELS: Record<ZoneType, string> = {
   arena: "ARENA",
   dungeon: "DNGN",
   ascension: "SPIRE",
+  disclosure: "DISC",
 };
 
 // Inactive color accents per zone (border / text / hover)

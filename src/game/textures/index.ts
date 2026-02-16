@@ -29,4 +29,5 @@ export { generateLabsAssets } from "./labs-assets";
 export { generateMoltbookAssets } from "./moltbook-assets";
 export { generateDungeonAssets } from "./dungeon-assets";
 export { generateAscensionAssets } from "./ascension-assets";
+export { generateDisclosureAssets } from "./disclosure-assets";
 export { exportAgentSprites } from "./sprite-export";
