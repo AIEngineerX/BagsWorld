@@ -680,154 +680,154 @@ function generateCrateChunkSprites(scene: Phaser.Scene): void {
 function generateRagdollSprites(scene: Phaser.Scene): void {
   // ---- Soldier ragdoll parts (Corrupted Agent — deep purple body, red visor) ----
 
-  // soldier_torso (8x12)
+  // soldier_torso (10x15)
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
     g.fillStyle(PALETTE.deepPurple);
-    g.fillRect(0, 0, 8, 12);
+    g.fillRect(0, 0, 10, 15);
     g.fillStyle(lighten(PALETTE.deepPurple, 0.15));
-    g.fillRect(0, 0, 1, 12);
+    g.fillRect(0, 0, 1, 15);
     g.fillStyle(darken(PALETTE.deepPurple, 0.2));
-    g.fillRect(7, 0, 1, 12);
+    g.fillRect(9, 0, 1, 15);
     // Purple accent stripe
     g.fillStyle(PALETTE.purple);
-    g.fillRect(3, 1, 2, 9);
+    g.fillRect(4, 1, 2, 11);
     // Glitch line
     g.fillStyle(PALETTE.bagsGreen);
-    g.fillRect(0, 4, 8, 1);
+    g.fillRect(0, 5, 10, 1);
     // Belt
     g.fillStyle(PALETTE.darkGray);
-    g.fillRect(0, 10, 8, 1);
-    g.generateTexture("soldier_torso", 8, 12);
+    g.fillRect(0, 13, 10, 1);
+    g.generateTexture("soldier_torso", 10, 15);
     g.destroy();
   }
 
-  // soldier_head (8x8)
+  // soldier_head (10x10)
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
     // Hood
     g.fillStyle(PALETTE.deepPurple);
-    g.fillRect(1, 0, 6, 4);
+    g.fillRect(1, 0, 8, 5);
     g.fillStyle(darken(PALETTE.deepPurple, 0.2));
-    g.fillRect(1, 3, 6, 1);
+    g.fillRect(1, 4, 8, 1);
     // Face/visor area
     g.fillStyle(PALETTE.void);
-    g.fillRect(1, 4, 6, 4);
+    g.fillRect(1, 5, 8, 5);
     g.fillStyle(PALETTE.brightRed);
-    g.fillRect(2, 6, 4, 1);
+    g.fillRect(2, 7, 6, 1);
     g.fillStyle(lighten(PALETTE.brightRed, 0.3));
-    g.fillRect(2, 6, 1, 1);
-    g.generateTexture("soldier_head", 8, 8);
+    g.fillRect(2, 7, 1, 1);
+    g.generateTexture("soldier_head", 10, 10);
     g.destroy();
   }
 
-  // soldier_arm (4x10)
+  // soldier_arm (5x12)
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
     g.fillStyle(PALETTE.deepPurple);
-    g.fillRect(0, 0, 4, 8);
+    g.fillRect(0, 0, 5, 10);
     g.fillStyle(lighten(PALETTE.deepPurple, 0.1));
-    g.fillRect(0, 0, 1, 8);
+    g.fillRect(0, 0, 1, 10);
     // Glove/hand
     g.fillStyle(PALETTE.midGray);
-    g.fillRect(0, 8, 4, 2);
-    g.generateTexture("soldier_arm", 4, 10);
+    g.fillRect(0, 10, 5, 2);
+    g.generateTexture("soldier_arm", 5, 12);
     g.destroy();
   }
 
-  // soldier_leg (4x12)
+  // soldier_leg (5x15)
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
     g.fillStyle(PALETTE.deepPurple);
-    g.fillRect(0, 0, 4, 8);
+    g.fillRect(0, 0, 5, 10);
     g.fillStyle(darken(PALETTE.deepPurple, 0.1));
-    g.fillRect(0, 4, 4, 1);
+    g.fillRect(0, 5, 5, 1);
     // Boot
     g.fillStyle(PALETTE.darkGray);
-    g.fillRect(0, 8, 4, 4);
+    g.fillRect(0, 10, 5, 5);
     g.fillStyle(darken(PALETTE.darkGray, 0.2));
-    g.fillRect(0, 11, 4, 1);
-    g.generateTexture("soldier_leg", 4, 12);
+    g.fillRect(0, 14, 5, 1);
+    g.generateTexture("soldier_leg", 5, 15);
     g.destroy();
   }
 
   // ---- Heavy ragdoll parts (Rogue Bot — gray armor, red visor) ----
 
-  // heavy_torso (12x14)
+  // heavy_torso (15x18)
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
     g.fillStyle(PALETTE.gray);
-    g.fillRect(0, 0, 12, 14);
+    g.fillRect(0, 0, 15, 18);
     g.fillStyle(lighten(PALETTE.gray, 0.12));
-    g.fillRect(0, 0, 1, 14);
+    g.fillRect(0, 0, 1, 18);
     g.fillStyle(darken(PALETTE.gray, 0.25));
-    g.fillRect(11, 0, 1, 14);
+    g.fillRect(14, 0, 1, 18);
     // Chest plate
     g.fillStyle(PALETTE.darkGray);
-    g.fillRect(2, 2, 8, 6);
+    g.fillRect(3, 3, 9, 8);
     g.fillStyle(darken(PALETTE.darkGray, 0.15));
-    g.fillRect(5, 2, 1, 6);
-    g.fillRect(2, 4, 8, 1);
+    g.fillRect(7, 3, 1, 8);
+    g.fillRect(3, 6, 9, 1);
     // Reactor core
     g.fillStyle(PALETTE.brightRed);
-    g.fillRect(5, 5, 2, 2);
+    g.fillRect(6, 7, 3, 3);
     // Belt
     g.fillStyle(PALETTE.darkGray);
-    g.fillRect(0, 12, 12, 1);
-    g.generateTexture("heavy_torso", 12, 14);
+    g.fillRect(0, 16, 15, 1);
+    g.generateTexture("heavy_torso", 15, 18);
     g.destroy();
   }
 
-  // heavy_head (10x8)
+  // heavy_head (12x10)
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
     g.fillStyle(PALETTE.gray);
-    g.fillRect(1, 0, 8, 7);
+    g.fillRect(1, 0, 10, 9);
     g.fillStyle(lighten(PALETTE.gray, 0.15));
-    g.fillRect(1, 0, 1, 7);
+    g.fillRect(1, 0, 1, 9);
     // Antenna
     g.fillStyle(PALETTE.midGray);
-    g.fillRect(7, 0, 2, 1);
+    g.fillRect(9, 0, 2, 1);
     // Green LED
     g.fillStyle(PALETTE.bagsGreen);
-    g.fillRect(8, 1, 1, 1);
+    g.fillRect(10, 1, 1, 1);
     // Visor
     g.fillStyle(PALETTE.brightRed);
-    g.fillRect(3, 4, 5, 2);
+    g.fillRect(3, 5, 7, 3);
     g.fillStyle(lighten(PALETTE.brightRed, 0.3));
-    g.fillRect(3, 4, 1, 1);
-    g.generateTexture("heavy_head", 10, 8);
+    g.fillRect(3, 5, 1, 1);
+    g.generateTexture("heavy_head", 12, 10);
     g.destroy();
   }
 
-  // heavy_arm (6x10)
+  // heavy_arm (8x12)
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
     g.fillStyle(PALETTE.gray);
-    g.fillRect(0, 0, 6, 8);
+    g.fillRect(0, 0, 8, 10);
     g.fillStyle(lighten(PALETTE.gray, 0.1));
-    g.fillRect(0, 0, 1, 8);
+    g.fillRect(0, 0, 1, 10);
     // Robot hand
     g.fillStyle(PALETTE.midGray);
-    g.fillRect(0, 8, 6, 2);
-    g.generateTexture("heavy_arm", 6, 10);
+    g.fillRect(0, 10, 8, 2);
+    g.generateTexture("heavy_arm", 8, 12);
     g.destroy();
   }
 
-  // heavy_leg (6x14)
+  // heavy_leg (8x17)
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
     g.fillStyle(PALETTE.gray);
-    g.fillRect(0, 0, 6, 9);
+    g.fillRect(0, 0, 8, 11);
     // Hydraulic piston
     g.fillStyle(PALETTE.silver);
-    g.fillRect(0, 5, 2, 1);
+    g.fillRect(0, 6, 3, 1);
     // Boot
     g.fillStyle(PALETTE.darkGray);
-    g.fillRect(0, 9, 6, 5);
+    g.fillRect(0, 11, 8, 6);
     g.fillStyle(darken(PALETTE.darkGray, 0.2));
-    g.fillRect(0, 13, 6, 1);
-    g.generateTexture("heavy_leg", 6, 14);
+    g.fillRect(0, 16, 8, 1);
+    g.generateTexture("heavy_leg", 8, 17);
     g.destroy();
   }
 }
@@ -841,103 +841,123 @@ function generateBossRagdollSprites(scene: Phaser.Scene): void {
   const tread = PALETTE.darkGray;
   const cannon = PALETTE.lightGray;
 
-  // boss_hull (24x16) — main hull body
+  // boss_hull (30x20) — main hull body
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
     g.fillStyle(hull);
-    g.fillRect(0, 0, 24, 16);
+    g.fillRect(0, 0, 30, 20);
     g.fillStyle(lighten(hull, 0.12));
-    g.fillRect(0, 0, 1, 16);
+    g.fillRect(0, 0, 1, 20);
     g.fillStyle(darken(hull, 0.2));
-    g.fillRect(23, 0, 1, 16);
+    g.fillRect(29, 0, 1, 20);
     // Armor plating
     g.fillStyle(armorPlate);
-    g.fillRect(2, 2, 20, 10);
+    g.fillRect(2, 2, 26, 14);
     g.fillStyle(darken(armorPlate, 0.15));
-    g.fillRect(2, 7, 20, 1);
-    g.fillRect(12, 2, 1, 10);
+    g.fillRect(2, 9, 26, 1);
+    g.fillRect(15, 2, 1, 14);
+    // Rivet rows
+    g.fillStyle(lighten(armorPlate, 0.25));
+    for (let rx = 4; rx < 28; rx += 4) {
+      g.fillRect(rx, 3, 1, 1);
+      g.fillRect(rx, 13, 1, 1);
+    }
     // Reactor
     g.fillStyle(cockpit);
-    g.fillRect(10, 4, 4, 4);
+    g.fillRect(12, 5, 6, 6);
     g.fillStyle(lighten(cockpit, 0.3));
-    g.fillRect(11, 5, 2, 2);
+    g.fillRect(13, 6, 4, 4);
+    g.fillStyle(lighten(cockpit, 0.5));
+    g.fillRect(14, 7, 2, 2);
     // Green accent
     g.fillStyle(PALETTE.bagsGreen);
-    g.fillRect(0, 14, 24, 1);
-    g.generateTexture("boss_hull", 24, 16);
+    g.fillRect(0, 18, 30, 1);
+    g.generateTexture("boss_hull", 30, 20);
     g.destroy();
   }
 
-  // boss_turret (16x10) — turret housing + cockpit
+  // boss_turret (20x12) — turret housing + cockpit
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
     g.fillStyle(hull);
-    g.fillRect(0, 0, 16, 10);
+    g.fillRect(0, 0, 20, 12);
     g.fillStyle(lighten(hull, 0.15));
-    g.fillRect(0, 0, 16, 1);
+    g.fillRect(0, 0, 20, 1);
     // Cockpit
     g.fillStyle(PALETTE.bagsGreen);
-    g.fillRect(3, 2, 6, 5);
+    g.fillRect(3, 2, 8, 7);
     g.fillStyle(cockpit);
-    g.fillRect(4, 3, 4, 3);
+    g.fillRect(4, 3, 6, 5);
     g.fillStyle(lighten(cockpit, 0.3));
-    g.fillRect(5, 4, 1, 1);
+    g.fillRect(5, 4, 2, 2);
+    // Pilot silhouette
+    g.fillStyle(darken(cockpit, 0.4));
+    g.fillRect(6, 5, 2, 2);
     // Kill marks
     g.fillStyle(PALETTE.white);
-    g.fillRect(11, 2, 1, 2);
-    g.fillRect(13, 2, 1, 2);
-    g.generateTexture("boss_turret", 16, 10);
+    g.fillRect(13, 2, 1, 3);
+    g.fillRect(15, 2, 1, 3);
+    g.fillRect(17, 2, 1, 3);
+    g.generateTexture("boss_turret", 20, 12);
     g.destroy();
   }
 
-  // boss_cannon (12x4) — main gun barrel
+  // boss_cannon (15x5) — main gun barrel
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
     g.fillStyle(cannon);
-    g.fillRect(0, 0, 12, 4);
+    g.fillRect(0, 0, 15, 5);
     g.fillStyle(lighten(cannon, 0.2));
-    g.fillRect(0, 0, 12, 1);
+    g.fillRect(0, 0, 15, 1);
     g.fillStyle(darken(cannon, 0.3));
-    g.fillRect(0, 3, 12, 1);
-    g.generateTexture("boss_cannon", 12, 4);
+    g.fillRect(0, 4, 15, 1);
+    // Muzzle brake
+    g.fillStyle(darken(cannon, 0.2));
+    g.fillRect(13, 0, 2, 5);
+    g.fillStyle(lighten(cannon, 0.15));
+    g.fillRect(14, 1, 1, 3);
+    g.generateTexture("boss_cannon", 15, 5);
     g.destroy();
   }
 
-  // boss_tread (20x8) — track section
+  // boss_tread (25x10) — track section
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
     g.fillStyle(tread);
-    g.fillRect(0, 0, 20, 8);
+    g.fillRect(0, 0, 25, 10);
     g.fillStyle(lighten(tread, 0.15));
-    g.fillRect(0, 0, 20, 1);
+    g.fillRect(0, 0, 25, 1);
     // Track links
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 6; i++) {
       g.fillStyle(i % 2 === 0 ? darken(tread, 0.3) : darken(tread, 0.15));
-      g.fillRect(2 + i * 4, 2, 2, 5);
+      g.fillRect(2 + i * 4, 2, 3, 7);
     }
     // Wheels
     g.fillStyle(PALETTE.midGray);
-    g.fillRect(2, 3, 4, 4);
-    g.fillRect(14, 3, 4, 4);
-    g.generateTexture("boss_tread", 20, 8);
+    g.fillRect(2, 3, 5, 5);
+    g.fillRect(10, 4, 4, 4);
+    g.fillRect(18, 3, 5, 5);
+    g.generateTexture("boss_tread", 25, 10);
     g.destroy();
   }
 
-  // boss_armor_plate (10x8) — detached armor fragment
+  // boss_armor_plate (12x10) — detached armor fragment
   {
     const g = scene.make.graphics({ x: 0, y: 0 });
     g.fillStyle(armorPlate);
-    g.fillRect(0, 0, 10, 8);
+    g.fillRect(0, 0, 12, 10);
     g.fillStyle(darken(armorPlate, 0.15));
-    g.fillRect(0, 4, 10, 1);
-    g.fillRect(5, 0, 1, 8);
+    g.fillRect(0, 5, 12, 1);
+    g.fillRect(6, 0, 1, 10);
     // Rivets
     g.fillStyle(lighten(armorPlate, 0.3));
     g.fillRect(1, 1, 1, 1);
-    g.fillRect(8, 1, 1, 1);
-    g.fillRect(1, 6, 1, 1);
-    g.fillRect(8, 6, 1, 1);
-    g.generateTexture("boss_armor_plate", 10, 8);
+    g.fillRect(10, 1, 1, 1);
+    g.fillRect(1, 8, 1, 1);
+    g.fillRect(10, 8, 1, 1);
+    g.fillRect(5, 3, 1, 1);
+    g.fillRect(5, 7, 1, 1);
+    g.generateTexture("boss_armor_plate", 12, 10);
     g.destroy();
   }
 }

@@ -246,41 +246,41 @@ const SOLDIER_PARTS: RagdollPartDef[] = [
   // head → top of torso
   {
     texture: "soldier_head",
-    halfW: 4, halfH: 4,
-    parentAnchor: { x: 0, y: -6 },
-    selfAnchor: { x: 0, y: 4 },
+    halfW: 5, halfH: 5,
+    parentAnchor: { x: 0, y: -8 },
+    selfAnchor: { x: 0, y: 5 },
     angleLimits: [-0.5, 0.5],
   },
   // left arm → left shoulder
   {
     texture: "soldier_arm",
-    halfW: 2, halfH: 5,
-    parentAnchor: { x: -4, y: -4 },
-    selfAnchor: { x: 2, y: -5 },
+    halfW: 3, halfH: 6,
+    parentAnchor: { x: -5, y: -5 },
+    selfAnchor: { x: 3, y: -6 },
     angleLimits: [-1.2, 1.2],
   },
   // right arm → right shoulder
   {
     texture: "soldier_arm",
-    halfW: 2, halfH: 5,
-    parentAnchor: { x: 4, y: -4 },
-    selfAnchor: { x: -2, y: -5 },
+    halfW: 3, halfH: 6,
+    parentAnchor: { x: 5, y: -5 },
+    selfAnchor: { x: -3, y: -6 },
     angleLimits: [-1.2, 1.2],
   },
   // left leg → bottom-left of torso
   {
     texture: "soldier_leg",
-    halfW: 2, halfH: 6,
-    parentAnchor: { x: -2, y: 6 },
-    selfAnchor: { x: 0, y: -6 },
+    halfW: 3, halfH: 8,
+    parentAnchor: { x: -2, y: 8 },
+    selfAnchor: { x: 0, y: -8 },
     angleLimits: [-0.8, 0.8],
   },
   // right leg → bottom-right of torso
   {
     texture: "soldier_leg",
-    halfW: 2, halfH: 6,
-    parentAnchor: { x: 2, y: 6 },
-    selfAnchor: { x: 0, y: -6 },
+    halfW: 3, halfH: 8,
+    parentAnchor: { x: 2, y: 8 },
+    selfAnchor: { x: 0, y: -8 },
     angleLimits: [-0.8, 0.8],
   },
 ];
@@ -289,41 +289,41 @@ const HEAVY_PARTS: RagdollPartDef[] = [
   // head → top of torso
   {
     texture: "heavy_head",
-    halfW: 5, halfH: 4,
-    parentAnchor: { x: 0, y: -7 },
-    selfAnchor: { x: 0, y: 4 },
+    halfW: 6, halfH: 5,
+    parentAnchor: { x: 0, y: -9 },
+    selfAnchor: { x: 0, y: 5 },
     angleLimits: [-0.4, 0.4],
   },
   // left arm → left shoulder
   {
     texture: "heavy_arm",
-    halfW: 3, halfH: 5,
-    parentAnchor: { x: -6, y: -5 },
-    selfAnchor: { x: 3, y: -5 },
+    halfW: 4, halfH: 6,
+    parentAnchor: { x: -8, y: -6 },
+    selfAnchor: { x: 4, y: -6 },
     angleLimits: [-1.0, 1.0],
   },
   // right arm → right shoulder
   {
     texture: "heavy_arm",
-    halfW: 3, halfH: 5,
-    parentAnchor: { x: 6, y: -5 },
-    selfAnchor: { x: -3, y: -5 },
+    halfW: 4, halfH: 6,
+    parentAnchor: { x: 8, y: -6 },
+    selfAnchor: { x: -4, y: -6 },
     angleLimits: [-1.0, 1.0],
   },
   // left leg → bottom-left of torso
   {
     texture: "heavy_leg",
-    halfW: 3, halfH: 7,
-    parentAnchor: { x: -3, y: 7 },
-    selfAnchor: { x: 0, y: -7 },
+    halfW: 4, halfH: 9,
+    parentAnchor: { x: -4, y: 9 },
+    selfAnchor: { x: 0, y: -9 },
     angleLimits: [-0.6, 0.6],
   },
   // right leg → bottom-right of torso
   {
     texture: "heavy_leg",
-    halfW: 3, halfH: 7,
-    parentAnchor: { x: 3, y: 7 },
-    selfAnchor: { x: 0, y: -7 },
+    halfW: 4, halfH: 9,
+    parentAnchor: { x: 4, y: 9 },
+    selfAnchor: { x: 0, y: -9 },
     angleLimits: [-0.6, 0.6],
   },
 ];
@@ -386,8 +386,8 @@ export function spawnRagdoll(
 
   const isSoldier = type === "soldier";
   const parts = isSoldier ? SOLDIER_PARTS : HEAVY_PARTS;
-  const torsoHalfW = isSoldier ? 4 : 6;
-  const torsoHalfH = isSoldier ? 6 : 7;
+  const torsoHalfW = isSoldier ? 5 : 8;
+  const torsoHalfH = isSoldier ? 8 : 9;
   const torsoTex = isSoldier ? "soldier_torso" : "heavy_torso";
   const density = isSoldier ? 1.5 : 3.0;
 
@@ -486,33 +486,33 @@ function spawnBossRagdoll(
     limits: [number, number];
   }> = [
     // turret → hull top
-    { tex: "boss_turret", hw: 8, hh: 5, ox: 0, oy: -12,
-      parentIdx: 0, parentAnchor: { x: 0, y: -8 }, selfAnchor: { x: 0, y: 5 },
+    { tex: "boss_turret", hw: 10, hh: 6, ox: 0, oy: -15,
+      parentIdx: 0, parentAnchor: { x: 0, y: -10 }, selfAnchor: { x: 0, y: 6 },
       limits: [-0.4, 0.4] },
     // cannon → turret right
-    { tex: "boss_cannon", hw: 6, hh: 2, ox: 16, oy: -12,
-      parentIdx: 0, parentAnchor: { x: 12, y: -6 }, selfAnchor: { x: -6, y: 0 },
+    { tex: "boss_cannon", hw: 8, hh: 3, ox: 20, oy: -15,
+      parentIdx: 0, parentAnchor: { x: 15, y: -8 }, selfAnchor: { x: -8, y: 0 },
       limits: [-0.3, 0.3] },
     // left tread → hull bottom-left
-    { tex: "boss_tread", hw: 10, hh: 4, ox: -6, oy: 12,
-      parentIdx: 0, parentAnchor: { x: -6, y: 8 }, selfAnchor: { x: 0, y: -4 },
+    { tex: "boss_tread", hw: 13, hh: 5, ox: -8, oy: 15,
+      parentIdx: 0, parentAnchor: { x: -8, y: 10 }, selfAnchor: { x: 0, y: -5 },
       limits: [-0.2, 0.2] },
     // right tread → hull bottom-right
-    { tex: "boss_tread", hw: 10, hh: 4, ox: 6, oy: 12,
-      parentIdx: 0, parentAnchor: { x: 6, y: 8 }, selfAnchor: { x: 0, y: -4 },
+    { tex: "boss_tread", hw: 13, hh: 5, ox: 8, oy: 15,
+      parentIdx: 0, parentAnchor: { x: 8, y: 10 }, selfAnchor: { x: 0, y: -5 },
       limits: [-0.2, 0.2] },
     // left armor plate → hull left
-    { tex: "boss_armor_plate", hw: 5, hh: 4, ox: -16, oy: -2,
-      parentIdx: 0, parentAnchor: { x: -12, y: 0 }, selfAnchor: { x: 5, y: 0 },
+    { tex: "boss_armor_plate", hw: 6, hh: 5, ox: -20, oy: -2,
+      parentIdx: 0, parentAnchor: { x: -15, y: 0 }, selfAnchor: { x: 6, y: 0 },
       limits: [-0.8, 0.8] },
     // right armor plate → hull right
-    { tex: "boss_armor_plate", hw: 5, hh: 4, ox: 16, oy: -2,
-      parentIdx: 0, parentAnchor: { x: 12, y: 0 }, selfAnchor: { x: -5, y: 0 },
+    { tex: "boss_armor_plate", hw: 6, hh: 5, ox: 20, oy: -2,
+      parentIdx: 0, parentAnchor: { x: 15, y: 0 }, selfAnchor: { x: -6, y: 0 },
       limits: [-0.8, 0.8] },
   ];
 
   // Create hull (root body) — larger and heavier
-  const hull = createRagdollPart(scene, x, y, 12, 8, "boss_hull", 5.0);
+  const hull = createRagdollPart(scene, x, y, 15, 10, "boss_hull", 5.0);
 
   // Strong hit impulse for the boss
   const impulseX = hitDir * (3 + Math.random() * 2);
