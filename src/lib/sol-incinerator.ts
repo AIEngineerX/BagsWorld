@@ -107,11 +107,14 @@ class SolIncineratorClient {
   }
 
   private async request<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
-    const maxRetries = 3;
+    const maxRetries = 1; // Single retry — fail fast, let client decide
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 30_000); // 30s hard timeout
+
         const response = await fetch(`${SOL_INCINERATOR_API_URL}${endpoint}`, {
           method: "POST",
           headers: {
@@ -119,7 +122,9 @@ class SolIncineratorClient {
             "x-api-key": this.apiKey,
           },
           body: JSON.stringify(body),
+          signal: controller.signal,
         });
+        clearTimeout(timeout);
 
         if (!response.ok) {
           const errorBody = await response.text().catch(() => "");
@@ -132,20 +137,23 @@ class SolIncineratorClient {
             if (errorBody) errorMessage += ` - ${errorBody}`;
           }
 
-          // Retry on upstream RPC rate limit — HTTP 429 or JSON-RPC -32429 "max usage reached"
+          // Retry once on upstream RPC rate limit — HTTP 429 or JSON-RPC -32429
           const isRateLimit =
             response.status === 429 || errorMessage.includes("max usage reached") || errorMessage.includes("-32429");
           if (isRateLimit && attempt < maxRetries) {
-            const retryAfter = response.headers.get("Retry-After");
-            const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : Math.pow(2, attempt + 1) * 3000;
-            console.warn(`[Sol Incinerator] RPC rate limited, retry ${attempt + 1}/${maxRetries} in ${delay}ms`);
+            const delay = 5000;
+            console.warn(`[Sol Incinerator] RPC rate limited, retry in ${delay}ms`);
             await new Promise((resolve) => setTimeout(resolve, delay));
             continue;
           }
 
+          // Friendly message for persistent rate limits
+          if (isRateLimit) {
+            throw new Error("Sol Incinerator's RPC is at capacity. Please try again in ~30 seconds.");
+          }
+
           if (response.status >= 500 && attempt < maxRetries) {
-            const delay = Math.pow(2, attempt) * 1000;
-            await new Promise((resolve) => setTimeout(resolve, delay));
+            await new Promise((resolve) => setTimeout(resolve, 2000));
             continue;
           }
 
@@ -157,14 +165,8 @@ class SolIncineratorClient {
         // Detect JSON-RPC errors passed through on 200 responses
         if (json?.error?.message) {
           const rpcMsg: string = json.error.message;
-          if (
-            (rpcMsg.includes("max usage reached") || json.error?.code === -32429) &&
-            attempt < maxRetries
-          ) {
-            const delay = Math.pow(2, attempt + 1) * 3000;
-            console.warn(`[Sol Incinerator] RPC error in 200 body, retry ${attempt + 1}/${maxRetries} in ${delay}ms`);
-            await new Promise((resolve) => setTimeout(resolve, delay));
-            continue;
+          if (rpcMsg.includes("max usage reached") || json.error?.code === -32429) {
+            throw new Error("Sol Incinerator's RPC is at capacity. Please try again in ~30 seconds.");
           }
           throw new Error(rpcMsg);
         }
