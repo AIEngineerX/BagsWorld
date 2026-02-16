@@ -59,7 +59,7 @@ function PixelBuildLoader() {
 // ---------------------------------------------------------------------------
 
 export function QuickLaunchPanel() {
-  const { publicKey, connected, mobileSignTransaction, mobileSignAndSend } = useMobileWallet();
+  const { publicKey, connected, mobileSignAndSend } = useMobileWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const guardAction = useActionGuard();
 
@@ -355,7 +355,6 @@ export function QuickLaunchPanel() {
         feeShares,
         initialBuySOL: parseFloat(initialBuySOL) || 0,
         walletPublicKey: publicKey.toBase58(),
-        signTransaction: mobileSignTransaction,
         signAndSend: mobileSignAndSend,
         onStatus: setLaunchStatus,
       });
