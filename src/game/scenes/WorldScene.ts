@@ -24,6 +24,7 @@ import {
   setupAscensionZone,
   disconnectAscension,
   setupMainCityZone,
+  setupDisclosureZone,
 } from "../zones";
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 960;
@@ -162,6 +163,8 @@ export class WorldScene extends Phaser.Scene {
   public dungeonZoneCreated = false; // Cache dungeon zone elements
   public ascensionElements: Phaser.GameObjects.GameObject[] = []; // Ascension zone elements
   public ascensionZoneCreated = false; // Cache ascension zone elements
+  public disclosureElements: Phaser.GameObjects.GameObject[] = []; // Disclosure Site zone elements
+  public disclosureZoneCreated = false; // Cache disclosure zone elements
   public foundersPopup: Phaser.GameObjects.Container | null = null; // Popup modal for building info
   public foundersActiveTab: string = "overview"; // Current tab in DexScreener Workshop popup
   private ballersGoldenSky: Phaser.GameObjects.Graphics | null = null; // Golden hour sky for Ballers Valley
@@ -1320,6 +1323,7 @@ export class WorldScene extends Phaser.Scene {
     this.arenaElements.forEach((el) => this.tweens.killTweensOf(el));
     this.dungeonElements.forEach((el) => this.tweens.killTweensOf(el));
     this.ascensionElements.forEach((el) => this.tweens.killTweensOf(el));
+    this.disclosureElements.forEach((el) => this.tweens.killTweensOf(el));
     this.buildingSprites.forEach((container) => this.tweens.killTweensOf(container));
     this.characterSprites.forEach((sprite) => this.tweens.killTweensOf(sprite));
 
@@ -1343,6 +1347,7 @@ export class WorldScene extends Phaser.Scene {
     this.resetZoneElementPositions(this.arenaElements);
     this.resetZoneElementPositions(this.dungeonElements);
     this.resetZoneElementPositions(this.ascensionElements);
+    this.resetZoneElementPositions(this.disclosureElements);
 
     // Determine slide direction: Labs -> Moltbook Beach -> Park -> BagsCity -> Ballers Valley -> Founder's Corner -> Arena (left to right)
     // Zone order: labs (-2) -> moltbook (-1) -> main_city (0) -> trending (1) -> ballers (2) -> founders (3) -> arena (4)
@@ -1356,6 +1361,7 @@ export class WorldScene extends Phaser.Scene {
       founders: 4,
       arena: 5,
       ascension: 6,
+      disclosure: 7,
     };
     const isGoingRight = zoneOrder[newZone] > zoneOrder[this.currentZone];
     const isDungeonTransition = newZone === "dungeon" || this.currentZone === "dungeon";
@@ -1391,6 +1397,8 @@ export class WorldScene extends Phaser.Scene {
       oldElements.push(...this.dungeonElements);
     } else if (this.currentZone === "ascension") {
       oldElements.push(...this.ascensionElements);
+    } else if (this.currentZone === "disclosure") {
+      oldElements.push(...this.disclosureElements);
     } else {
       // Main city (Park) decorations
       this.decorations.forEach((d) => oldElements.push(d));
@@ -1425,6 +1433,7 @@ export class WorldScene extends Phaser.Scene {
         ballers: 0x22c55e,
         founders: 0x8b6914,
         main_city: 0x22c55e,
+        disclosure: 0x2a1a0a,
       }[this.currentZone] || 0x22c55e, // Zone-appropriate ground color
       1
     );
@@ -1637,6 +1646,8 @@ export class WorldScene extends Phaser.Scene {
       } else if (this.currentZone === "ascension") {
         this.ascensionElements.forEach((el) => (el as any).setVisible(false));
         disconnectAscension(this);
+      } else if (this.currentZone === "disclosure") {
+        this.disclosureElements.forEach((el) => (el as any).setVisible(false));
       }
 
       // Update zone and set up new content
@@ -1653,6 +1664,7 @@ export class WorldScene extends Phaser.Scene {
         arena: "arena_floor", // MoltBook Arena has dark checkerboard floor
         dungeon: "dungeon_ground", // BagsDungeon has dark cave stone floor
         ascension: "ascension_cloud_ground", // Ascension Spire has bright cloud-tile floor
+        disclosure: "disclosure_ground", // Disclosure Site has cracked desert with alien crystals
       };
       this.ground.setTexture(groundTextures[newZone]);
 
@@ -1893,6 +1905,24 @@ export class WorldScene extends Phaser.Scene {
           });
         }
       });
+    } else if (zone === "disclosure") {
+      setupDisclosureZone(this);
+
+      // Disclosure Site elements slide in horizontally
+      const newElements = [...this.disclosureElements].filter(Boolean);
+
+      newElements.forEach((el) => {
+        if ((el as any).x !== undefined) {
+          const targetX = (el as any).x;
+          (el as any).x = targetX + offsetX;
+          this.tweens.add({
+            targets: el,
+            x: targetX,
+            duration,
+            ease: "Cubic.easeOut",
+          });
+        }
+      });
     } else {
       setupMainCityZone(this);
 
@@ -1982,6 +2012,9 @@ export class WorldScene extends Phaser.Scene {
       // Hide ascension elements and stop polling
       this.ascensionElements.forEach((el) => (el as any).setVisible(false));
       disconnectAscension(this);
+    } else if (this.currentZone === "disclosure") {
+      // Hide disclosure elements
+      this.disclosureElements.forEach((el) => (el as any).setVisible(false));
     } else if (this.currentZone === "main_city") {
       // Main city uses shared decorations, don't destroy them
       // Just hide them
@@ -2022,6 +2055,7 @@ export class WorldScene extends Phaser.Scene {
     this.arenaElements.forEach((el) => (el as any).setVisible(false));
     this.dungeonElements.forEach((el) => (el as any).setVisible(false));
     this.ascensionElements.forEach((el) => (el as any).setVisible(false));
+    this.disclosureElements.forEach((el) => (el as any).setVisible(false));
     disconnectArena(this);
     disconnectAscension(this);
     if (this.foundersPopup) {
@@ -2055,6 +2089,9 @@ export class WorldScene extends Phaser.Scene {
         break;
       case "ascension":
         setupAscensionZone(this);
+        break;
+      case "disclosure":
+        setupDisclosureZone(this);
         break;
       case "main_city":
       default:

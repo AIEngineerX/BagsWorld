@@ -20,6 +20,7 @@ import {
   generateMoltbookAssets,
   generateDungeonAssets,
   generateAscensionAssets,
+  generateDisclosureAssets,
   generateArenaSprites,
   exportAgentSprites,
 } from "../textures";
@@ -153,6 +154,9 @@ export class BootScene extends Phaser.Scene {
 
     // Generate Ascension zone assets (cloud platforms, hall, shrine, crystals)
     generateAscensionAssets(this);
+
+    // Generate Disclosure Site zone assets (alien crash site, military, alien tech)
+    generateDisclosureAssets(this);
 
     // Generate Arena combat sprites
     generateArenaSprites(this);
