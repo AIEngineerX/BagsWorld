@@ -1163,7 +1163,7 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
             Accounts ~0.002 SOL each &bull; NFT rent varies by metadata size
           </p>
           <p className="text-yellow-700/60 text-center text-[9px]">
-            Sol Incinerator charges a 2-5% fee on reclaimed SOL
+            Sol Incinerator deducts a small fee from reclaimed rent (~0.000039 SOL per account)
           </p>
         </div>
       </div>
