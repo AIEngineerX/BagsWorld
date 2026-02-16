@@ -142,10 +142,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Upstream RPC rate limit passed through by Sol Incinerator
-    if (message.includes("max usage reached") || message.includes("-32429") || message.includes("429")) {
+    // Upstream RPC rate limit (Sol Incinerator already retried once)
+    if (message.includes("max usage reached") || message.includes("-32429") || message.includes("at capacity")) {
       return NextResponse.json(
-        { error: "RPC rate-limited — the server retried but the limit persists. Please wait 30s and try again." },
+        { error: "Sol Incinerator's RPC is at capacity. Please try again in ~30 seconds." },
         { status: 429, headers: { "Retry-After": "30" } }
       );
     }
