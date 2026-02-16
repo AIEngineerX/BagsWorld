@@ -166,7 +166,7 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
     const fetchBalance = async () => {
       try {
         const rpcUrl =
-          process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+          process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana";
         const connection = new Connection(rpcUrl, "confirmed");
         const pubkey = new PublicKey(walletAddress);
         const balance = await connection.getBalance(pubkey);
