@@ -221,7 +221,7 @@ export class ArcadeGameScene extends Phaser.Scene {
     this.createPlayer();
 
     this.cameras.main.setBounds(0, 0, LEVEL_WIDTH, ARCADE_HEIGHT);
-    this.cameras.main.startFollow(this.player, true, 0.15, 0.08);
+    this.cameras.main.startFollow(this.player, true, 0.15, 0.15);
     this.cameras.main.setZoom(1.5);
     this.cameras.main.setDeadzone(40, 20);
 
@@ -1450,7 +1450,8 @@ export class ArcadeGameScene extends Phaser.Scene {
     const textureKey = `${data.type}_idle`;
 
     // Spawn enemies above their target position and drop them in
-    const spawnOffsetY = data.type === "turret" ? 0 : -40;
+    // Keep offset small so enemies stay within visible viewport at 1.5x zoom
+    const spawnOffsetY = data.type === "turret" ? 0 : -18;
     const enemy = this.enemies.create(
       data.x,
       data.y + spawnOffsetY,
@@ -1470,14 +1471,14 @@ export class ArcadeGameScene extends Phaser.Scene {
     } else {
       // Drop-in spawn animation: start transparent, fall to position, land with dust
       enemy.setAlpha(0);
-      (enemy as any).staggerUntil = this.time.now + 600;
+      (enemy as any).staggerUntil = this.time.now + 350;
       this.tweens.add({
         targets: enemy,
         alpha: 1,
-        duration: 200,
+        duration: 150,
       });
       // Landing dust when they reach ground
-      this.time.delayedCall(500, () => {
+      this.time.delayedCall(300, () => {
         if (!enemy.active) return;
         const dust = this.add.particles(enemy.x, enemy.y + stats.height / 2, "particle_dust", {
           speed: { min: 10, max: 30 },

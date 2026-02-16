@@ -202,22 +202,22 @@ export function getSectionData(section: number): SectionData {
       return {
         platforms: [
           { x: base + 80, y: 200, width: 5, texture: "platform_wood" },
-          { x: base + 250, y: 160, width: 4, texture: "platform_metal" },
-          { x: base + 420, y: 120, width: 5, texture: "platform_metal" },
-          { x: base + 600, y: 140, width: 4, texture: "platform_wood" },
+          { x: base + 250, y: 170, width: 4, texture: "platform_metal" },
+          { x: base + 420, y: 155, width: 5, texture: "platform_metal" },
+          { x: base + 600, y: 165, width: 4, texture: "platform_wood" },
           { x: base + 350, y: 200, width: 3, texture: "platform_wood" },
           { x: base + 700, y: 190, width: 4, texture: "platform_metal" },
         ],
         enemies: [
-          { x: base + 280, y: 160 - 24, type: "turret", facing: "left" },
-          { x: base + 450, y: 120 - 32, type: "soldier", facing: "left", patrolRange: 40 },
-          { x: base + 620, y: 140 - 32, type: "soldier", facing: "right", patrolRange: 50 },
+          { x: base + 280, y: 170 - 24, type: "turret", facing: "left" },
+          { x: base + 450, y: 155 - 32, type: "soldier", facing: "left", patrolRange: 40 },
+          { x: base + 620, y: 165 - 32, type: "soldier", facing: "right", patrolRange: 50 },
           { x: base + 150, y: GROUND_Y - 32, type: "soldier", facing: "left", patrolRange: 80 },
           { x: base + 500, y: GROUND_Y - 32, type: "soldier", facing: "left", patrolRange: 100 },
           { x: base + 730, y: 190 - 24, type: "turret", facing: "left" },
         ],
         pickups: [
-          { x: base + 460, y: 120 - 30, type: "grenade" },
+          { x: base + 460, y: 155 - 30, type: "grenade" },
           { x: base + 200, y: GROUND_Y - 40, type: "food_chicken" },
           { x: base + 550, y: GROUND_Y - 40, type: "bonus_medal" },
           { x: base + 700, y: 190 - 30, type: "food_apple" },
@@ -245,7 +245,7 @@ export function getSectionData(section: number): SectionData {
           { x: base + 580, y: GROUND_Y, type: "barrel" },
         ],
         hostages: [
-          { x: base + 300, y: 160 - 20 },
+          { x: base + 300, y: 170 - 20 },
           { x: base + 650, y: GROUND_Y - 20 },
         ],
       };

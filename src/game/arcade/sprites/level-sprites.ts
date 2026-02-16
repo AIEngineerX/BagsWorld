@@ -746,12 +746,6 @@ function generateBackgrounds(scene: Phaser.Scene): void {
       }
     }
 
-    // Crane silhouette in background
-    g.fillStyle(darken(building1, 0.3));
-    g.fillRect(180, 80, 2, 60);
-    g.fillRect(170, 78, 22, 2);
-    g.fillRect(190, 80, 1, 10);
-
     g.generateTexture("bg_city", 480, 270);
     g.destroy();
   }
