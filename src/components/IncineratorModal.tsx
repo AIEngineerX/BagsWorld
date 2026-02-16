@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useActionGuard } from "@/hooks/useActionGuard";
 import { useConnection } from "@solana/wallet-adapter-react";
@@ -71,6 +71,18 @@ function PixelFire({ size = 28, burning = false }: { size?: number; burning?: bo
   );
 }
 
+// 8x8 circular coin pattern for PixelDissolve (1 = visible pixel)
+const COIN_GRID = [
+  [0, 0, 1, 1, 1, 1, 0, 0],
+  [0, 1, 1, 1, 1, 1, 1, 0],
+  [1, 1, 1, 1, 1, 1, 1, 1],
+  [1, 1, 1, 1, 1, 1, 1, 1],
+  [1, 1, 1, 1, 1, 1, 1, 1],
+  [1, 1, 1, 1, 1, 1, 1, 1],
+  [0, 1, 1, 1, 1, 1, 1, 0],
+  [0, 0, 1, 1, 1, 1, 0, 0],
+];
+
 /* Pixel coin dissolve animation for Close / Close All operations */
 function PixelDissolve({
   size = 48,
@@ -81,21 +93,6 @@ function PixelDissolve({
   playing?: boolean;
   label?: string;
 }) {
-  // 8x8 circular coin pattern (1 = visible pixel)
-  const grid = useMemo(
-    () => [
-      [0, 0, 1, 1, 1, 1, 0, 0],
-      [0, 1, 1, 1, 1, 1, 1, 0],
-      [1, 1, 1, 1, 1, 1, 1, 1],
-      [1, 1, 1, 1, 1, 1, 1, 1],
-      [1, 1, 1, 1, 1, 1, 1, 1],
-      [1, 1, 1, 1, 1, 1, 1, 1],
-      [0, 1, 1, 1, 1, 1, 1, 0],
-      [0, 0, 1, 1, 1, 1, 0, 0],
-    ],
-    []
-  );
-
   // Stable random values per pixel (direction, rotation, delay)
   const randoms = useRef<{ tx: number; ty: number; rot: number; delay: number }[]>([]);
   if (randoms.current.length === 0) {
@@ -117,16 +114,19 @@ function PixelDissolve({
 
   return (
     <div className="flex flex-col items-center gap-1" aria-label="Account closing animation">
-      <div
-        className="relative"
-        style={{ width: size, height: size }}
-      >
-        {grid.flatMap((row, r) =>
+      <div className="relative" style={{ width: size, height: size }}>
+        {COIN_GRID.flatMap((row, r) =>
           row.map((on, c) => {
             if (!on) return null;
             const idx = r * 8 + c;
             const rand = randoms.current[idx];
-            const isEdge = r === 0 || r === 7 || c === 0 || c === 7 || !grid[r - 1]?.[c] || !grid[r + 1]?.[c];
+            const isEdge =
+              r === 0 ||
+              r === 7 ||
+              c === 0 ||
+              c === 7 ||
+              !COIN_GRID[r - 1]?.[c] ||
+              !COIN_GRID[r + 1]?.[c];
             return (
               <div
                 key={`${r}-${c}`}
@@ -246,12 +246,54 @@ function PixelFurnace({ size = 64, playing = false }: { size?: number; playing?:
           {/* Embers rising */}
           {playing && (
             <g>
-              <rect className="furnace-ember furnace-ember-1" x="11" y="11" width="1" height="1" fill="#fbbf24" />
-              <rect className="furnace-ember furnace-ember-2" x="15" y="10" width="1" height="1" fill="#f97316" />
-              <rect className="furnace-ember furnace-ember-3" x="20" y="11" width="1" height="1" fill="#fde047" />
-              <rect className="furnace-ember furnace-ember-4" x="13" y="9" width="1" height="1" fill="#ef4444" />
-              <rect className="furnace-ember furnace-ember-5" x="18" y="10" width="1" height="1" fill="#fbbf24" />
-              <rect className="furnace-ember furnace-ember-6" x="22" y="9" width="1" height="1" fill="#f97316" />
+              <rect
+                className="furnace-ember furnace-ember-1"
+                x="11"
+                y="11"
+                width="1"
+                height="1"
+                fill="#fbbf24"
+              />
+              <rect
+                className="furnace-ember furnace-ember-2"
+                x="15"
+                y="10"
+                width="1"
+                height="1"
+                fill="#f97316"
+              />
+              <rect
+                className="furnace-ember furnace-ember-3"
+                x="20"
+                y="11"
+                width="1"
+                height="1"
+                fill="#fde047"
+              />
+              <rect
+                className="furnace-ember furnace-ember-4"
+                x="13"
+                y="9"
+                width="1"
+                height="1"
+                fill="#ef4444"
+              />
+              <rect
+                className="furnace-ember furnace-ember-5"
+                x="18"
+                y="10"
+                width="1"
+                height="1"
+                fill="#fbbf24"
+              />
+              <rect
+                className="furnace-ember furnace-ember-6"
+                x="22"
+                y="9"
+                width="1"
+                height="1"
+                fill="#f97316"
+              />
             </g>
           )}
 
@@ -264,35 +306,23 @@ function PixelFurnace({ size = 64, playing = false }: { size?: number; playing?:
         @keyframes doorOpen {
           0% {
             transform: scaleX(1);
-            transform-origin: right center;
           }
-          25% {
-            transform: scaleX(0);
-            transform-origin: right center;
-          }
+          25%,
           75% {
             transform: scaleX(0);
-            transform-origin: right center;
           }
           85% {
             transform: scaleX(1.05);
-            transform-origin: right center;
           }
           90% {
             transform: scaleX(0.97);
-            transform-origin: right center;
           }
           100% {
             transform: scaleX(1);
-            transform-origin: right center;
           }
         }
         @keyframes tokenDrop {
           0%,
-          25% {
-            transform: translateY(0);
-            opacity: 1;
-          }
           35% {
             transform: translateY(0);
             opacity: 1;
@@ -301,10 +331,7 @@ function PixelFurnace({ size = 64, playing = false }: { size?: number; playing?:
             transform: translateY(14px);
             opacity: 1;
           }
-          60% {
-            transform: translateY(14px);
-            opacity: 0;
-          }
+          60%,
           100% {
             transform: translateY(14px);
             opacity: 0;
@@ -318,7 +345,6 @@ function PixelFurnace({ size = 64, playing = false }: { size?: number; playing?:
           }
           50% {
             transform: scaleY(1.3);
-            transform-origin: bottom center;
             filter: brightness(1.4);
           }
           75% {
@@ -342,6 +368,7 @@ function PixelFurnace({ size = 64, playing = false }: { size?: number; playing?:
         }
         .furnace-door {
           animation: doorOpen 3s ease-in-out infinite;
+          transform-origin: right center;
         }
         .furnace-token {
           animation: tokenDrop 3s ease-in infinite;
@@ -471,55 +498,34 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
     return response.json();
   };
 
-  /** Single retry on RPC rate-limit errors (code -32429 / "max usage reached") */
+  /** Single retry on Solana RPC rate-limit errors (-32429 / "max usage reached") */
   const withRpcRetry = async <T,>(fn: () => Promise<T>, label: string): Promise<T> => {
     try {
       return await fn();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      const isRateLimit = msg.includes("max usage reached") || msg.includes("-32429") || msg.includes("429");
-      if (isRateLimit) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("max usage reached") || msg.includes("-32429")) {
         console.warn(`[Incinerator] ${label} rate limited, retrying in 3s`);
-        await new Promise((resolve) => setTimeout(resolve, 3000));
+        await new Promise((r) => setTimeout(r, 3000));
         return await fn();
       }
       throw err;
     }
   };
 
-  const signAndSend = async (serializedTransaction: string) => {
-    const txString = serializedTransaction.trim().replace(/\s/g, "");
-    const isLikelyBase64 =
-      txString.includes("+") || txString.includes("/") || txString.endsWith("=");
-
-    let buffer: Uint8Array;
-    try {
-      buffer = isLikelyBase64 ? Buffer.from(txString, "base64") : bs58.decode(txString);
-      if (buffer.length < 50) throw new Error("Buffer too small");
-    } catch {
-      // Try the other encoding
-      buffer = isLikelyBase64 ? bs58.decode(txString) : Buffer.from(txString, "base64");
-    }
-
+  /** Decode, simulate, sign, send, and confirm a Sol Incinerator transaction. */
+  const signAndSend = async (serializedTransaction: string): Promise<string> => {
+    // Sol Incinerator API always returns base58-encoded transactions
+    const buffer = bs58.decode(serializedTransaction.trim());
     const transaction = VersionedTransaction.deserialize(buffer);
 
-    // Pre-simulate with retry — public RPCs often rate-limit simulateTransaction
-    await withRpcRetry(
-      () => preSimulateTransaction(connection, transaction),
-      "Simulate"
-    );
+    await withRpcRetry(() => preSimulateTransaction(connection, transaction), "Simulate");
 
-    // Use signAndSendTransaction — Phantom's recommended method.
-    // Sol Incinerator txs are unsigned (single-signer), so this is safe.
     const signature = await mobileSignAndSend(transaction, { maxRetries: 3 });
 
-    // Wait for confirmation with retry
-    await withRpcRetry(
-      () => connection.confirmTransaction(signature, "confirmed"),
-      "Confirm"
-    );
+    await withRpcRetry(() => connection.confirmTransaction(signature, "confirmed"), "Confirm");
 
-    return { txid: signature };
+    return signature;
   };
 
   // --- Handlers ---
@@ -564,9 +570,9 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
         userPublicKey: publicKey.toBase58(),
         assetId: assetId.trim(),
       });
-      const txResult = await signAndSend(result.serializedTransaction);
+      const txid = await signAndSend(result.serializedTransaction);
       setSuccess(
-        `Burned! Reclaimed ${result.solanaReclaimed.toFixed(4)} SOL. TX: ${txResult.txid?.slice(0, 12)}...`
+        `Burned! Reclaimed ${result.solanaReclaimed.toFixed(4)} SOL. TX: ${txid.slice(0, 12)}...`
       );
       setAssetId("");
     } catch (err) {
@@ -612,9 +618,9 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
         userPublicKey: publicKey.toBase58(),
         assetId: assetId.trim(),
       });
-      const txResult = await signAndSend(result.serializedTransaction);
+      const txid = await signAndSend(result.serializedTransaction);
       setSuccess(
-        `Closed! Reclaimed ${result.solanaReclaimed.toFixed(4)} SOL. TX: ${txResult.txid?.slice(0, 12)}...`
+        `Closed! Reclaimed ${result.solanaReclaimed.toFixed(4)} SOL. TX: ${txid.slice(0, 12)}...`
       );
       setAssetId("");
     } catch (err) {

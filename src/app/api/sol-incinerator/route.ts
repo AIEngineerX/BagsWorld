@@ -12,145 +12,121 @@ type Action =
   | "batch-close-all-preview"
   | "status";
 
+const ACTIONS_NEEDING_ASSET = new Set(["burn", "close", "burn-preview", "close-preview"]);
+
+function jsonError(error: string, status: number, headers?: Record<string, string>) {
+  return NextResponse.json({ error }, { status, headers });
+}
+
 export async function POST(request: Request) {
-  // Rate limit: destructive endpoint - use strict limits
   const clientIP = getClientIP(request);
   const rateLimit = await checkRateLimit(`incinerator:${clientIP}`, RATE_LIMITS.strict);
   if (!rateLimit.success) {
-    return NextResponse.json(
-      {
-        error: "Too many requests. Please wait before trying again.",
-        retryAfter: Math.ceil(rateLimit.resetIn / 1000),
-      },
-      {
-        status: 429,
-        headers: { "Retry-After": String(Math.ceil(rateLimit.resetIn / 1000)) },
-      }
-    );
+    const retryAfter = String(Math.ceil(rateLimit.resetIn / 1000));
+    return jsonError("Too many requests. Please wait before trying again.", 429, {
+      "Retry-After": retryAfter,
+    });
   }
 
   try {
     const body = await request.json();
     const { action, data } = body as { action: Action; data?: Record<string, unknown> };
+    const client = getSolIncinerator();
 
     if (action === "status") {
-      const client = getSolIncinerator();
-      const result = await client.status();
-      return NextResponse.json(result);
+      return NextResponse.json(await client.status());
     }
 
     if (!data?.userPublicKey) {
-      return NextResponse.json({ error: "userPublicKey is required" }, { status: 400 });
+      return jsonError("userPublicKey is required", 400);
     }
-
     if (!isValidSolanaAddress(data.userPublicKey)) {
-      return NextResponse.json({ error: "Invalid userPublicKey address" }, { status: 400 });
+      return jsonError("Invalid userPublicKey address", 400);
     }
 
-    const client = getSolIncinerator();
+    const pk = data.userPublicKey as string;
+    const asset = data.assetId as string | undefined;
+
+    if (ACTIONS_NEEDING_ASSET.has(action) && !asset) {
+      return jsonError(`assetId is required for ${action}`, 400);
+    }
 
     switch (action) {
-      case "burn": {
-        if (!data.assetId) {
-          return NextResponse.json({ error: "assetId is required for burn" }, { status: 400 });
-        }
-        const result = await client.burn({
-          userPublicKey: data.userPublicKey as string,
-          assetId: data.assetId as string,
-          feePayer: data.feePayer as string | undefined,
-          autoCloseTokenAccounts: data.autoCloseTokenAccounts as boolean | undefined,
-          priorityFeeMicroLamports: data.priorityFeeMicroLamports as number | undefined,
-          burnAmount: data.burnAmount as number | undefined,
-        });
-        return NextResponse.json(result);
-      }
+      case "burn":
+        return NextResponse.json(
+          await client.burn({
+            userPublicKey: pk,
+            assetId: asset!,
+            feePayer: data.feePayer as string | undefined,
+            autoCloseTokenAccounts: data.autoCloseTokenAccounts as boolean | undefined,
+            priorityFeeMicroLamports: data.priorityFeeMicroLamports as number | undefined,
+            burnAmount: data.burnAmount as number | undefined,
+          })
+        );
 
-      case "close": {
-        if (!data.assetId) {
-          return NextResponse.json({ error: "assetId is required for close" }, { status: 400 });
-        }
-        const result = await client.close({
-          userPublicKey: data.userPublicKey as string,
-          assetId: data.assetId as string,
-          feePayer: data.feePayer as string | undefined,
-          priorityFeeMicroLamports: data.priorityFeeMicroLamports as number | undefined,
-        });
-        return NextResponse.json(result);
-      }
+      case "close":
+        return NextResponse.json(
+          await client.close({
+            userPublicKey: pk,
+            assetId: asset!,
+            feePayer: data.feePayer as string | undefined,
+            priorityFeeMicroLamports: data.priorityFeeMicroLamports as number | undefined,
+          })
+        );
 
-      case "batch-close-all": {
-        const result = await client.batchCloseAll({
-          userPublicKey: data.userPublicKey as string,
-          feePayer: data.feePayer as string | undefined,
-          priorityFeeMicroLamports: data.priorityFeeMicroLamports as number | undefined,
-        });
-        return NextResponse.json(result);
-      }
+      case "batch-close-all":
+        return NextResponse.json(
+          await client.batchCloseAll({
+            userPublicKey: pk,
+            feePayer: data.feePayer as string | undefined,
+            priorityFeeMicroLamports: data.priorityFeeMicroLamports as number | undefined,
+          })
+        );
 
-      case "burn-preview": {
-        if (!data.assetId) {
-          return NextResponse.json(
-            { error: "assetId is required for burn preview" },
-            { status: 400 }
-          );
-        }
-        const result = await client.burnPreview({
-          userPublicKey: data.userPublicKey as string,
-          assetId: data.assetId as string,
-          autoCloseTokenAccounts: data.autoCloseTokenAccounts as boolean | undefined,
-          burnAmount: data.burnAmount as number | undefined,
-        });
-        return NextResponse.json(result);
-      }
+      case "burn-preview":
+        return NextResponse.json(
+          await client.burnPreview({
+            userPublicKey: pk,
+            assetId: asset!,
+            autoCloseTokenAccounts: data.autoCloseTokenAccounts as boolean | undefined,
+            burnAmount: data.burnAmount as number | undefined,
+          })
+        );
 
-      case "close-preview": {
-        if (!data.assetId) {
-          return NextResponse.json(
-            { error: "assetId is required for close preview" },
-            { status: 400 }
-          );
-        }
-        const result = await client.closePreview({
-          userPublicKey: data.userPublicKey as string,
-          assetId: data.assetId as string,
-        });
-        return NextResponse.json(result);
-      }
+      case "close-preview":
+        return NextResponse.json(await client.closePreview({ userPublicKey: pk, assetId: asset! }));
 
-      case "batch-close-all-preview": {
-        const result = await client.batchCloseAllPreview({
-          userPublicKey: data.userPublicKey as string,
-        });
-        return NextResponse.json(result);
-      }
+      case "batch-close-all-preview":
+        return NextResponse.json(await client.batchCloseAllPreview({ userPublicKey: pk }));
 
       default:
-        return NextResponse.json(
-          {
-            error: `Unknown action: ${action}. Valid actions: burn, close, batch-close-all, burn-preview, close-preview, batch-close-all-preview, status`,
-          },
-          { status: 400 }
+        return jsonError(
+          `Unknown action: ${action}. Valid: burn, close, batch-close-all, burn-preview, close-preview, batch-close-all-preview, status`,
+          400
         );
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Internal server error";
 
     if (message.includes("SOL_INCINERATOR_API_KEY not configured")) {
-      return NextResponse.json(
-        { error: "Sol Incinerator is not configured. API key missing." },
-        { status: 503 }
-      );
+      return jsonError("Sol Incinerator is not configured. API key missing.", 503);
     }
 
-    // Upstream RPC rate limit (Sol Incinerator already retried once)
-    if (message.includes("max usage reached") || message.includes("-32429") || message.includes("at capacity")) {
-      return NextResponse.json(
-        { error: "Sol Incinerator's RPC is at capacity. Please try again in ~30 seconds." },
-        { status: 429, headers: { "Retry-After": "30" } }
+    if (
+      message.includes("max usage reached") ||
+      message.includes("-32429") ||
+      message.includes("at capacity")
+    ) {
+      return jsonError(
+        "Sol Incinerator's RPC is at capacity. Please try again in ~30 seconds.",
+        429,
+        {
+          "Retry-After": "30",
+        }
       );
     }
 
     console.error("[Sol Incinerator API]", message);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(message, 500);
   }
 }
