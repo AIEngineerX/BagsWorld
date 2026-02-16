@@ -12,6 +12,7 @@ export const MAIN_ZONES: ZoneType[] = [
   "ballers",
   "founders",
   "arena",
+  "disclosure",
 ];
 
 export const ZONE_ORDER: ZoneType[] = ["ascension", ...MAIN_ZONES, "dungeon"];
@@ -26,7 +27,7 @@ const ZONE_SHORT_LABELS: Record<ZoneType, string> = {
   arena: "ARENA",
   dungeon: "DNGN",
   ascension: "SPIRE",
-  disclosure: "DISC",
+  disclosure: "A51",
 };
 
 // Inactive color accents per zone (border / text / hover)
@@ -37,6 +38,7 @@ const ZONE_COLORS: Partial<Record<ZoneType, string>> = {
   ballers: "border-yellow-500/50 text-yellow-400 hover:border-yellow-400",
   founders: "border-amber-500/50 text-amber-400 hover:border-amber-400",
   arena: "border-red-500/50 text-red-400 hover:border-red-400",
+  disclosure: "border-teal-500/50 text-teal-400 hover:border-teal-400",
   dungeon: "border-purple-500/50 text-purple-400 hover:border-purple-400",
   ascension: "border-cyan-500/50 text-cyan-400 hover:border-cyan-400",
 };
@@ -54,6 +56,9 @@ const DUNGEON_ACTIVE =
 const ASCENSION_ACTIVE =
   "bg-cyan-600 text-white border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.6),inset_0_1px_0_rgba(255,255,255,0.2)]";
 
+const DISCLOSURE_ACTIVE =
+  "bg-teal-600 text-white border-teal-400 shadow-[0_0_12px_rgba(20,184,166,0.6),inset_0_1px_0_rgba(255,255,255,0.2)]";
+
 function ZoneButton({
   zoneId,
   currentZone,
@@ -67,7 +72,14 @@ function ZoneButton({
   const isActive = currentZone === zoneId;
   const isDungeon = zoneId === "dungeon";
   const isAscension = zoneId === "ascension";
-  const activeClass = isDungeon ? DUNGEON_ACTIVE : isAscension ? ASCENSION_ACTIVE : BTN_ACTIVE;
+  const isDisclosure = zoneId === "disclosure";
+  const activeClass = isDungeon
+    ? DUNGEON_ACTIVE
+    : isAscension
+      ? ASCENSION_ACTIVE
+      : isDisclosure
+        ? DISCLOSURE_ACTIVE
+        : BTN_ACTIVE;
 
   return (
     <button

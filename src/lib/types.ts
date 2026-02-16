@@ -75,8 +75,8 @@ export const ZONES: Record<ZoneType, ZoneInfo> = {
   },
   disclosure: {
     id: "disclosure",
-    name: "Disclosure Site",
-    description: "Alien crash site where first contact meets degen culture",
+    name: "Area 51",
+    description: "Alien chaos zone — UFOs, spaceships, and extraterrestrial mayhem",
     icon: "[X]",
   },
 };
