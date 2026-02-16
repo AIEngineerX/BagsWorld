@@ -7,7 +7,7 @@ import { useConnection } from "@solana/wallet-adapter-react";
 import { VersionedTransaction } from "@solana/web3.js";
 import bs58 from "bs58";
 import { useMobileWallet } from "@/hooks/useMobileWallet";
-import { preSimulateTransaction } from "@/lib/transaction-utils";
+import { preSimulateTransaction, sendSignedTransaction } from "@/lib/transaction-utils";
 import type {
   BurnResponse,
   CloseResponse,
@@ -520,7 +520,7 @@ function PixelFurnace({ size = 64, playing = false }: { size?: number; playing?:
 }
 
 export function IncineratorModal({ onClose }: IncineratorModalProps) {
-  const { publicKey, connected, mobileSignAndSend } = useMobileWallet();
+  const { publicKey, connected, mobileSignAndSend, wallet, isNative } = useMobileWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const { connection } = useConnection();
   const guardAction = useActionGuard();
@@ -747,12 +747,65 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
 
       setTxProgress({ current: 0, total: result.transactions.length });
 
-      let completed = 0;
-      for (const serializedTx of result.transactions) {
-        await signAndSend(serializedTx);
-        completed++;
-        setTxProgress({ current: completed, total: result.transactions.length });
-        setSuccess(`Processing: ${completed}/${result.transactions.length} transactions signed...`);
+      // iOS native deep-link: sign+send each via mobileSignAndSend (no batch signing)
+      if (isNative) {
+        let completed = 0;
+        for (const serializedTx of result.transactions) {
+          await signAndSend(serializedTx);
+          completed++;
+          setTxProgress({ current: completed, total: result.transactions.length });
+          setSuccess(
+            `Processing: ${completed}/${result.transactions.length} transactions confirmed...`
+          );
+        }
+      } else {
+        // Web: deserialize all, batch-sign in one popup, then send sequentially
+        const txObjects = result.transactions.map((serializedTx) => {
+          const buffer = bs58.decode(serializedTx.trim());
+          return VersionedTransaction.deserialize(buffer);
+        });
+
+        // Pre-simulate each to catch errors before wallet popup
+        for (const tx of txObjects) {
+          try {
+            await preSimulateTransaction(connection, tx);
+          } catch {
+            // Non-fatal: continue to signing
+          }
+        }
+
+        // Batch-sign all in one wallet popup if supported
+        let signedTxs: VersionedTransaction[];
+        if (wallet.signAllTransactions && txObjects.length > 1) {
+          setSuccess("Please approve all transactions in your wallet...");
+          signedTxs = (await wallet.signAllTransactions(txObjects)) as VersionedTransaction[];
+        } else if (wallet.signTransaction) {
+          signedTxs = [];
+          for (const tx of txObjects) {
+            signedTxs.push((await wallet.signTransaction(tx)) as VersionedTransaction);
+          }
+        } else {
+          throw new Error("Wallet does not support transaction signing");
+        }
+
+        // Send and confirm each signed transaction
+        let completed = 0;
+        for (const signedTx of signedTxs) {
+          try {
+            const signature = await sendSignedTransaction(connection, signedTx, { maxRetries: 3 });
+            await connection.confirmTransaction(signature, "confirmed");
+            completed++;
+            setTxProgress({ current: completed, total: signedTxs.length });
+            setSuccess(`Broadcasting: ${completed}/${signedTxs.length} transactions confirmed...`);
+          } catch (txErr) {
+            if (completed > 0) {
+              throw new Error(
+                `${completed}/${signedTxs.length} transactions succeeded. Failed on tx ${completed + 1}: ${txErr instanceof Error ? txErr.message : "Unknown error"}`
+              );
+            }
+            throw txErr;
+          }
+        }
       }
 
       setSuccess(
