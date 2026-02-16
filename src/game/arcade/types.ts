@@ -139,6 +139,8 @@ export const GRENADE_RESTITUTION = 0.4;
 export const GRENADE_FRICTION = 0.6;
 export const GRENADE_DENSITY = 2.0;
 export const GRENADE_ANGULAR_IMPULSE_RANGE = 5; // random spin on throw
+export const DEBRIS_TTL = 2000; // ms before debris despawns
+export const RAGDOLL_TTL = 3000; // ms before ragdoll despawns
 
 export const TILE_SIZE = 16;
 
