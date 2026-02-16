@@ -1,5 +1,5 @@
 const SOL_INCINERATOR_API_URL = "https://v1.api.sol-incinerator.com";
-const REQUEST_TIMEOUT_MS = 30_000;
+const REQUEST_TIMEOUT_MS = 15_000;
 const RETRY_DELAY_MS = 5_000;
 const RATE_LIMIT_MSG = "Sol Incinerator's RPC is at capacity. Please try again in ~30 seconds.";
 
@@ -120,26 +120,23 @@ class SolIncineratorClient {
     }
   }
 
-  /** Fetch with a single retry on rate-limit or network errors. */
+  /** Fetch with a single retry on transient network errors only. RPC rate limits fail fast. */
   private async request<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
     try {
       return await this.fetchApi<T>(endpoint, body);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
-      const retryable = isRpcRateLimit(msg) || msg.includes("fetch") || msg.includes("network");
+
+      // RPC rate limits are quota-based — retrying won't help, fail fast
+      if (isRpcRateLimit(msg)) throw new Error(RATE_LIMIT_MSG);
+
+      // Only retry transient network errors (not timeouts — our own AbortController)
+      const retryable = msg.includes("fetch") || msg.includes("network");
       if (!retryable) throw err;
 
       console.warn(`[Sol Incinerator] ${msg}, retrying in ${RETRY_DELAY_MS}ms`);
       await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
-
-      try {
-        return await this.fetchApi<T>(endpoint, body);
-      } catch (retryErr) {
-        if (retryErr instanceof Error && isRpcRateLimit(retryErr.message)) {
-          throw new Error(RATE_LIMIT_MSG);
-        }
-        throw retryErr;
-      }
+      return await this.fetchApi<T>(endpoint, body);
     }
   }
 

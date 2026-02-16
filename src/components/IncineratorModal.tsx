@@ -498,32 +498,17 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
     return response.json();
   };
 
-  /** Single retry on Solana RPC rate-limit errors (-32429 / "max usage reached") */
-  const withRpcRetry = async <T,>(fn: () => Promise<T>, label: string): Promise<T> => {
-    try {
-      return await fn();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
-      if (msg.includes("max usage reached") || msg.includes("-32429")) {
-        console.warn(`[Incinerator] ${label} rate limited, retrying in 3s`);
-        await new Promise((r) => setTimeout(r, 3000));
-        return await fn();
-      }
-      throw err;
-    }
-  };
-
   /** Decode, simulate, sign, send, and confirm a Sol Incinerator transaction. */
   const signAndSend = async (serializedTransaction: string): Promise<string> => {
     // Sol Incinerator API always returns base58-encoded transactions
     const buffer = bs58.decode(serializedTransaction.trim());
     const transaction = VersionedTransaction.deserialize(buffer);
 
-    await withRpcRetry(() => preSimulateTransaction(connection, transaction), "Simulate");
+    await preSimulateTransaction(connection, transaction);
 
     const signature = await mobileSignAndSend(transaction, { maxRetries: 3 });
 
-    await withRpcRetry(() => connection.confirmTransaction(signature, "confirmed"), "Confirm");
+    await connection.confirmTransaction(signature, "confirmed");
 
     return signature;
   };

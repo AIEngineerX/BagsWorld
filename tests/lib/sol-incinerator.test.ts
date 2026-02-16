@@ -370,35 +370,20 @@ describe("Sol Incinerator Client", () => {
       ).rejects.toThrow("API error: 500 Internal Server Error");
     });
 
-    it("200 response with JSON-RPC error containing 'max usage reached' throws and retries", async () => {
-      jest.useFakeTimers();
-      jest.spyOn(console, "warn").mockImplementation(() => {});
-
-      // Re-create client with fake timers active
-      const freshClient = loadModule().getSolIncinerator();
-
+    it("200 response with JSON-RPC error containing 'max usage reached' fails fast with friendly message", async () => {
       fetchMock.mockResolvedValueOnce(
         mockResponse({
           error: { message: "max usage reached", code: -32429 },
         })
       );
-      // The retry layer sees "max usage reached" and retries. Provide second response.
-      fetchMock.mockResolvedValueOnce(mockResponse(BURN_RESPONSE));
 
-      const promise = freshClient.burn({
-        userPublicKey: TEST_PUBLIC_KEY,
-        assetId: TEST_ASSET_ID,
-      });
+      await expect(
+        client.burn({ userPublicKey: TEST_PUBLIC_KEY, assetId: TEST_ASSET_ID })
+      ).rejects.toThrow("Sol Incinerator's RPC is at capacity. Please try again in ~30 seconds.");
 
-      // Advance past the 5s retry delay, interleaving microtask flushing
-      await jest.advanceTimersByTimeAsync(6_000);
-
-      const result = await promise;
-      expect(result).toEqual(BURN_RESPONSE);
-      expect(fetchMock).toHaveBeenCalledTimes(2);
-
-      jest.useRealTimers();
-    }, 15_000);
+      // No retry — only 1 fetch call
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
 
     it("200 response with non-rate-limit JSON-RPC error throws with that message", async () => {
       fetchMock.mockResolvedValueOnce(
@@ -448,93 +433,30 @@ describe("Sol Incinerator Client", () => {
       jest.useRealTimers();
     });
 
-    it("rate limit error retries once and succeeds on retry", async () => {
+    it("rate limit error fails fast with friendly message — no retry", async () => {
       fetchMock.mockResolvedValueOnce(
         mockResponse({ error: { message: "max usage reached", code: -32429 } })
       );
-      fetchMock.mockResolvedValueOnce(mockResponse(BURN_RESPONSE));
 
-      const promise = client.burn({
-        userPublicKey: TEST_PUBLIC_KEY,
-        assetId: TEST_ASSET_ID,
-      });
+      await expect(
+        client.burn({ userPublicKey: TEST_PUBLIC_KEY, assetId: TEST_ASSET_ID })
+      ).rejects.toThrow("Sol Incinerator's RPC is at capacity. Please try again in ~30 seconds.");
 
-      await jest.advanceTimersByTimeAsync(6_000);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
 
-      const result = await promise;
-      expect(result).toEqual(BURN_RESPONSE);
-      expect(fetchMock).toHaveBeenCalledTimes(2);
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("max usage reached"));
-    }, 15_000);
-
-    it("rate limit on both attempts throws friendly RATE_LIMIT_MSG", async () => {
-      fetchMock.mockResolvedValueOnce(mockResponse({ error: { message: "max usage reached" } }));
-      fetchMock.mockResolvedValueOnce(mockResponse({ error: { message: "max usage reached" } }));
-
-      const promise = client.burn({
-        userPublicKey: TEST_PUBLIC_KEY,
-        assetId: TEST_ASSET_ID,
-      });
-
-      // Attach catch handler before advancing timers so the rejection
-      // during timer advancement is not treated as unhandled.
-      const resultPromise = promise.catch((err: Error) => err);
-
-      await jest.advanceTimersByTimeAsync(6_000);
-
-      const error = await resultPromise;
-      expect(error).toBeInstanceOf(Error);
-      expect((error as Error).message).toBe(
-        "Sol Incinerator's RPC is at capacity. Please try again in ~30 seconds."
-      );
-      expect(fetchMock).toHaveBeenCalledTimes(2);
-    }, 15_000);
-
-    it("-32429 code in message also triggers rate limit detection", async () => {
+    it("-32429 code in message also fails fast", async () => {
       fetchMock.mockResolvedValueOnce(
         mockResponse({ error: { message: "error code -32429 rate limited" } })
       );
-      fetchMock.mockResolvedValueOnce(mockResponse({ error: { message: "still -32429" } }));
 
-      const promise = client.burn({
-        userPublicKey: TEST_PUBLIC_KEY,
-        assetId: TEST_ASSET_ID,
-      });
+      await expect(
+        client.burn({ userPublicKey: TEST_PUBLIC_KEY, assetId: TEST_ASSET_ID })
+      ).rejects.toThrow("Sol Incinerator's RPC is at capacity. Please try again in ~30 seconds.");
 
-      const resultPromise = promise.catch((err: Error) => err);
-
-      await jest.advanceTimersByTimeAsync(6_000);
-
-      const error = await resultPromise;
-      expect(error).toBeInstanceOf(Error);
-      expect((error as Error).message).toBe(
-        "Sol Incinerator's RPC is at capacity. Please try again in ~30 seconds."
-      );
-    }, 15_000);
-
-    it("rate limit on first call, different error on retry throws the retry error", async () => {
-      fetchMock.mockResolvedValueOnce(mockResponse({ error: { message: "max usage reached" } }));
-      fetchMock.mockResolvedValueOnce(
-        mockResponse(JSON.stringify({ error: "Server exploded" }), {
-          status: 500,
-          ok: false,
-          statusText: "Internal Server Error",
-        })
-      );
-
-      const promise = client.burn({
-        userPublicKey: TEST_PUBLIC_KEY,
-        assetId: TEST_ASSET_ID,
-      });
-
-      const resultPromise = promise.catch((err: Error) => err);
-
-      await jest.advanceTimersByTimeAsync(6_000);
-
-      const error = await resultPromise;
-      expect(error).toBeInstanceOf(Error);
-      expect((error as Error).message).toBe("Server exploded");
-    }, 15_000);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
 
     it('network error (TypeError with "fetch failed") retries once', async () => {
       fetchMock.mockRejectedValueOnce(new TypeError("fetch failed"));
@@ -672,14 +594,14 @@ describe("Sol Incinerator Client", () => {
       // during timer advancement is not treated as unhandled.
       const resultPromise = promise.catch((err: unknown) => err);
 
-      // Advance past the 30s REQUEST_TIMEOUT_MS using async version
+      // Advance past the 15s REQUEST_TIMEOUT_MS using async version
       // to properly interleave microtask flushing.
-      await jest.advanceTimersByTimeAsync(31_000);
+      await jest.advanceTimersByTimeAsync(16_000);
 
       const error = await resultPromise;
       expect(error).toBeDefined();
       expect(capturedSignal!.aborted).toBe(true);
-    }, 15_000);
+    }, 20_000);
 
     it("aborts fetch that hangs beyond 10s timeout for status()", async () => {
       let capturedSignal: AbortSignal | undefined;
@@ -868,37 +790,25 @@ describe("Sol Incinerator Client", () => {
       jest.useRealTimers();
     });
 
-    it('"max usage reached" triggers retry', async () => {
+    it('"max usage reached" is detected and fails fast', async () => {
       fetchMock.mockResolvedValueOnce(mockResponse({ error: { message: "max usage reached" } }));
-      fetchMock.mockResolvedValueOnce(mockResponse(BURN_RESPONSE));
 
-      const promise = client.burn({
-        userPublicKey: TEST_PUBLIC_KEY,
-        assetId: TEST_ASSET_ID,
-      });
+      await expect(
+        client.burn({ userPublicKey: TEST_PUBLIC_KEY, assetId: TEST_ASSET_ID })
+      ).rejects.toThrow("Sol Incinerator's RPC is at capacity");
 
-      await jest.advanceTimersByTimeAsync(6_000);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
 
-      const result = await promise;
-      expect(result).toEqual(BURN_RESPONSE);
-      expect(fetchMock).toHaveBeenCalledTimes(2);
-    }, 15_000);
-
-    it('"-32429" in message triggers retry', async () => {
+    it('"-32429" in message is detected and fails fast', async () => {
       fetchMock.mockResolvedValueOnce(mockResponse({ error: { message: "Error code -32429" } }));
-      fetchMock.mockResolvedValueOnce(mockResponse(BURN_RESPONSE));
 
-      const promise = client.burn({
-        userPublicKey: TEST_PUBLIC_KEY,
-        assetId: TEST_ASSET_ID,
-      });
+      await expect(
+        client.burn({ userPublicKey: TEST_PUBLIC_KEY, assetId: TEST_ASSET_ID })
+      ).rejects.toThrow("Sol Incinerator's RPC is at capacity");
 
-      await jest.advanceTimersByTimeAsync(6_000);
-
-      const result = await promise;
-      expect(result).toEqual(BURN_RESPONSE);
-      expect(fetchMock).toHaveBeenCalledTimes(2);
-    }, 15_000);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
 
     it("unrelated error message does NOT trigger retry", async () => {
       fetchMock.mockResolvedValueOnce(mockResponse({ error: { message: "Unknown mint address" } }));
