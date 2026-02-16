@@ -133,6 +133,13 @@ export const INVINCIBILITY_TIME = 1500; // ms after being hit
 export const GRENADE_RADIUS = 60; // px blast radius for grenade damage
 export const GRAVITY = 800; // px/s² arcade physics gravity
 
+// Box2D grenade physics constants
+export const BOX2D_SCALE = 30; // pixels per meter
+export const GRENADE_RESTITUTION = 0.4;
+export const GRENADE_FRICTION = 0.6;
+export const GRENADE_DENSITY = 2.0;
+export const GRENADE_ANGULAR_IMPULSE_RANGE = 5; // random spin on throw
+
 export const TILE_SIZE = 16;
 
 // --- Environment Props ---
