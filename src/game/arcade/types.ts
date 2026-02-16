@@ -103,10 +103,10 @@ export interface EnemyStats {
 }
 
 export const ENEMY_STATS: Record<EnemyType, EnemyStats> = {
-  soldier: { hp: 3, speed: 55, damage: 1, fireRate: 1000, score: 100, width: 24, height: 32 },
-  heavy: { hp: 8, speed: 30, damage: 2, fireRate: 1400, score: 300, width: 32, height: 32 },
-  turret: { hp: 5, speed: 0, damage: 1, fireRate: 600, score: 200, width: 24, height: 24 },
-  boss: { hp: 80, speed: 25, damage: 3, fireRate: 800, score: 5000, width: 64, height: 64 },
+  soldier: { hp: 3, speed: 55, damage: 1, fireRate: 1000, score: 100, width: 32, height: 40 },
+  heavy: { hp: 8, speed: 30, damage: 2, fireRate: 1400, score: 300, width: 40, height: 40 },
+  turret: { hp: 5, speed: 0, damage: 1, fireRate: 600, score: 200, width: 30, height: 30 },
+  boss: { hp: 80, speed: 25, damage: 3, fireRate: 800, score: 5000, width: 80, height: 80 },
 };
 
 export type PickupType =
