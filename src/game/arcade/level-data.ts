@@ -31,11 +31,17 @@ export interface PickupSpawn {
   type: PickupType;
 }
 
+export interface HostageSpawn {
+  x: number;
+  y: number;
+}
+
 export interface SectionData {
   platforms: PlatformData[];
   enemies: EnemySpawn[];
   pickups: PickupSpawn[];
   decorations: DecorationSpawn[];
+  hostages: HostageSpawn[];
 }
 
 /** Ground platforms per section, using section-specific ground textures */
@@ -66,6 +72,8 @@ export function getSectionData(section: number): SectionData {
         pickups: [
           { x: base + 400, y: GROUND_Y - 40, type: "spread" },
           { x: base + 600, y: GROUND_Y - 40, type: "health" },
+          { x: base + 300, y: GROUND_Y - 40, type: "food_apple" },
+          { x: base + 550, y: GROUND_Y - 40, type: "bonus_coin" },
         ],
         decorations: [
           { x: base + 40, y: GROUND_Y, type: "lamp_post" },
@@ -87,6 +95,7 @@ export function getSectionData(section: number): SectionData {
           { x: base + 100, y: GROUND_Y, type: "rubble_pile" },
           { x: base + 500, y: GROUND_Y, type: "barrel" },
         ],
+        hostages: [{ x: base + 350, y: GROUND_Y - 20 }],
       };
 
     // Section 1: Military outpost — sandbags near turrets, barrels, barbed wire
@@ -106,7 +115,12 @@ export function getSectionData(section: number): SectionData {
           { x: base + 550, y: GROUND_Y - 32, type: "soldier", facing: "right", patrolRange: 90 },
           { x: base + 720, y: GROUND_Y - 32, type: "soldier", facing: "left", patrolRange: 60 },
         ],
-        pickups: [{ x: base + 400, y: GROUND_Y - 40, type: "heavy" }],
+        pickups: [
+          { x: base + 400, y: GROUND_Y - 40, type: "heavy" },
+          { x: base + 150, y: 180 - 30, type: "food_chicken" },
+          { x: base + 600, y: GROUND_Y - 40, type: "bonus_gem" },
+          { x: base + 750, y: GROUND_Y - 40, type: "food_apple" },
+        ],
         decorations: [
           { x: base + 30, y: GROUND_Y, type: "sandbag_stack" },
           { x: base + 50, y: GROUND_Y, type: "sandbag_stack" },
@@ -129,6 +143,10 @@ export function getSectionData(section: number): SectionData {
           { x: base + 380, y: GROUND_Y, type: "sandbag_stack" },
           { x: base + 700, y: GROUND_Y, type: "sandbag_stack" },
         ],
+        hostages: [
+          { x: base + 180, y: 180 - 20 },
+          { x: base + 500, y: GROUND_Y - 20 },
+        ],
       };
 
     // Section 2: Urban warzone — rubble, broken fences, oil drums, wrecked cars
@@ -147,7 +165,11 @@ export function getSectionData(section: number): SectionData {
           { x: base + 650, y: GROUND_Y - 32, type: "soldier", facing: "left", patrolRange: 80 },
           { x: base + 750, y: GROUND_Y - 32, type: "soldier", facing: "left", patrolRange: 50 },
         ],
-        pickups: [{ x: base + 450, y: 170 - 30, type: "health" }],
+        pickups: [
+          { x: base + 450, y: 170 - 30, type: "health" },
+          { x: base + 280, y: GROUND_Y - 40, type: "food_apple" },
+          { x: base + 700, y: GROUND_Y - 40, type: "bonus_coin" },
+        ],
         decorations: [
           { x: base + 30, y: GROUND_Y, type: "rubble_pile" },
           { x: base + 60, y: GROUND_Y, type: "broken_fence" },
@@ -172,6 +194,7 @@ export function getSectionData(section: number): SectionData {
           { x: base + 490, y: GROUND_Y, type: "barrel" },
           { x: base + 80, y: GROUND_Y, type: "rubble_pile" },
         ],
+        hostages: [{ x: base + 350, y: GROUND_Y - 20 }],
       };
 
     // Section 3: Industrial zone — oil drums clustered, barbed wire, lamp posts, terminals
@@ -193,7 +216,12 @@ export function getSectionData(section: number): SectionData {
           { x: base + 500, y: GROUND_Y - 32, type: "soldier", facing: "left", patrolRange: 100 },
           { x: base + 730, y: 190 - 24, type: "turret", facing: "left" },
         ],
-        pickups: [{ x: base + 460, y: 120 - 30, type: "grenade" }],
+        pickups: [
+          { x: base + 460, y: 120 - 30, type: "grenade" },
+          { x: base + 200, y: GROUND_Y - 40, type: "food_chicken" },
+          { x: base + 550, y: GROUND_Y - 40, type: "bonus_medal" },
+          { x: base + 700, y: 190 - 30, type: "food_apple" },
+        ],
         decorations: [
           { x: base + 30, y: GROUND_Y, type: "oil_drum" },
           { x: base + 50, y: GROUND_Y, type: "oil_drum" },
@@ -215,6 +243,10 @@ export function getSectionData(section: number): SectionData {
           { x: base + 770, y: GROUND_Y, type: "oil_drum" },
           { x: base + 260, y: GROUND_Y, type: "barrel" },
           { x: base + 580, y: GROUND_Y, type: "barrel" },
+        ],
+        hostages: [
+          { x: base + 300, y: 160 - 20 },
+          { x: base + 650, y: GROUND_Y - 20 },
         ],
       };
 
@@ -242,6 +274,9 @@ export function getSectionData(section: number): SectionData {
         pickups: [
           { x: base + 300, y: GROUND_Y - 40, type: "spread" },
           { x: base + 500, y: GROUND_Y - 40, type: "health" },
+          { x: base + 200, y: GROUND_Y - 40, type: "food_cake" },
+          { x: base + 680, y: GROUND_Y - 40, type: "bonus_gem" },
+          { x: base + 400, y: GROUND_Y - 40, type: "food_apple" },
         ],
         decorations: [
           { x: base + 30, y: GROUND_Y, type: "sandbag_stack" },
@@ -270,6 +305,7 @@ export function getSectionData(section: number): SectionData {
           { x: base + 200, y: GROUND_Y, type: "barrel" },
           { x: base + 540, y: GROUND_Y, type: "barrel" },
         ],
+        hostages: [{ x: base + 450, y: GROUND_Y - 20 }],
       };
 
     // Section 5: Boss arena — sparse boundary: rubble at edges, broken fences, lamp posts
@@ -277,7 +313,11 @@ export function getSectionData(section: number): SectionData {
       return {
         platforms: [],
         enemies: [{ x: base + 600, y: GROUND_Y - 64, type: "boss", facing: "left" }],
-        pickups: [{ x: base + 200, y: GROUND_Y - 40, type: "health" }],
+        pickups: [
+          { x: base + 200, y: GROUND_Y - 40, type: "health" },
+          { x: base + 350, y: GROUND_Y - 40, type: "food_chicken" },
+          { x: base + 450, y: GROUND_Y - 40, type: "food_cake" },
+        ],
         decorations: [
           { x: base + 20, y: GROUND_Y, type: "rubble_pile" },
           { x: base + 50, y: GROUND_Y, type: "broken_fence" },
@@ -292,9 +332,10 @@ export function getSectionData(section: number): SectionData {
           { x: base + 400, y: GROUND_Y, type: "oil_drum" },
           { x: base + 250, y: GROUND_Y, type: "rubble_pile" },
         ],
+        hostages: [{ x: base + 300, y: GROUND_Y - 20 }],
       };
 
     default:
-      return { platforms: [], enemies: [], pickups: [], decorations: [] };
+      return { platforms: [], enemies: [], pickups: [], decorations: [], hostages: [] };
   }
 }

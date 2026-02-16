@@ -109,12 +109,23 @@ export const ENEMY_STATS: Record<EnemyType, EnemyStats> = {
   boss: { hp: 80, speed: 25, damage: 3, fireRate: 800, score: 5000, width: 64, height: 64 },
 };
 
-export type PickupType = "spread" | "heavy" | "health" | "grenade";
+export type PickupType =
+  | "spread"
+  | "heavy"
+  | "health"
+  | "grenade"
+  | "food_apple"
+  | "food_chicken"
+  | "food_cake"
+  | "bonus_coin"
+  | "bonus_gem"
+  | "bonus_medal";
 
 export interface PickupInfo {
   weapon?: WeaponType;
   healAmount?: number;
   grenades?: number;
+  scoreBonus?: number;
   color: number;
   label: string;
 }
@@ -124,6 +135,12 @@ export const PICKUPS: Record<PickupType, PickupInfo> = {
   heavy: { weapon: "heavy", color: 0x3b82f6, label: "H" },
   health: { healAmount: 2, color: 0x22c55e, label: "+" },
   grenade: { grenades: 3, color: 0xf97316, label: "G" },
+  food_apple: { healAmount: 1, scoreBonus: 50, color: 0xef4444, label: "A" },
+  food_chicken: { healAmount: 2, scoreBonus: 100, color: 0xfbbf24, label: "C" },
+  food_cake: { healAmount: 3, scoreBonus: 200, color: 0xec4899, label: "K" },
+  bonus_coin: { scoreBonus: 100, color: 0xfbbf24, label: "$" },
+  bonus_gem: { scoreBonus: 300, color: 0x06b6d4, label: "G" },
+  bonus_medal: { scoreBonus: 500, color: 0x9945ff, label: "M" },
 };
 
 export const STARTING_LIVES = 3;
@@ -187,6 +204,19 @@ export const SECTION_THEMES: Record<number, SectionTheme> = {
   5: { skyTint: 0x1a0f2a, accent: 0x9945ff, ground: "ground_metal_grate", ambientColor: 0x9945ff },
 };
 
+// --- Combo System ---
+
+export const COMBO_DECAY_MS = 3000;
+// Index = combo count, value = multiplier. 20+ = 8x
+export const COMBO_TIERS = [1, 1, 2, 2, 2, 3, 3, 3, 3, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 8];
+
+// --- Melee System ---
+
+export const MELEE_RANGE = 24; // px proximity to trigger melee
+export const MELEE_DAMAGE = 10; // instant kill on soldiers/turrets
+export const MELEE_SCORE_MULTIPLIER = 3; // 3x score for melee kills
+export const MELEE_COOLDOWN = 250; // ms between melee attacks
+
 /** HUD event data emitted from ArcadeGameScene */
 export interface HUDData {
   hp: number;
@@ -199,4 +229,6 @@ export interface HUDData {
   bossHP: number;
   bossMaxHP: number;
   character: ArcadeCharacter;
+  comboCount: number;
+  comboMultiplier: number;
 }

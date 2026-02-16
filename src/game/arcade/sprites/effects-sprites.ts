@@ -16,6 +16,9 @@ export function generateEffectSprites(scene: Phaser.Scene): void {
   generateShockwaveSprites(scene);
   generateSmokePuffs(scene);
   generateVignetteTexture(scene);
+  generateFoodSprites(scene);
+  generateBonusSprites(scene);
+  generateHostageSprites(scene);
 }
 
 // --- Bullets ---
@@ -1035,6 +1038,274 @@ function generateSmokePuffs(scene: Phaser.Scene): void {
     g.fillRect(4, 1, 4, 1); // top fade
     g.fillRect(4, 10, 4, 1); // bottom fade
     g.generateTexture("smoke_puff_3", 12, 12);
+    g.destroy();
+  }
+}
+
+// --- Food items (16x16) ---
+
+function generateFoodSprites(scene: Phaser.Scene): void {
+  const S = 16;
+
+  // pickup_food_apple — Red circle body + green leaf + brown stem
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    // Body
+    g.fillStyle(0xef4444);
+    g.fillRect(5, 5, 6, 7);
+    g.fillRect(4, 6, 8, 5);
+    // Highlight
+    g.fillStyle(0xfca5a5);
+    g.fillRect(5, 6, 2, 2);
+    // Shadow
+    g.fillStyle(darken(0xef4444, 0.25));
+    g.fillRect(9, 9, 2, 2);
+    // Stem
+    g.fillStyle(0x78350f);
+    g.fillRect(7, 3, 1, 3);
+    // Leaf
+    g.fillStyle(0x22c55e);
+    g.fillRect(8, 3, 2, 1);
+    g.fillRect(9, 4, 1, 1);
+    g.generateTexture("pickup_food_apple", S, S);
+    g.destroy();
+  }
+
+  // pickup_food_chicken — Brown drumstick shape + bone end highlight
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    // Meat body
+    g.fillStyle(0xb45309);
+    g.fillRect(4, 5, 6, 5);
+    g.fillRect(3, 6, 8, 3);
+    // Crispy highlight
+    g.fillStyle(0xfbbf24);
+    g.fillRect(4, 6, 3, 2);
+    // Shadow
+    g.fillStyle(darken(0xb45309, 0.3));
+    g.fillRect(8, 8, 2, 2);
+    // Bone end (right side)
+    g.fillStyle(0xf5f5f4);
+    g.fillRect(10, 6, 2, 3);
+    g.fillRect(11, 5, 1, 1);
+    g.fillRect(11, 9, 1, 1);
+    // Bone highlight
+    g.fillStyle(0xffffff);
+    g.fillRect(10, 7, 1, 1);
+    g.generateTexture("pickup_food_chicken", S, S);
+    g.destroy();
+  }
+
+  // pickup_food_cake — Pink rectangle layers + white frosting line + cherry on top
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    // Bottom layer
+    g.fillStyle(0xec4899);
+    g.fillRect(3, 8, 10, 4);
+    // Top layer
+    g.fillStyle(lighten(0xec4899, 0.15));
+    g.fillRect(4, 5, 8, 4);
+    // Frosting line
+    g.fillStyle(0xffffff);
+    g.fillRect(3, 8, 10, 1);
+    g.fillRect(4, 5, 8, 1);
+    // Cherry on top
+    g.fillStyle(0xef4444);
+    g.fillRect(7, 3, 2, 2);
+    g.fillStyle(0xfca5a5);
+    g.fillRect(7, 3, 1, 1);
+    // Plate
+    g.fillStyle(0xd1d5db);
+    g.fillRect(2, 12, 12, 1);
+    g.generateTexture("pickup_food_cake", S, S);
+    g.destroy();
+  }
+}
+
+// --- Bonus items (16x16) ---
+
+function generateBonusSprites(scene: Phaser.Scene): void {
+  const S = 16;
+
+  // pickup_bonus_coin — Gold circle + inner circle + shine highlight
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    // Outer circle
+    g.fillStyle(darken(0xfbbf24, 0.2));
+    g.fillRect(4, 3, 8, 10);
+    g.fillRect(3, 4, 10, 8);
+    // Inner fill
+    g.fillStyle(0xfbbf24);
+    g.fillRect(5, 4, 6, 8);
+    g.fillRect(4, 5, 8, 6);
+    // Inner detail circle
+    g.fillStyle(darken(0xfbbf24, 0.1));
+    g.fillRect(6, 5, 4, 6);
+    g.fillRect(5, 6, 6, 4);
+    // Dollar sign
+    g.fillStyle(lighten(0xfbbf24, 0.3));
+    g.fillRect(7, 5, 2, 1);
+    g.fillRect(6, 6, 1, 1);
+    g.fillRect(7, 7, 2, 1);
+    g.fillRect(9, 8, 1, 1);
+    g.fillRect(7, 9, 2, 1);
+    // Shine
+    g.fillStyle(0xffffff);
+    g.fillRect(5, 4, 1, 1);
+    g.generateTexture("pickup_bonus_coin", S, S);
+    g.destroy();
+  }
+
+  // pickup_bonus_gem — Cyan diamond shape + facet lines + white sparkle
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    // Diamond top half
+    g.fillStyle(0x06b6d4);
+    g.fillRect(6, 3, 4, 2);
+    g.fillRect(5, 5, 6, 2);
+    g.fillRect(4, 7, 8, 1);
+    // Diamond bottom half
+    g.fillStyle(darken(0x06b6d4, 0.15));
+    g.fillRect(5, 8, 6, 2);
+    g.fillRect(6, 10, 4, 2);
+    g.fillRect(7, 12, 2, 1);
+    // Facet lines
+    g.fillStyle(darken(0x06b6d4, 0.3));
+    g.fillRect(8, 5, 1, 7);
+    // Left highlight facet
+    g.fillStyle(lighten(0x06b6d4, 0.3));
+    g.fillRect(5, 5, 2, 3);
+    // Sparkle
+    g.fillStyle(0xffffff);
+    g.fillRect(6, 4, 1, 1);
+    g.fillRect(5, 5, 1, 1);
+    g.generateTexture("pickup_bonus_gem", S, S);
+    g.destroy();
+  }
+
+  // pickup_bonus_medal — Purple circle + gold star center
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    // Ribbon
+    g.fillStyle(0x7c3aed);
+    g.fillRect(5, 2, 2, 3);
+    g.fillRect(9, 2, 2, 3);
+    // Medal body (circle)
+    g.fillStyle(0x9945ff);
+    g.fillRect(4, 5, 8, 7);
+    g.fillRect(5, 4, 6, 9);
+    // Medal highlight
+    g.fillStyle(lighten(0x9945ff, 0.2));
+    g.fillRect(5, 5, 2, 2);
+    // Gold star center
+    g.fillStyle(0xfbbf24);
+    g.fillRect(7, 6, 2, 1);
+    g.fillRect(6, 7, 4, 2);
+    g.fillRect(7, 9, 2, 1);
+    // Star shine
+    g.fillStyle(0xffffff);
+    g.fillRect(7, 7, 1, 1);
+    g.generateTexture("pickup_bonus_medal", S, S);
+    g.destroy();
+  }
+}
+
+// --- Hostage / POW sprites (16x20) ---
+
+function generateHostageSprites(scene: Phaser.Scene): void {
+  const W = 16;
+  const H = 20;
+
+  // hostage_tied — Small figure with arms behind back, rope visible, wearing green shirt
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    const skinColor = 0xffdbac;
+    const shirtColor = 0x4ade80;
+    const pantsColor = 0x374151;
+
+    // Head (6x6 centered)
+    g.fillStyle(skinColor);
+    g.fillRect(5, 0, 6, 6);
+    // Hair
+    g.fillStyle(0x78350f);
+    g.fillRect(5, 0, 6, 2);
+    // Eyes
+    g.fillStyle(0x0a0a0f);
+    g.fillRect(6, 3, 1, 1);
+    g.fillRect(9, 3, 1, 1);
+    // Worried mouth
+    g.fillStyle(darken(skinColor, 0.2));
+    g.fillRect(7, 5, 2, 1);
+
+    // Body (8x6)
+    g.fillStyle(shirtColor);
+    g.fillRect(4, 6, 8, 6);
+    // Arms behind back (visible rope)
+    g.fillStyle(darken(shirtColor, 0.2));
+    g.fillRect(3, 7, 1, 4);
+    g.fillRect(12, 7, 1, 4);
+    // Rope
+    g.fillStyle(0xb45309);
+    g.fillRect(3, 8, 10, 1);
+    g.fillRect(3, 10, 10, 1);
+
+    // Legs
+    g.fillStyle(pantsColor);
+    g.fillRect(5, 12, 3, 5);
+    g.fillRect(9, 12, 3, 5);
+    // Shoes
+    g.fillStyle(0x1f2937);
+    g.fillRect(5, 17, 3, 2);
+    g.fillRect(9, 17, 3, 2);
+
+    g.generateTexture("hostage_tied", W, H);
+    g.destroy();
+  }
+
+  // hostage_freed — Same figure with arms up waving, happy expression
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    const skinColor = 0xffdbac;
+    const shirtColor = 0x4ade80;
+    const pantsColor = 0x374151;
+
+    // Head (6x6 centered)
+    g.fillStyle(skinColor);
+    g.fillRect(5, 2, 6, 6);
+    // Hair
+    g.fillStyle(0x78350f);
+    g.fillRect(5, 2, 6, 2);
+    // Happy eyes
+    g.fillStyle(0x0a0a0f);
+    g.fillRect(6, 5, 1, 1);
+    g.fillRect(9, 5, 1, 1);
+    // Smile
+    g.fillStyle(darken(skinColor, 0.2));
+    g.fillRect(7, 7, 2, 1);
+
+    // Arms up (waving)
+    g.fillStyle(shirtColor);
+    g.fillRect(2, 1, 2, 4); // Left arm up
+    g.fillRect(12, 2, 2, 4); // Right arm up
+    // Hands
+    g.fillStyle(skinColor);
+    g.fillRect(2, 0, 2, 2);
+    g.fillRect(12, 1, 2, 2);
+
+    // Body (8x6)
+    g.fillStyle(shirtColor);
+    g.fillRect(4, 8, 8, 5);
+
+    // Legs
+    g.fillStyle(pantsColor);
+    g.fillRect(5, 13, 3, 4);
+    g.fillRect(9, 13, 3, 4);
+    // Shoes
+    g.fillStyle(0x1f2937);
+    g.fillRect(5, 17, 3, 2);
+    g.fillRect(9, 17, 3, 2);
+
+    g.generateTexture("hostage_freed", W, H);
     g.destroy();
   }
 }

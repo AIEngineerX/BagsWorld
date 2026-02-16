@@ -15,6 +15,12 @@ import {
   GRENADE_RADIUS,
   TILE_SIZE,
   SECTION_THEMES,
+  COMBO_DECAY_MS,
+  COMBO_TIERS,
+  MELEE_RANGE,
+  MELEE_DAMAGE,
+  MELEE_SCORE_MULTIPLIER,
+  MELEE_COOLDOWN,
   type ArcadeCharacter,
   type WeaponType,
   type EnemyType,
@@ -39,6 +45,7 @@ const ANIM_SPEEDS: Record<string, number> = {
   die: 150,
   jump: 200,
   fall: 200,
+  melee: 80,
 };
 const ANIM_FRAMES: Record<string, number> = {
   idle: 6,
@@ -47,6 +54,7 @@ const ANIM_FRAMES: Record<string, number> = {
   fall: 2,
   shoot: 3,
   die: 5,
+  melee: 3,
 };
 
 export class ArcadeGameScene extends Phaser.Scene {
@@ -74,11 +82,21 @@ export class ArcadeGameScene extends Phaser.Scene {
   private activeGrenadeSprites: Phaser.GameObjects.Sprite[] = [];
   private crates!: Phaser.Physics.Arcade.Group;
 
+  private hostages!: Phaser.Physics.Arcade.Group;
+
   private boss?: Phaser.Physics.Arcade.Sprite;
   private bossHP = 0;
   private bossPhase = 1;
   private bossLastFire = 0;
   private bossShootUntil = 0;
+
+  // Melee system
+  private lastMeleeTime = 0;
+  private isMeleeing = false;
+
+  // Combo system
+  private comboCount = 0;
+  private comboTimer = 0;
 
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private keyW!: Phaser.Input.Keyboard.Key;
@@ -140,6 +158,10 @@ export class ArcadeGameScene extends Phaser.Scene {
     this.bossPhase = 1;
     this.bossLastFire = 0;
     this.bossShootUntil = 0;
+    this.lastMeleeTime = 0;
+    this.isMeleeing = false;
+    this.comboCount = 0;
+    this.comboTimer = 0;
 
     this.physics.world.setBounds(0, 0, LEVEL_WIDTH, ARCADE_HEIGHT);
 
@@ -178,6 +200,7 @@ export class ArcadeGameScene extends Phaser.Scene {
     this.pickups = this.physics.add.group({ allowGravity: false });
     this.activeGrenadeSprites = [];
     this.crates = this.physics.add.group();
+    this.hostages = this.physics.add.group({ allowGravity: false });
 
     // Initialize Box2D world for grenade physics
     initBox2DWorld();
@@ -246,6 +269,13 @@ export class ArcadeGameScene extends Phaser.Scene {
       this.bullets,
       this.crates,
       this.onBulletHitCrate as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+      undefined,
+      this
+    );
+    this.physics.add.overlap(
+      this.player,
+      this.hostages,
+      this.onRescueHostage as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
       undefined,
       this
     );
@@ -364,8 +394,19 @@ export class ArcadeGameScene extends Phaser.Scene {
       body.setVelocityY(body.velocity.y * 0.5);
     }
 
-    if (this.keyZ.isDown && time - this.lastFireTime > stats.fireRate) {
-      this.shoot(time);
+    if (this.keyZ.isDown) {
+      // Auto-detect melee: if any enemy is within MELEE_RANGE, melee instead of shoot
+      const meleeTarget = this.findMeleeTarget();
+      if (meleeTarget && time - this.lastMeleeTime > MELEE_COOLDOWN) {
+        this.meleeAttack(time);
+      } else if (!meleeTarget && time - this.lastFireTime > stats.fireRate) {
+        this.shoot(time);
+      }
+    }
+
+    // Combo decay
+    if (this.comboCount > 0 && time - this.comboTimer > COMBO_DECAY_MS) {
+      this.comboCount = 0;
     }
 
     if (Phaser.Input.Keyboard.JustDown(this.keyC) && this.grenades > 0) {
@@ -470,6 +511,8 @@ export class ArcadeGameScene extends Phaser.Scene {
     let state: string;
     if (this.isHurt) {
       state = "hurt";
+    } else if (this.isMeleeing) {
+      state = "melee";
     } else if (!onGround) {
       state = body.velocity.y < 0 ? "jump" : "fall";
     } else if (this.isCrouching) {
@@ -495,6 +538,9 @@ export class ArcadeGameScene extends Phaser.Scene {
     switch (state) {
       case "hurt":
         textureKey = `${id}_hurt`;
+        break;
+      case "melee":
+        textureKey = `${id}_melee_${f}`;
         break;
       case "jump":
         textureKey = this.animFrame === 0 ? `${id}_jump` : `${id}_jump_2`;
@@ -694,8 +740,14 @@ export class ArcadeGameScene extends Phaser.Scene {
         ) {
           this.createExplosion(c.x, c.y);
           spawnDebrisField(this, c.x, c.y, Phaser.Math.Between(5, 8), "crate_chunk");
+          const cx = c.x;
+          const cy = c.y;
           c.destroy();
           this.score += 25;
+          // 60% chance to drop food/bonus
+          if (Math.random() < 0.6) {
+            this.spawnPickupAt(cx, cy - 10, this.randomCrateDrop());
+          }
         }
       });
 
@@ -776,6 +828,8 @@ export class ArcadeGameScene extends Phaser.Scene {
 
   private playerDie(): void {
     this.isDead = true;
+    this.isMeleeing = false;
+    this.comboCount = 0;
     this.animState = "die";
     this.animFrame = 0;
     this.player.setTexture(`${this.character}_die_1`);
@@ -828,6 +882,8 @@ export class ArcadeGameScene extends Phaser.Scene {
     this.hp = this.maxHP;
     this.isDead = false;
     this.isHurt = false;
+    this.isMeleeing = false;
+    this.comboCount = 0;
     this.weapon = "pistol";
     this.ammo = -1;
     this.invincibleUntil = this.time.now + INVINCIBILITY_TIME * 2;
@@ -942,8 +998,12 @@ export class ArcadeGameScene extends Phaser.Scene {
       this.grenades += info.grenades;
     }
 
-    this.score += 50;
-    this.showScorePopup(p.x, p.y, 50);
+    // Score: use scoreBonus if defined (food/bonus items), otherwise default 50
+    const points = info.scoreBonus
+      ? info.scoreBonus * this.getComboMultiplier()
+      : 50;
+    this.score += points;
+    this.showScorePopup(p.x, p.y, points);
     p.destroy();
     this.emitHUD();
   }
@@ -973,12 +1033,34 @@ export class ArcadeGameScene extends Phaser.Scene {
       // Box2D crate debris chunks
       spawnDebrisField(this, c.x, c.y, Phaser.Math.Between(4, 8), "crate_chunk");
       this.showScorePopup(c.x, c.y, 25);
+      const crateX = c.x;
+      const crateY = c.y;
       c.destroy();
       this.score += 25;
+
+      // 60% chance to drop a random food/bonus item
+      if (Math.random() < 0.6) {
+        const dropType = this.randomCrateDrop();
+        this.spawnPickupAt(crateX, crateY - 10, dropType);
+      }
     }
   }
 
-  private damageEnemy(enemy: Phaser.Physics.Arcade.Sprite, damage: number): void {
+  private randomCrateDrop(): PickupType {
+    const roll = Math.random();
+    if (roll < 0.4) return "food_apple";
+    if (roll < 0.65) return "food_chicken";
+    if (roll < 0.8) return "bonus_coin";
+    if (roll < 0.9) return "bonus_gem";
+    if (roll < 0.95) return "food_cake";
+    return "bonus_medal";
+  }
+
+  private damageEnemy(
+    enemy: Phaser.Physics.Arcade.Sprite,
+    damage: number,
+    isMelee = false
+  ): void {
     if ((enemy as any).isDying) return;
 
     (enemy as any).hp = ((enemy as any).hp ?? 1) - damage;
@@ -991,8 +1073,14 @@ export class ArcadeGameScene extends Phaser.Scene {
 
     if ((enemy as any).hp <= 0) {
       const type = (enemy as any).enemyType as EnemyType;
-      this.score += ENEMY_STATS[type].score;
-      this.playEnemyDeath(enemy, type);
+      // Combo: melee kills increment by 2, gun kills by 1
+      this.incrementCombo(isMelee ? 2 : 1);
+      const baseScore = ENEMY_STATS[type].score;
+      const meleeBonus = isMelee ? MELEE_SCORE_MULTIPLIER : 1;
+      const comboMult = this.getComboMultiplier();
+      const awardedScore = baseScore * meleeBonus * comboMult;
+      this.score += awardedScore;
+      this.playEnemyDeath(enemy, type, awardedScore);
       this.emitHUD();
     } else {
       // Non-lethal hit: stagger
@@ -1004,7 +1092,11 @@ export class ArcadeGameScene extends Phaser.Scene {
     }
   }
 
-  private playEnemyDeath(enemy: Phaser.Physics.Arcade.Sprite, type: EnemyType): void {
+  private playEnemyDeath(
+    enemy: Phaser.Physics.Arcade.Sprite,
+    type: EnemyType,
+    awardedScore?: number
+  ): void {
     (enemy as any).isDying = true;
     const body = enemy.body as Phaser.Physics.Arcade.Body;
     body.enable = false;
@@ -1026,7 +1118,7 @@ export class ArcadeGameScene extends Phaser.Scene {
     this.time.delayedCall(300, () => deathSparks.destroy());
 
     // Score popup + explosion
-    this.showScorePopup(enemy.x, enemy.y, ENEMY_STATS[type].score);
+    this.showScorePopup(enemy.x, enemy.y, awardedScore ?? ENEMY_STATS[type].score);
     this.createExplosion(enemy.x, enemy.y);
 
     // Spawn Box2D ragdoll (linked body parts that tumble and settle)
@@ -1036,6 +1128,172 @@ export class ArcadeGameScene extends Phaser.Scene {
     enemy.setVisible(false);
     this.time.delayedCall(200, () => {
       if (enemy.active) enemy.destroy();
+    });
+  }
+
+  // --- Melee System ---
+
+  private findMeleeTarget(): Phaser.Physics.Arcade.Sprite | null {
+    let closest: Phaser.Physics.Arcade.Sprite | null = null;
+    let closestDist = MELEE_RANGE + 1;
+    this.enemies.getChildren().forEach((obj) => {
+      const e = obj as Phaser.Physics.Arcade.Sprite;
+      if (!e.active || (e as any).isDying) return;
+      const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, e.x, e.y);
+      if (dist < MELEE_RANGE && dist < closestDist) {
+        closest = e;
+        closestDist = dist;
+      }
+    });
+    return closest;
+  }
+
+  private meleeAttack(time: number): void {
+    this.lastMeleeTime = time;
+    this.isMeleeing = true;
+    this.animState = "melee";
+    this.animFrame = 0;
+    this.animTimer = 0;
+
+    // Camera micro-shake for melee feedback
+    this.cameras.main.shake(40, 0.006);
+
+    // Find all enemies within melee range and damage them
+    this.enemies.getChildren().forEach((obj) => {
+      const e = obj as Phaser.Physics.Arcade.Sprite;
+      if (!e.active || (e as any).isDying) return;
+      const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, e.x, e.y);
+      if (dist < MELEE_RANGE) {
+        if ((e as any).isBoss) {
+          this.damageBoss(MELEE_DAMAGE, true);
+        } else {
+          this.damageEnemy(e, MELEE_DAMAGE, true);
+        }
+      }
+    });
+
+    // End melee animation after duration
+    this.time.delayedCall(200, () => {
+      this.isMeleeing = false;
+    });
+  }
+
+  // --- Combo System ---
+
+  private getComboMultiplier(): number {
+    return COMBO_TIERS[Math.min(this.comboCount, COMBO_TIERS.length - 1)];
+  }
+
+  private incrementCombo(amount: number): void {
+    const oldMultiplier = this.getComboMultiplier();
+    this.comboCount += amount;
+    this.comboTimer = this.time.now;
+    const newMultiplier = this.getComboMultiplier();
+
+    if (newMultiplier > 1) {
+      const comboText = this.add
+        .text(this.player.x, this.player.y - 25, `x${newMultiplier} COMBO!`, {
+          fontFamily: "monospace",
+          fontSize: "10px",
+          color:
+            newMultiplier >= 8
+              ? "#9945ff"
+              : newMultiplier >= 5
+                ? "#ef4444"
+                : newMultiplier >= 3
+                  ? "#f97316"
+                  : "#fbbf24",
+          stroke: "#000",
+          strokeThickness: 2,
+        })
+        .setOrigin(0.5)
+        .setDepth(26);
+
+      this.tweens.add({
+        targets: comboText,
+        y: comboText.y - 20,
+        alpha: 0,
+        scaleX: 1.4,
+        scaleY: 1.4,
+        duration: 700,
+        onComplete: () => comboText.destroy(),
+      });
+    }
+
+    // Camera micro-shake on multiplier tier change
+    if (newMultiplier > oldMultiplier) {
+      this.cameras.main.shake(60, 0.008);
+    }
+  }
+
+  // --- Hostage Rescue ---
+
+  private onRescueHostage(
+    _player: Phaser.GameObjects.GameObject,
+    hostage: Phaser.GameObjects.GameObject
+  ): void {
+    const h = hostage as Phaser.Physics.Arcade.Sprite;
+    if (!(h as any).isHostage || (h as any).isFreed) return;
+    (h as any).isFreed = true;
+
+    // Disable physics body so no further overlaps fire
+    (h.body as Phaser.Physics.Arcade.Body).enable = false;
+
+    // Swap to freed texture
+    h.setTexture("hostage_freed");
+
+    // Score + combo
+    const rescueScore = 500;
+    this.score += rescueScore;
+    this.showScorePopup(h.x, h.y, rescueScore);
+    this.incrementCombo(1);
+
+    // Freed animation: jump up then run offscreen
+    this.tweens.add({
+      targets: h,
+      y: h.y - 20,
+      duration: 200,
+      yoyo: true,
+      onComplete: () => {
+        this.tweens.add({
+          targets: h,
+          x: h.x + 100,
+          alpha: 0,
+          duration: 600,
+          onComplete: () => h.destroy(),
+        });
+      },
+    });
+
+    // Drop a random reward
+    const rewardRoll = Math.random();
+    let rewardType: PickupType;
+    if (rewardRoll < 0.2) {
+      // 20% bonus item
+      rewardType = Phaser.Math.RND.pick(["bonus_coin", "bonus_gem", "bonus_medal"]) as PickupType;
+    } else if (rewardRoll < 0.5) {
+      // 30% weapon pickup
+      rewardType = Phaser.Math.RND.pick(["spread", "heavy", "grenade"]) as PickupType;
+    } else {
+      // 50% food item
+      rewardType = Phaser.Math.RND.pick(["food_apple", "food_chicken", "food_cake"]) as PickupType;
+    }
+    this.spawnPickupAt(h.x, h.y, rewardType);
+
+    this.emitHUD();
+  }
+
+  private spawnPickupAt(x: number, y: number, type: PickupType): void {
+    const pickup = this.pickups.create(x, y, `pickup_${type}`) as Phaser.Physics.Arcade.Sprite;
+    (pickup as any).pickupType = type;
+    (pickup.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+    // Floating animation
+    this.tweens.add({
+      targets: pickup,
+      y: y - 4,
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
     });
   }
 
@@ -1077,6 +1335,26 @@ export class ArcadeGameScene extends Phaser.Scene {
           targets: pickup,
           y: p.y - 4,
           duration: 800,
+          yoyo: true,
+          repeat: -1,
+        });
+      });
+
+      // Spawn hostages
+      sectionData.hostages.forEach((h) => {
+        const hostage = this.hostages.create(
+          h.x,
+          h.y,
+          "hostage_tied"
+        ) as Phaser.Physics.Arcade.Sprite;
+        (hostage as any).isHostage = true;
+        (hostage as any).isFreed = false;
+        (hostage.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+        // Slight bobbing animation
+        this.tweens.add({
+          targets: hostage,
+          y: h.y - 2,
+          duration: 1000,
           yoyo: true,
           repeat: -1,
         });
@@ -1300,7 +1578,7 @@ export class ArcadeGameScene extends Phaser.Scene {
     });
   }
 
-  private damageBoss(damage: number): void {
+  private damageBoss(damage: number, isMelee = false): void {
     this.bossHP -= damage;
 
     if (this.boss) {
@@ -1332,7 +1610,11 @@ export class ArcadeGameScene extends Phaser.Scene {
     }
 
     if (this.bossHP <= 0) {
-      this.score += ENEMY_STATS.boss.score;
+      this.incrementCombo(isMelee ? 2 : 1);
+      const meleeBonus = isMelee ? MELEE_SCORE_MULTIPLIER : 1;
+      const comboMult = this.getComboMultiplier();
+      const bossScore = ENEMY_STATS.boss.score * meleeBonus * comboMult;
+      this.score += bossScore;
 
       if (this.boss) {
         const bossX = this.boss.x;
@@ -1684,6 +1966,8 @@ export class ArcadeGameScene extends Phaser.Scene {
       bossHP: this.bossHP,
       bossMaxHP: ENEMY_STATS.boss.hp,
       character: this.character,
+      comboCount: this.comboCount,
+      comboMultiplier: this.getComboMultiplier(),
     });
   }
 }
