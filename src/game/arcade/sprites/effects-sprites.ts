@@ -8,6 +8,7 @@ export function generateEffectSprites(scene: Phaser.Scene): void {
   generatePickupSprites(scene);
   generateGrenadeSprite(scene);
   generateParticleTextures(scene);
+  generateCharacterMuzzleSprites(scene);
   generateCrateChunkSprites(scene);
   generateRagdollSprites(scene);
   generateBossRagdollSprites(scene);
@@ -565,6 +566,48 @@ function generateParticleTextures(scene: Phaser.Scene): void {
 }
 
 // --- Crate debris chunks (6x6 each, 4 variants) ---
+
+// --- Character-themed muzzle flash particles ---
+
+function generateCharacterMuzzleSprites(scene: Phaser.Scene): void {
+  // particle_muzzle_ghost (6x6 purple-white)
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(PALETTE.solanaPurple);
+    g.fillRect(1, 0, 4, 6);
+    g.fillRect(0, 1, 6, 4);
+    g.fillStyle(PALETTE.white);
+    g.fillRect(2, 2, 2, 2);
+    g.generateTexture("particle_muzzle_ghost", 6, 6);
+    g.destroy();
+  }
+
+  // particle_muzzle_neo (6x6 green-white)
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(PALETTE.green);
+    g.fillRect(1, 0, 4, 6);
+    g.fillRect(0, 1, 6, 4);
+    g.fillStyle(PALETTE.white);
+    g.fillRect(2, 2, 2, 2);
+    g.generateTexture("particle_muzzle_neo", 6, 6);
+    g.destroy();
+  }
+
+  // particle_muzzle_cj (6x6 gold-white)
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(PALETTE.gold);
+    g.fillRect(1, 0, 4, 6);
+    g.fillRect(0, 1, 6, 4);
+    g.fillStyle(PALETTE.white);
+    g.fillRect(2, 2, 2, 2);
+    g.generateTexture("particle_muzzle_cj", 6, 6);
+    g.destroy();
+  }
+}
+
+// --- Crate debris chunks ---
 
 function generateCrateChunkSprites(scene: Phaser.Scene): void {
   const S = 6;

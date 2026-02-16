@@ -41,7 +41,7 @@ const ANIM_SPEEDS: Record<string, number> = {
   fall: 200,
 };
 const ANIM_FRAMES: Record<string, number> = {
-  idle: 4,
+  idle: 6,
   run: 4,
   jump: 2,
   fall: 2,
@@ -98,6 +98,9 @@ export class ArcadeGameScene extends Phaser.Scene {
   private enemyAnimFrame = 0;
   private lastDustTime = 0;
   private lastVelocityX = 0;
+  private coyoteTimer = 0; // last time player was on ground
+  private jumpBufferTimer = 0; // last time jump was pressed
+  private cameraLookAheadX = 0; // smooth camera look-ahead offset
   private vignetteSprite?: Phaser.GameObjects.Sprite;
   private damageOverlay?: Phaser.GameObjects.Rectangle;
   private lowHPPulseTween?: Phaser.Tweens.Tween;
@@ -128,6 +131,9 @@ export class ArcadeGameScene extends Phaser.Scene {
     this.invincibleUntil = 0;
     this.animState = "idle";
     this.wasOnGround = true;
+    this.coyoteTimer = 0;
+    this.jumpBufferTimer = 0;
+    this.cameraLookAheadX = 0;
     this.spawnedSections.clear();
     this.boss = undefined;
     this.bossHP = 0;
@@ -192,9 +198,9 @@ export class ArcadeGameScene extends Phaser.Scene {
     this.createPlayer();
 
     this.cameras.main.setBounds(0, 0, LEVEL_WIDTH, ARCADE_HEIGHT);
-    this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+    this.cameras.main.startFollow(this.player, true, 0.15, 0.08);
     this.cameras.main.setZoom(1.5);
-    this.cameras.main.setDeadzone(60, 40);
+    this.cameras.main.setDeadzone(40, 20);
 
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.keyW = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W);
@@ -326,11 +332,36 @@ export class ArcadeGameScene extends Phaser.Scene {
       body.setVelocityX(0);
     }
 
-    if (
-      (Phaser.Input.Keyboard.JustDown(this.keyX) || Phaser.Input.Keyboard.JustDown(this.keyW)) &&
-      onGround
-    ) {
+    // Coyote time: track last grounded moment
+    if (onGround) {
+      this.coyoteTimer = time;
+    }
+
+    // Jump buffer: track last jump press
+    if (Phaser.Input.Keyboard.JustDown(this.keyX) || Phaser.Input.Keyboard.JustDown(this.keyW)) {
+      this.jumpBufferTimer = time;
+    }
+
+    // Jump with coyote time (80ms grace) and jump buffer (100ms pre-land)
+    const canJump = onGround || (time - this.coyoteTimer < 80 && body.velocity.y >= 0);
+    const wantsJump =
+      Phaser.Input.Keyboard.JustDown(this.keyX) ||
+      Phaser.Input.Keyboard.JustDown(this.keyW) ||
+      (onGround && time - this.jumpBufferTimer < 100);
+    if (canJump && wantsJump) {
       body.setVelocityY(stats.jumpForce);
+      this.coyoteTimer = 0; // prevent double-jump via coyote
+      this.jumpBufferTimer = 0;
+    }
+
+    // Variable jump height: release button early = shorter jump
+    if (
+      !this.keyX.isDown &&
+      !this.keyW.isDown &&
+      !this.cursors.up.isDown &&
+      body.velocity.y < stats.jumpForce * 0.4
+    ) {
+      body.setVelocityY(body.velocity.y * 0.5);
     }
 
     if (this.keyZ.isDown && time - this.lastFireTime > stats.fireRate) {
@@ -415,6 +446,12 @@ export class ArcadeGameScene extends Phaser.Scene {
 
     this.cleanupBullets();
     stepBox2DWorld(delta);
+
+    // Camera look-ahead: smoothly offset in facing direction
+    const targetLookAhead = this.facing === "right" ? 35 : -35;
+    this.cameraLookAheadX = Phaser.Math.Linear(this.cameraLookAheadX, targetLookAhead, 0.04);
+    this.cameras.main.followOffset.x = this.cameraLookAheadX;
+
     this.emitHUD();
   }
 
@@ -524,9 +561,10 @@ export class ArcadeGameScene extends Phaser.Scene {
       }
     }
 
-    // Muzzle flash particles
+    // Muzzle flash particles (character-themed color)
     const muzzleX = this.player.x + dir * 14;
-    const muzzle = this.add.particles(muzzleX, bulletY, "particle_muzzle", {
+    const muzzleTex = `particle_muzzle_${this.character}`;
+    const muzzle = this.add.particles(muzzleX, bulletY, muzzleTex, {
       speed: { min: 20, max: 60 },
       lifespan: 80,
       scale: { start: 1, end: 0 },
@@ -1249,7 +1287,7 @@ export class ArcadeGameScene extends Phaser.Scene {
         const bulletX = enemy.x + dir * 12;
         const bulletY = enemy.y - (type === "turret" ? 0 : 4);
         const angle = Phaser.Math.Angle.Between(bulletX, bulletY, this.player.x, this.player.y);
-        const speed = type === "heavy" ? 150 : 200;
+        const speed = type === "heavy" ? 220 : 280;
         this.fireEnemyBullet(
           bulletX,
           bulletY,
