@@ -459,16 +459,47 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
   };
 
   const apiRequest = async (action: string, data?: Record<string, unknown>) => {
-    const response = await fetch("/api/sol-incinerator", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, data }),
-    });
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error || `Request failed: ${response.status}`);
+    const maxRetries = 2;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const response = await fetch("/api/sol-incinerator", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, data }),
+      });
+      if (response.status === 429 && attempt < maxRetries) {
+        const retryAfter = response.headers.get("Retry-After");
+        const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : (attempt + 1) * 10000;
+        console.warn(`[Incinerator] API 429, retry ${attempt + 1}/${maxRetries} in ${delay}ms`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        continue;
+      }
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || `Request failed: ${response.status}`);
+      }
+      return response.json();
     }
-    return response.json();
+    throw new Error("Request failed after retries — RPC rate limit persists");
+  };
+
+  /** Retry an async fn on RPC rate-limit errors (code -32429 / "max usage reached") */
+  const withRpcRetry = async <T,>(fn: () => Promise<T>, label: string, retries = 3): Promise<T> => {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        return await fn();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        const isRateLimit = msg.includes("max usage reached") || msg.includes("-32429") || msg.includes("429");
+        if (isRateLimit && attempt < retries) {
+          const delay = Math.pow(2, attempt + 1) * 2000;
+          console.warn(`[Incinerator] ${label} rate limited, retry ${attempt + 1}/${retries} in ${delay}ms`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw new Error(`${label} failed after retries`);
   };
 
   const signAndSend = async (serializedTransaction: string) => {
@@ -487,15 +518,21 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
 
     const transaction = VersionedTransaction.deserialize(buffer);
 
-    // Pre-simulate to catch errors before wallet popup
-    await preSimulateTransaction(connection, transaction);
+    // Pre-simulate with retry — public RPCs often rate-limit simulateTransaction
+    await withRpcRetry(
+      () => preSimulateTransaction(connection, transaction),
+      "Simulate"
+    );
 
     // Use signAndSendTransaction — Phantom's recommended method.
     // Sol Incinerator txs are unsigned (single-signer), so this is safe.
     const signature = await mobileSignAndSend(transaction, { maxRetries: 3 });
 
-    // Wait for confirmation
-    await connection.confirmTransaction(signature, "confirmed");
+    // Wait for confirmation with retry
+    await withRpcRetry(
+      () => connection.confirmTransaction(signature, "confirmed"),
+      "Confirm"
+    );
 
     return { txid: signature };
   };
