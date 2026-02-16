@@ -49,22 +49,22 @@ const DEFAULT_TOKEN_DECIMALS = 6;
 const DEFAULT_CONFIG = {
   enabled: false, // Must be explicitly enabled
   // Position sizing (BagBot uses 1 SOL max)
-  minPositionSol: 0.25, // Meaningful positions
+  minPositionSol: 0.2, // Meaningful positions (lowered for better liquidity fit)
   maxPositionSol: 1.0, // Match BagBot
   maxTotalExposureSol: 3.0, // Allow 3 full positions
   maxOpenPositions: 3, // Conservative position limit
   // Profit taking - BagBot style: partial sell at each tier, trailing stop for rest
   takeProfitTiers: [1.5, 2.0, 3.0], // Take partialSellPercent% at each tier
   partialSellPercent: 33, // Sell 33% of remaining tokens at each take-profit tier
-  trailingStopPercent: 10, // After 2x, trail by 10%
+  trailingStopPercent: 15, // After 2x, trail by 15% — micro-caps retrace 15-20% after spikes
   // Risk management
-  stopLossPercent: 15, // Cut losses at -15% (BagBot uses same)
+  stopLossPercent: 30, // 30% — micro-caps need room for normal volatility (Ghost character uses -30%)
   // Dead position detection
   maxHoldTimeMinutes: 480, // 8 hours - Bags runners need time
   minVolumeToHoldUsd: 500, // Need some volume to keep holding
   deadPositionDecayPercent: 25, // If down 25%+ and stale, consider dead
   // Liquidity requirements - TUNED FOR BAGS.FM (most tokens have $400-$4K liquidity)
-  minLiquidityUsd: 500, // $500 minimum - Bags.fm tokens rarely exceed $5K liquidity
+  minLiquidityUsd: 1200, // $1.2K minimum — aligns with 3% impact cap (0.2 SOL needs ~$1134 liq)
   minMarketCapUsd: 2000, // $2K minimum (runners can start small)
   // Quality filters - aligned with BagBot patterns
   maxCreatorFeeBps: 500, // 5% max (some Bags creators set higher)
@@ -735,11 +735,10 @@ export class GhostTrader {
     const isWin = (position.pnlSol || 0) > 0;
     const pnl = position.pnlSol || 0;
 
-    // Parse entry reasons (comma-separated signals)
-    const signals = position.entryReason.split(",").map((s) => s.trim().toLowerCase());
+    // Parse entry reasons (comma-separated signals), normalize to stable keys
+    const signals = position.entryReason.split(",").map((s) => this.normalizeSignalKey(s)).filter(Boolean);
 
     for (const signal of signals) {
-      if (!signal) continue;
 
       try {
         // Upsert signal performance
@@ -861,6 +860,26 @@ export class GhostTrader {
   }
 
   /**
+   * Normalize a reason string into a stable signal key for learning.
+   * Strips dynamic values (percentages, dollar amounts, SOL amounts, day counts)
+   * so that e.g. "exceptional vol/mcap (200%)" and "exceptional vol/mcap (150%)"
+   * both map to the same signal key: "exceptional vol/mcap".
+   */
+  private normalizeSignalKey(reason: string): string {
+    return reason
+      .toLowerCase()
+      .trim()
+      .replace(/\s*\([^)]*\)\s*/g, "")       // strip parenthetical content: "(200%)", "(2.3 days)"
+      .replace(/\s*\+\d+[\d.]*%/g, "")        // strip "+45%", "+342%"
+      .replace(/\s*-\d+[\d.]*%/g, "")          // strip "-18.3%"
+      .replace(/\s*\$[\d,.]+[km]?/gi, "")      // strip "$500", "$1,234", "$10K"
+      .replace(/\s*[\d.]+\s*sol\b/gi, "")      // strip "0.52 SOL", "5.5 sol"
+      .replace(/\s*\d+min\b/g, "")             // strip "320min"
+      .replace(/\s+/g, " ")                    // collapse multiple spaces
+      .trim();
+  }
+
+  /**
    * Get the learned score adjustment for a set of reasons
    */
   private getLearningAdjustment(reasons: string[]): { adjustment: number; appliedSignals: string[] } {
@@ -868,13 +887,14 @@ export class GhostTrader {
     const appliedSignals: string[] = [];
 
     for (const reason of reasons) {
-      const signal = reason.toLowerCase().trim();
+      const signal = this.normalizeSignalKey(reason);
+      if (!signal) continue;
       const perf = this.signalPerformance.get(signal);
 
       if (perf && perf.scoreAdjustment !== 0) {
         totalAdjustment += perf.scoreAdjustment;
         // Cap cumulative penalties at -15 to prevent learning death spiral
-        // (multiple -10 signals would otherwise make 55 threshold unreachable)
+        // (multiple -10 signals would otherwise make 65 threshold unreachable)
         if (totalAdjustment < -15) totalAdjustment = -15;
         appliedSignals.push(`${signal} (${perf.scoreAdjustment > 0 ? "+" : ""}${perf.scoreAdjustment})`);
       }
@@ -1133,6 +1153,7 @@ export class GhostTrader {
           position.pnlSol = -position.amountSol; // Assume total loss
           position.closedAt = new Date();
           await this.updatePositionInDatabase(position);
+          await this.recordTradeOutcome(position);
         } else {
           await this.updatePositionInDatabase(position);
         }
@@ -1208,8 +1229,8 @@ export class GhostTrader {
       const sortedTiers = [...this.config.takeProfitTiers].sort((a, b) => a - b);
       const nextTierIndex = position.tiersSold || 0;
 
-      if (nextTierIndex < sortedTiers.length - 1) {
-        // Partial exit tiers (e.g., 1.5x, 2.0x)
+      if (nextTierIndex < sortedTiers.length) {
+        // Partial exit tiers (e.g., 1.5x, 2.0x, 3.0x) — trailing stop manages remainder
         const nextTier = sortedTiers[nextTierIndex];
         if (currentMultiplier >= nextTier) {
           console.log(
@@ -1275,7 +1296,7 @@ export class GhostTrader {
    * - Liquidity depth: 0-15 points (execution safety)
    * - Token age/rug risk: 0-15 points (safety)
    * + Bags-specific bonuses: Token CLAIMED, lifetime fees
-   * Total: 100+ points possible, need 80+ to buy (BagBot standard)
+   * Total: 100+ points possible, need 65+ to buy (tuned for Bags.fm micro-caps)
    */
   private async evaluateLaunch(launch: RecentLaunch): Promise<TradeEvaluation> {
     const reasons: string[] = [];
@@ -1664,16 +1685,16 @@ export class GhostTrader {
     }
 
     // === FINAL DECISION ===
-    // Threshold: 55+ to trade (relaxed from 60 for more opportunities)
+    // Threshold: 65+ to trade (raised from 55 — fewer but higher-quality entries)
     // Max base score: ~100 (vol/mcap 25 + buy/sell 25 + momentum 20 + liq 15 + age 15)
     // + bonuses: holders 5 + bags fees 18 + smart money 30 + learning adjustment
-    const shouldBuy = score >= 55 && redFlags.length === 0;
+    const shouldBuy = score >= 65 && redFlags.length === 0;
 
     // Calculate position size based on score (larger for higher conviction)
     const remainingExposure = this.config.maxTotalExposureSol - this.getTotalExposure();
     let suggestedAmount: number;
 
-    // Position sizing based on score (55-120 range)
+    // Position sizing based on score (65-120 range)
     if (score >= 95) {
       suggestedAmount = this.config.maxPositionSol; // Max conviction
     } else if (score >= 80) {
@@ -1681,10 +1702,25 @@ export class GhostTrader {
     } else if (score >= 65) {
       suggestedAmount = (this.config.minPositionSol + this.config.maxPositionSol) / 2; // Medium
     } else {
-      suggestedAmount = this.config.minPositionSol; // Minimum size for borderline (55-65)
+      suggestedAmount = this.config.minPositionSol; // Minimum size for borderline
     }
 
     suggestedAmount = Math.min(suggestedAmount, remainingExposure);
+
+    // Cap position size by maximum acceptable price impact (3%)
+    const maxImpactPercent = 3.0;
+    const maxSolByImpact = (maxImpactPercent / 100) * ((liquidityUsd || 1) / 170);
+    if (maxSolByImpact < this.config.minPositionSol) {
+      // Even minimum position would cause too much impact — reject
+      return {
+        launch, token, score, reasons,
+        redFlags: [...redFlags, `insufficient liquidity for min position (impact: ${((this.config.minPositionSol * 170) / (liquidityUsd || 1) * 100).toFixed(1)}%)`],
+        shouldBuy: false, suggestedAmount: 0, metrics,
+      };
+    } else if (maxSolByImpact < suggestedAmount) {
+      suggestedAmount = maxSolByImpact;
+      reasons.push(`size capped by liquidity (${maxSolByImpact.toFixed(2)} SOL for <3% impact)`);
+    }
 
     // Include vol/mcap in metrics for transparency
     const finalMetrics = {
@@ -1823,6 +1859,7 @@ export class GhostTrader {
         position.pnlSol = -position.amountSol;
         position.closedAt = new Date();
         await this.updatePositionInDatabase(position);
+        await this.recordTradeOutcome(position);
         await this.announceTrade("sell", position);
         return;
       }
@@ -1858,6 +1895,7 @@ export class GhostTrader {
       position.pnlSol = estimatedSolBack - position.amountSol;
       position.closedAt = new Date();
       await this.updatePositionInDatabase(position);
+      await this.recordTradeOutcome(position);
       await this.announceTrade("sell", position);
       return;
     }
@@ -2544,7 +2582,7 @@ export class GhostTrader {
         exit_tx_signature = ${position.exitTxSignature || null},
         status = ${position.status},
         exit_reason = ${position.exitReason || null},
-        pnl_sol = ${position.pnlSol || null},
+        pnl_sol = ${position.pnlSol ?? null},
         closed_at = ${position.closedAt?.toISOString() || null},
         sell_attempts = ${position.sellAttempts || 0},
         no_price_count = ${position.noPriceCount || 0},
