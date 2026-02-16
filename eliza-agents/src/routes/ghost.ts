@@ -54,7 +54,7 @@ function requireAdminKey(req: Request, res: Response, next: NextFunction): void 
 }
 
 // Solana RPC for wallet analysis
-const SOLANA_RPC = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+const SOLANA_RPC = process.env.SOLANA_RPC_URL || "https://rpc.ankr.com/solana";
 
 const router = Router();
 

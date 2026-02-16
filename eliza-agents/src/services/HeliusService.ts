@@ -193,7 +193,7 @@ export class HeliusService {
 
     try {
       // Get recent signatures from public RPC
-      const response = await fetch("https://api.mainnet-beta.solana.com", {
+      const response = await fetch("https://rpc.ankr.com/solana", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

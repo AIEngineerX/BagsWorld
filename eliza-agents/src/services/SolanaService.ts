@@ -100,12 +100,12 @@ export class SolanaService extends Service {
     this.rpcUrl =
       process.env.SOLANA_RPC_URL ||
       process.env.HELIUS_RPC_URL ||
-      "https://api.mainnet-beta.solana.com";
+      "https://rpc.ankr.com/solana";
 
     // Build fallback RPC list — public endpoints for when Helius is rate-limited.
     // These are only used after the primary RPC has been exhausted on retries.
     this.fallbackRpcUrls = [
-      "https://api.mainnet-beta.solana.com",
+      "https://rpc.ankr.com/solana",
       "https://solana-rpc.publicnode.com",
     ].filter((url) => url !== this.rpcUrl); // Don't duplicate the primary
   }
