@@ -142,6 +142,14 @@ export async function POST(request: Request) {
       );
     }
 
+    // Upstream RPC rate limit passed through by Sol Incinerator
+    if (message.includes("max usage reached") || message.includes("429")) {
+      return NextResponse.json(
+        { error: "Sol Incinerator's RPC is temporarily rate-limited. Please wait a moment and try again." },
+        { status: 429, headers: { "Retry-After": "10" } }
+      );
+    }
+
     console.error("[Sol Incinerator API]", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }

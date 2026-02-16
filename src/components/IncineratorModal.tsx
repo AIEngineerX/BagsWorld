@@ -363,7 +363,7 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
         <div className="px-4 pt-3 pb-1">
           <p className="text-green-800 text-[10px] font-pixel">
             SUPPORTS: SPL Tokens &bull; Token-2022 &bull; Metaplex NFTs &bull; pNFTs &bull; Editions
-            &bull; pNFT Editions &bull; MPL Core &bull; Magic Eden OCP
+            &bull; pNFT Editions &bull; MPL Core
           </p>
           <p className="text-green-900/60 text-[9px] font-pixel mt-0.5">
             NOT SUPPORTED: Bubblegum cNFTs &bull; Frozen tokens (must thaw first)

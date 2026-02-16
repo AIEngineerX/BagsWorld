@@ -126,9 +126,18 @@ class SolIncineratorClient {
           let errorMessage = `API error: ${response.status} ${response.statusText}`;
           try {
             const parsed = JSON.parse(errorBody);
-            if (parsed.error) errorMessage = parsed.error;
+            if (parsed.error?.message) errorMessage = parsed.error.message;
+            else if (parsed.error) errorMessage = parsed.error;
           } catch {
             if (errorBody) errorMessage += ` - ${errorBody}`;
+          }
+
+          // Retry on 429 (upstream RPC rate limit) with longer backoff
+          if (response.status === 429 && attempt < maxRetries) {
+            const retryAfter = response.headers.get("Retry-After");
+            const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : Math.pow(2, attempt + 1) * 2000;
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            continue;
           }
 
           if (response.status >= 500 && attempt < maxRetries) {
