@@ -84,9 +84,6 @@ const DEFAULT_CONFIG = {
   // Bags-specific signals
   requireTokenClaimed: false, // Not required - many good tokens don't have claims yet
   minLifetimeFeesSol: 0.0, // Don't require fees (volume is better indicator)
-  // Volume/MCap ratio - used in SCORING, not as hard filter
-  // GAS token had 200% vol/mcap at peak, healthy tokens have 30-80%
-  minVolumeMcapRatio: 0.0, // DISABLED as hard filter - incorporated into scoring instead
   // Bundle/concentration detection
   maxTop5ConcentrationPct: 80, // Hard reject: top 5 wallets hold > 80%
   maxSingleHolderPct: 50, // Hard reject: single wallet holds > 50%
@@ -94,6 +91,17 @@ const DEFAULT_CONFIG = {
   burnEnabled: false, // Must be explicitly enabled via GHOST_BURN_ENABLED
   burnPercent: DEFAULT_BURN_PERCENT,
 };
+
+// Env var → config key mapping for DRY loading and override detection
+const ENV_CONFIG_MAP: Array<{ env: string; key: keyof GhostTraderConfig; parse: (v: string) => unknown }> = [
+  { env: "GHOST_MAX_POSITION_SOL", key: "maxPositionSol", parse: parseFloat },
+  { env: "GHOST_MAX_TOTAL_EXPOSURE", key: "maxTotalExposureSol", parse: parseFloat },
+  { env: "GHOST_MAX_POSITIONS", key: "maxOpenPositions", parse: (v) => parseInt(v) },
+  { env: "GHOST_STOP_LOSS_PERCENT", key: "stopLossPercent", parse: parseFloat },
+  { env: "GHOST_TRAILING_STOP_PERCENT", key: "trailingStopPercent", parse: parseFloat },
+  { env: "GHOST_PARTIAL_SELL_PERCENT", key: "partialSellPercent", parse: parseFloat },
+  { env: "GHOST_BURN_PERCENT", key: "burnPercent", parse: (v) => parseInt(v) },
+];
 
 // Top trader wallets to study (from Kolscan & GMGN leaderboards)
 // Prioritized: Owner wallet first, then verified profitable traders
@@ -237,7 +245,6 @@ export interface GhostTraderConfig {
   minHolders: number;
   minVolume24hUsd: number;
   maxPriceImpactPercent: number;
-  minVolumeMcapRatio: number; // Set to 0 to disable hard filter (used in scoring instead)
   // Timing
   minLaunchAgeSec: number;
   maxLaunchAgeSec: number;
@@ -328,42 +335,17 @@ export class GhostTrader {
     this.ghostWalletPrivateKey = process.env.GHOST_WALLET_PRIVATE_KEY || null;
     this.ghostWalletPublicKey = process.env.GHOST_WALLET_PUBLIC_KEY || null;
 
-    // Load config from environment
-    if (envBool("GHOST_TRADING_ENABLED")) {
-      this.config.enabled = true;
-    }
-    if (process.env.GHOST_MAX_POSITION_SOL) {
-      this.config.maxPositionSol = parseFloat(process.env.GHOST_MAX_POSITION_SOL);
-    }
-    if (process.env.GHOST_MAX_TOTAL_EXPOSURE) {
-      this.config.maxTotalExposureSol = parseFloat(process.env.GHOST_MAX_TOTAL_EXPOSURE);
-    }
-    if (process.env.GHOST_MAX_POSITIONS) {
-      this.config.maxOpenPositions = parseInt(process.env.GHOST_MAX_POSITIONS);
-    }
-    // Risk management config
-    if (process.env.GHOST_STOP_LOSS_PERCENT) {
-      this.config.stopLossPercent = parseFloat(process.env.GHOST_STOP_LOSS_PERCENT);
-    }
-    if (process.env.GHOST_TRAILING_STOP_PERCENT) {
-      this.config.trailingStopPercent = parseFloat(process.env.GHOST_TRAILING_STOP_PERCENT);
-    }
+    // Load config from environment (table-driven for numeric/int values)
+    if (envBool("GHOST_TRADING_ENABLED")) this.config.enabled = true;
+    if (envBool("GHOST_BURN_ENABLED")) this.config.burnEnabled = true;
     if (process.env.GHOST_TAKE_PROFIT_TIERS) {
-      // Comma-separated: "1.5,2.0,3.0"
       this.config.takeProfitTiers = process.env.GHOST_TAKE_PROFIT_TIERS
-        .split(",")
-        .map((s) => parseFloat(s.trim()))
-        .filter((n) => !isNaN(n));
+        .split(",").map((s) => parseFloat(s.trim())).filter((n) => !isNaN(n));
     }
-    if (process.env.GHOST_PARTIAL_SELL_PERCENT) {
-      this.config.partialSellPercent = parseFloat(process.env.GHOST_PARTIAL_SELL_PERCENT);
-    }
-    // Buy & burn config
-    if (envBool("GHOST_BURN_ENABLED")) {
-      this.config.burnEnabled = true;
-    }
-    if (process.env.GHOST_BURN_PERCENT) {
-      this.config.burnPercent = parseInt(process.env.GHOST_BURN_PERCENT);
+    for (const { env, key, parse } of ENV_CONFIG_MAP) {
+      const val = process.env[env];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (val) (this.config as any)[key] = parse(val);
     }
   }
 
@@ -542,16 +524,13 @@ export class GhostTrader {
     // Priority: defaults → DB persisted → env vars (env wins, set in constructor before this)
     // Since env vars are already applied in constructor, we only apply DB values for keys
     // that DON'T have env var overrides (env vars take precedence).
+    // Build set of config keys overridden by env vars (env takes precedence over DB)
     const envOverriddenKeys = new Set<string>();
-    if (process.env.GHOST_MAX_POSITION_SOL) envOverriddenKeys.add("config_maxPositionSol");
-    if (process.env.GHOST_MAX_TOTAL_EXPOSURE) envOverriddenKeys.add("config_maxTotalExposureSol");
-    if (process.env.GHOST_MAX_POSITIONS) envOverriddenKeys.add("config_maxOpenPositions");
-    if (process.env.GHOST_STOP_LOSS_PERCENT) envOverriddenKeys.add("config_stopLossPercent");
-    if (process.env.GHOST_TRAILING_STOP_PERCENT) envOverriddenKeys.add("config_trailingStopPercent");
+    for (const { env, key } of ENV_CONFIG_MAP) {
+      if (process.env[env]) envOverriddenKeys.add(`config_${key}`);
+    }
     if (process.env.GHOST_TAKE_PROFIT_TIERS) envOverriddenKeys.add("config_takeProfitTiers");
-    if (process.env.GHOST_PARTIAL_SELL_PERCENT) envOverriddenKeys.add("config_partialSellPercent");
     if (process.env.GHOST_BURN_ENABLED) envOverriddenKeys.add("config_burnEnabled");
-    if (process.env.GHOST_BURN_PERCENT) envOverriddenKeys.add("config_burnPercent");
 
     const allConfigRows = (await this.db`
       SELECT key, value FROM ghost_config WHERE key LIKE 'config_%'
@@ -680,16 +659,7 @@ export class GhostTrader {
         const winRate = row.total_trades > 0 ? row.winning_trades / row.total_trades : 0;
         const avgPnl = row.total_trades > 0 ? totalPnl / row.total_trades : 0;
 
-        // Calculate score adjustment based on performance
-        // Good signals get bonus, bad signals get penalty
-        let scoreAdjustment = 0;
-        if (row.total_trades >= 3) {
-          // Need at least 3 trades to learn from
-          if (winRate >= 0.7) scoreAdjustment = 10; // 70%+ win rate = +10 score
-          else if (winRate >= 0.5) scoreAdjustment = 5; // 50%+ win rate = +5 score
-          else if (winRate <= 0.3) scoreAdjustment = -10; // 30% or less = -10 score
-          else if (winRate <= 0.4) scoreAdjustment = -5; // 40% or less = -5 score
-        }
+        const scoreAdjustment = GhostTrader.calcScoreAdjustment(winRate, row.total_trades);
 
         this.signalPerformance.set(row.signal, {
           signal: row.signal,
@@ -737,14 +707,13 @@ export class GhostTrader {
   private async recordTradeOutcome(position: GhostPosition): Promise<void> {
     if (!this.db || !position.entryReason) return;
 
-    const isWin = (position.pnlSol || 0) > 0;
-    const pnl = position.pnlSol || 0;
+    const isWin = (position.pnlSol ?? 0) > 0;
+    const pnl = position.pnlSol ?? 0;
 
     // Parse entry reasons (comma-separated signals), normalize to stable keys
     const signals = position.entryReason.split(",").map((s) => this.normalizeSignalKey(s)).filter(Boolean);
 
     for (const signal of signals) {
-
       try {
         // Upsert signal performance
         await this.db`
@@ -777,14 +746,7 @@ export class GhostTrader {
         existing.avgPnlSol = existing.totalPnlSol / existing.totalTrades;
         existing.winRate = existing.winningTrades / existing.totalTrades;
 
-        // Recalculate score adjustment
-        if (existing.totalTrades >= 3) {
-          if (existing.winRate >= 0.7) existing.scoreAdjustment = 10;
-          else if (existing.winRate >= 0.5) existing.scoreAdjustment = 5;
-          else if (existing.winRate <= 0.3) existing.scoreAdjustment = -10;
-          else if (existing.winRate <= 0.4) existing.scoreAdjustment = -5;
-          else existing.scoreAdjustment = 0;
-        }
+        existing.scoreAdjustment = GhostTrader.calcScoreAdjustment(existing.winRate, existing.totalTrades);
 
         this.signalPerformance.set(signal, existing);
       } catch (error) {
@@ -862,6 +824,18 @@ export class GhostTrader {
       .catch((err: Error) =>
         console.warn("[GhostTrader] Memory write failed:", err.message)
       );
+  }
+
+  /**
+   * Calculate score adjustment from win rate. Requires 3+ trades minimum.
+   */
+  private static calcScoreAdjustment(winRate: number, totalTrades: number): number {
+    if (totalTrades < 3) return 0;
+    if (winRate >= 0.7) return 10;
+    if (winRate >= 0.5) return 5;
+    if (winRate <= 0.3) return -10;
+    if (winRate <= 0.4) return -5;
+    return 0;
   }
 
   /**
@@ -2145,7 +2119,7 @@ export class GhostTrader {
     position.tiersSold = tierIndex + 1;
 
     // Accumulate P&L from partial exits
-    position.pnlSol = (position.pnlSol || 0) + partialPnl;
+    position.pnlSol = (position.pnlSol ?? 0) + partialPnl;
 
     // Position stays open
     await this.updatePositionInDatabase(position);
@@ -2492,7 +2466,7 @@ export class GhostTrader {
       speechMessage = `aping into $${position.tokenSymbol}`;
       emotion = "excited";
     } else {
-      const pnl = position.pnlSol || 0;
+      const pnl = position.pnlSol ?? 0;
       const pnlSign = pnl >= 0 ? "+" : "";
       const pnlStr = `${pnlSign}${pnl.toFixed(4)} SOL`;
       const pnlPct = position.amountSol > 0
@@ -2521,7 +2495,7 @@ export class GhostTrader {
       this.worldSync.sendSpeak("ghost", speechMessage, emotion);
 
       // Update Ghost's activity status
-      const activityEmoji = type === "buy" ? "📈" : (position.pnlSol || 0) >= 0 ? "💰" : "📉";
+      const activityEmoji = type === "buy" ? "📈" : (position.pnlSol ?? 0) >= 0 ? "💰" : "📉";
       const activityDesc =
         type === "buy"
           ? `trading $${position.tokenSymbol}`
@@ -2574,7 +2548,7 @@ export class GhostTrader {
         tokenName: position.tokenName,
         tokenMint: position.tokenMint,
         amountSol: position.amountSol,
-        pnlSol: position.pnlSol || 0,
+        pnlSol: position.pnlSol ?? 0,
         exitReason: position.exitReason,
         holdTimeMinutes,
       };
