@@ -61,6 +61,7 @@
     "lightweight-charts": "^5.1.0",
     "next": "^16.1.4",
     "phaser": "^3.80.0",
+    "phaser-box2d": "^1.1.0",
     "postprocessing": "^6.38.2",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",

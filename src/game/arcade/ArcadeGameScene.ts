@@ -21,6 +21,13 @@ import {
   type PickupType,
 } from "./types";
 import { getGroundPlatforms, getSectionData, type EnemySpawn } from "./level-data";
+import {
+  initBox2DWorld,
+  spawnGrenade,
+  stepBox2DWorld,
+  destroyGrenade,
+  destroyAllBodies,
+} from "./box2d-effects";
 
 const ANIM_SPEEDS: Record<string, number> = {
   idle: 200,
@@ -61,7 +68,7 @@ export class ArcadeGameScene extends Phaser.Scene {
   private enemyBullets!: Phaser.Physics.Arcade.Group;
   private enemies!: Phaser.Physics.Arcade.Group;
   private pickups!: Phaser.Physics.Arcade.Group;
-  private grenadeGroup!: Phaser.Physics.Arcade.Group;
+  private activeGrenadeSprites: Phaser.GameObjects.Sprite[] = [];
   private crates!: Phaser.Physics.Arcade.Group;
 
   private boss?: Phaser.Physics.Arcade.Sprite;
@@ -160,8 +167,12 @@ export class ArcadeGameScene extends Phaser.Scene {
     });
     this.enemies = this.physics.add.group();
     this.pickups = this.physics.add.group({ allowGravity: false });
-    this.grenadeGroup = this.physics.add.group();
+    this.activeGrenadeSprites = [];
     this.crates = this.physics.add.group();
+
+    // Initialize Box2D world for grenade physics
+    initBox2DWorld();
+    this.events.on("shutdown", () => destroyAllBodies());
 
     for (const gp of getGroundPlatforms()) {
       for (let i = 0; i < gp.width; i++) {
@@ -229,14 +240,6 @@ export class ArcadeGameScene extends Phaser.Scene {
       undefined,
       this
     );
-    this.physics.add.overlap(
-      this.grenadeGroup,
-      this.crates,
-      this.onGrenadeHitCrate as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
-      undefined,
-      this
-    );
-
     this.enemyAnimTimer = 0;
     this.enemyAnimFrame = 0;
 
@@ -408,6 +411,7 @@ export class ArcadeGameScene extends Phaser.Scene {
     }
 
     this.cleanupBullets();
+    stepBox2DWorld(delta);
     this.emitHUD();
   }
 
@@ -597,13 +601,14 @@ export class ArcadeGameScene extends Phaser.Scene {
   private throwGrenade(): void {
     this.grenades--;
     const dir = this.facing === "right" ? 1 : -1;
-    const grenade = this.grenadeGroup.create(
+    const grenade = spawnGrenade(
+      this,
       this.player.x + dir * 10,
       this.player.y - 10,
-      "grenade"
-    ) as Phaser.Physics.Arcade.Sprite;
-    (grenade.body as Phaser.Physics.Arcade.Body).setVelocity(dir * 200, -200);
-    grenade.setBounce(0.3);
+      dir * 200,
+      -200,
+    );
+    this.activeGrenadeSprites.push(grenade);
 
     // Explode after 1.5 seconds
     this.time.delayedCall(1500, () => {
@@ -624,6 +629,7 @@ export class ArcadeGameScene extends Phaser.Scene {
       fire.explode(6);
       this.time.delayedCall(500, () => fire.destroy());
 
+      // Damage enemies within blast radius
       this.enemies.getChildren().forEach((obj) => {
         const e = obj as Phaser.Physics.Arcade.Sprite;
         if (
@@ -638,7 +644,23 @@ export class ArcadeGameScene extends Phaser.Scene {
         }
       });
 
-      grenade.destroy();
+      // Destroy crates within blast radius
+      this.crates.getChildren().forEach((obj) => {
+        const c = obj as Phaser.Physics.Arcade.Sprite;
+        if (
+          c.active &&
+          Phaser.Math.Distance.Between(grenade.x, grenade.y, c.x, c.y) < GRENADE_RADIUS
+        ) {
+          this.createExplosion(c.x, c.y);
+          c.destroy();
+          this.score += 25;
+        }
+      });
+
+      // Clean up Box2D body and sprite
+      destroyGrenade(grenade);
+      const idx = this.activeGrenadeSprites.indexOf(grenade);
+      if (idx !== -1) this.activeGrenadeSprites.splice(idx, 1);
     });
   }
 
@@ -910,16 +932,6 @@ export class ArcadeGameScene extends Phaser.Scene {
       c.destroy();
       this.score += 25;
     }
-  }
-
-  private onGrenadeHitCrate(
-    _grenade: Phaser.GameObjects.GameObject,
-    crate: Phaser.GameObjects.GameObject
-  ): void {
-    const c = crate as Phaser.Physics.Arcade.Sprite;
-    this.createExplosion(c.x, c.y);
-    c.destroy();
-    this.score += 25;
   }
 
   private damageEnemy(enemy: Phaser.Physics.Arcade.Sprite, damage: number): void {
