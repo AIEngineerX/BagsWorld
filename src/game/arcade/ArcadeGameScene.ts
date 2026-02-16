@@ -26,6 +26,7 @@ import {
   spawnGrenade,
   spawnDebrisField,
   spawnRagdoll,
+  spawnShockwave,
   stepBox2DWorld,
   destroyGrenade,
   destroyAllBodies,
@@ -1296,6 +1297,9 @@ export class ArcadeGameScene extends Phaser.Scene {
       this.score += ENEMY_STATS.boss.score;
 
       if (this.boss) {
+        const bossX = this.boss.x;
+        const bossY = this.boss.y;
+
         // Boss death: massive shake + white flash + slow-mo
         this.cameras.main.shake(500, 0.06);
         this.cameras.main.flash(400, 255, 255, 255);
@@ -1304,17 +1308,28 @@ export class ArcadeGameScene extends Phaser.Scene {
           this.time.timeScale = 1;
         });
 
-        // Multi-explosion death sequence
+        // Multi-explosion death sequence — each spawns debris + shockwave
         for (let i = 0; i < 5; i++) {
           this.time.delayedCall(i * 200, () => {
             if (this.boss) {
-              this.createExplosion(
-                this.boss.x + Phaser.Math.Between(-30, 30),
-                this.boss.y + Phaser.Math.Between(-30, 30)
-              );
+              const ex = this.boss.x + Phaser.Math.Between(-30, 30);
+              const ey = this.boss.y + Phaser.Math.Between(-30, 30);
+              this.createExplosion(ex, ey);
+              spawnDebrisField(this, ex, ey, Phaser.Math.Between(3, 6), "crate_chunk");
+              spawnShockwave(ex, ey, 120, 3);
             }
           });
         }
+
+        // Spawn boss ragdoll and hide original sprite
+        this.time.delayedCall(800, () => {
+          if (this.boss) {
+            const hitDir = this.player.x < bossX ? 1 : -1;
+            spawnRagdoll(this, bossX, bossY, "boss", hitDir);
+            this.boss.setVisible(false);
+          }
+        });
+
         this.time.delayedCall(1000, () => {
           if (this.boss) this.boss.destroy();
           this.gameOver(true);

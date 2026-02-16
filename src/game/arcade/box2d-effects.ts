@@ -17,6 +17,8 @@ import {
   b2DestroyBody,
   b2Body_SetLinearVelocity,
   b2Body_ApplyAngularImpulse,
+  b2Body_ApplyLinearImpulseToCenter,
+  b2Body_GetPosition,
   b2CreateCircleShape,
   b2CreatePolygonShape,
   b2CreateRevoluteJoint,
@@ -376,9 +378,9 @@ export function spawnRagdoll(
     return;
   }
 
-  // Boss ragdoll handled in Phase 4 — for now, debris
+  // Boss: large ragdoll (8 segments — torso, head, 2 arms, 2 legs, 2 armor plates)
   if (type === "boss") {
-    spawnDebrisField(scene, x, y, Phaser.Math.Between(6, 10), "crate_chunk");
+    spawnBossRagdoll(scene, x, y, hitDir);
     return;
   }
 
@@ -463,6 +465,146 @@ function destroyRagdollEntry(entry: RagdollEntry): void {
   }
   for (const sprite of entry.sprites) {
     if (sprite.active) sprite.destroy();
+  }
+}
+
+/**
+ * Spawn a large boss ragdoll with 8 segments:
+ * hull, turret, cannon, 2 treads, 2 armor plates, + bonus debris.
+ */
+function spawnBossRagdoll(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  hitDir: number,
+): void {
+  // Boss parts: [texture, halfW, halfH, offsetX, offsetY]
+  const bossParts: Array<{
+    tex: string; hw: number; hh: number; ox: number; oy: number;
+    parentIdx: number; parentAnchor: { x: number; y: number };
+    selfAnchor: { x: number; y: number };
+    limits: [number, number];
+  }> = [
+    // turret → hull top
+    { tex: "boss_turret", hw: 8, hh: 5, ox: 0, oy: -12,
+      parentIdx: 0, parentAnchor: { x: 0, y: -8 }, selfAnchor: { x: 0, y: 5 },
+      limits: [-0.4, 0.4] },
+    // cannon → turret right
+    { tex: "boss_cannon", hw: 6, hh: 2, ox: 16, oy: -12,
+      parentIdx: 0, parentAnchor: { x: 12, y: -6 }, selfAnchor: { x: -6, y: 0 },
+      limits: [-0.3, 0.3] },
+    // left tread → hull bottom-left
+    { tex: "boss_tread", hw: 10, hh: 4, ox: -6, oy: 12,
+      parentIdx: 0, parentAnchor: { x: -6, y: 8 }, selfAnchor: { x: 0, y: -4 },
+      limits: [-0.2, 0.2] },
+    // right tread → hull bottom-right
+    { tex: "boss_tread", hw: 10, hh: 4, ox: 6, oy: 12,
+      parentIdx: 0, parentAnchor: { x: 6, y: 8 }, selfAnchor: { x: 0, y: -4 },
+      limits: [-0.2, 0.2] },
+    // left armor plate → hull left
+    { tex: "boss_armor_plate", hw: 5, hh: 4, ox: -16, oy: -2,
+      parentIdx: 0, parentAnchor: { x: -12, y: 0 }, selfAnchor: { x: 5, y: 0 },
+      limits: [-0.8, 0.8] },
+    // right armor plate → hull right
+    { tex: "boss_armor_plate", hw: 5, hh: 4, ox: 16, oy: -2,
+      parentIdx: 0, parentAnchor: { x: 12, y: 0 }, selfAnchor: { x: -5, y: 0 },
+      limits: [-0.8, 0.8] },
+  ];
+
+  // Create hull (root body) — larger and heavier
+  const hull = createRagdollPart(scene, x, y, 12, 8, "boss_hull", 5.0);
+
+  // Strong hit impulse for the boss
+  const impulseX = hitDir * (3 + Math.random() * 2);
+  const impulseY = -(1.5 + Math.random() * 1.5);
+  b2Body_SetLinearVelocity(hull.bodyId, new b2Vec2(impulseX, impulseY));
+  b2Body_ApplyAngularImpulse(hull.bodyId, hitDir * (3 + Math.random() * 4), true);
+
+  const sprites: Phaser.GameObjects.Sprite[] = [hull.sprite];
+  const bodyIds: unknown[] = [hull.bodyId];
+  const jointIds: unknown[] = [];
+
+  for (const part of bossParts) {
+    const partX = x + part.ox;
+    const partY = y + part.oy;
+    const limb = createRagdollPart(scene, partX, partY, part.hw, part.hh, part.tex, 3.0);
+
+    b2Body_SetLinearVelocity(limb.bodyId, new b2Vec2(
+      impulseX * 0.4 + (Math.random() - 0.5) * 3,
+      impulseY * 0.4 + (Math.random() - 0.5) * 3,
+    ));
+    b2Body_ApplyAngularImpulse(limb.bodyId, (Math.random() - 0.5) * 6, true);
+
+    const parentBodyId = bodyIds[part.parentIdx];
+    const jointDef = b2DefaultRevoluteJointDef();
+    jointDef.bodyIdA = parentBodyId;
+    jointDef.bodyIdB = limb.bodyId;
+    jointDef.localAnchorA = new b2Vec2(pxm(part.parentAnchor.x), -pxm(part.parentAnchor.y));
+    jointDef.localAnchorB = new b2Vec2(pxm(part.selfAnchor.x), -pxm(part.selfAnchor.y));
+    jointDef.enableLimit = true;
+    jointDef.lowerAngle = part.limits[0];
+    jointDef.upperAngle = part.limits[1];
+    jointDef.collideConnected = false;
+
+    const jointId = b2CreateRevoluteJoint(worldId, jointDef);
+    jointIds.push(jointId);
+
+    sprites.push(limb.sprite);
+    bodyIds.push(limb.bodyId);
+  }
+
+  const entry: RagdollEntry = { sprites, bodyIds, jointIds };
+  activeRagdolls.push(entry);
+
+  // Fade out near end of TTL
+  scene.tweens.add({
+    targets: sprites,
+    alpha: 0,
+    delay: RAGDOLL_TTL - 500,
+    duration: 500,
+    onComplete: () => destroyRagdollEntry(entry),
+  });
+}
+
+/**
+ * Apply an outward impulse to all active Box2D bodies within a pixel radius
+ * of the given screen position. Creates a shockwave/explosion push effect.
+ */
+export function spawnShockwave(
+  x: number,
+  y: number,
+  radiusPx: number,
+  forceMagnitude: number,
+): void {
+  if (!worldId) return;
+
+  const centerX = pxm(x);
+  const centerY = -pxm(y); // Box2D Y-up
+  const radiusM = pxm(radiusPx);
+  const radiusSq = radiusM * radiusM;
+
+  // Collect all active body IDs
+  const allBodies: unknown[] = [];
+  for (const g of activeGrenades) allBodies.push(g.bodyId);
+  for (const d of activeDebris) allBodies.push(d.bodyId);
+  for (const r of activeRagdolls) {
+    for (const b of r.bodyIds) allBodies.push(b);
+  }
+
+  for (const bodyId of allBodies) {
+    const pos = b2Body_GetPosition(bodyId);
+    const dx = pos.x - centerX;
+    const dy = pos.y - centerY;
+    const distSq = dx * dx + dy * dy;
+
+    if (distSq > 0.001 && distSq < radiusSq) {
+      const dist = Math.sqrt(distSq);
+      // Impulse falls off linearly with distance
+      const falloff = 1 - dist / radiusM;
+      const mag = forceMagnitude * falloff;
+      const impulse = new b2Vec2((dx / dist) * mag, (dy / dist) * mag);
+      b2Body_ApplyLinearImpulseToCenter(bodyId, impulse, true);
+    }
   }
 }
 
