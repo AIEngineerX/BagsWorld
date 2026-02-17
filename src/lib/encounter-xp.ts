@@ -44,7 +44,11 @@ export function saveProgress(progress: PlayerProgress): void {
   }
 }
 
-export function addXp(amount: number): { progress: PlayerProgress; leveledUp: boolean; newLevel: number } {
+export function addXp(amount: number): {
+  progress: PlayerProgress;
+  leveledUp: boolean;
+  newLevel: number;
+} {
   const progress = loadProgress();
   progress.xp += amount;
 
@@ -66,7 +70,9 @@ export function addXp(amount: number): { progress: PlayerProgress; leveledUp: bo
   saveProgress(progress);
 
   // Dispatch event for HUD updates
-  window.dispatchEvent(new CustomEvent("bagsworld-xp-changed", { detail: { progress, leveledUp, newLevel } }));
+  window.dispatchEvent(
+    new CustomEvent("bagsworld-xp-changed", { detail: { progress, leveledUp, newLevel } })
+  );
 
   return { progress, leveledUp, newLevel };
 }

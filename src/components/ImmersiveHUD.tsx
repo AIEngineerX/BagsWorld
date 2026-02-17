@@ -92,7 +92,9 @@ export function ImmersiveHUD({ visible, worldHealth }: ImmersiveHUDProps) {
             {ZONES[currentZone]?.name?.toUpperCase() ?? currentZone.toUpperCase()}
           </span>
           <span className="text-gray-500">|</span>
-          <span className={`font-pixel text-[10px] ${healthColor}`}>{Math.round(worldHealth)}%</span>
+          <span className={`font-pixel text-[10px] ${healthColor}`}>
+            {Math.round(worldHealth)}%
+          </span>
           <span className="text-gray-500">|</span>
           <span className="font-pixel text-[10px] text-bags-gold">LV{playerLevel}</span>
           <div className="w-12 h-1.5 bg-gray-700 border border-gray-600 overflow-hidden">

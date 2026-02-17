@@ -38,7 +38,7 @@ function calculateMoveDamage(
   moveType: MoveType,
   attackerType: string,
   defenderType: string,
-  isBurned: boolean,
+  isBurned: boolean
 ): { damage: number; effectiveness: number; stab: boolean } {
   if (power <= 0) return { damage: 0, effectiveness: 1, stab: false };
 
@@ -46,7 +46,7 @@ function calculateMoveDamage(
   if (isBurned) effectiveAtk *= 0.5; // Burn halves physical attack
   const effectiveDef = Math.max(1, defenderDef * getStatMultiplier(defenderDefStage));
 
-  const baseDamage = ((2 * level / 5 + 2) * power * (effectiveAtk / effectiveDef)) / 50 + 2;
+  const baseDamage = (((2 * level) / 5 + 2) * power * (effectiveAtk / effectiveDef)) / 50 + 2;
   const randomFactor = 0.85 + Math.random() * 0.15;
 
   const stab = getStabMultiplier(moveType, attackerType);
@@ -60,7 +60,7 @@ function calculateMoveDamage(
 // Speed-based turn order (Crystal: faster Pokemon goes first, ties broken randomly)
 function doesCreatureGoFirst(
   state: EncounterState,
-  playerMove: Move | null, // null = defend/flee
+  playerMove: Move | null // null = defend/flee
 ): boolean {
   // Priority moves always go first regardless of speed
   if (playerMove?.effect === "priority") return false; // Player always first
@@ -73,7 +73,10 @@ function doesCreatureGoFirst(
   return Math.random() < 0.5; // Speed tie: 50/50
 }
 
-export function createEncounter(creature: Creature, playerStats: PlayerBattleStats): EncounterState {
+export function createEncounter(
+  creature: Creature,
+  playerStats: PlayerBattleStats
+): EncounterState {
   return {
     phase: "intro",
     creature,
@@ -87,9 +90,7 @@ export function createEncounter(creature: Creature, playerStats: PlayerBattleSta
     creatureDefending: false,
     playerStatus: null,
     creatureStatus: null,
-    battleLog: [
-      logEntry(`Wild ${creature.name} appeared!`, "info"),
-    ],
+    battleLog: [logEntry(`Wild ${creature.name} appeared!`, "info")],
     result: null,
     xpGained: 0,
   };
@@ -100,7 +101,9 @@ function applyBurnDamage(next: EncounterState): void {
   if (next.creatureStatus === "burn") {
     const burnDmg = Math.max(1, Math.floor(next.creature.stats.maxHp / 16));
     next.creatureHp = Math.max(0, next.creatureHp - burnDmg);
-    next.battleLog.push(logEntry(`${next.creature.name} is hurt by its burn!`, "status_damage", burnDmg));
+    next.battleLog.push(
+      logEntry(`${next.creature.name} is hurt by its burn!`, "status_damage", burnDmg)
+    );
     if (next.creatureHp <= 0) {
       const xp = calculateXpGained(next.creature);
       next.xpGained = xp;
@@ -121,11 +124,7 @@ function applyBurnDamage(next: EncounterState): void {
 }
 
 // Apply secondary effects from a damaging move (burn, def_down, spd_down on the target)
-function applySecondaryEffect(
-  next: EncounterState,
-  move: Move,
-  targetIsPlayer: boolean,
-): void {
+function applySecondaryEffect(next: EncounterState, move: Move, targetIsPlayer: boolean): void {
   if (!move.effect || !move.effectChance) return;
   if (Math.random() * 100 >= move.effectChance) return;
 
@@ -193,10 +192,14 @@ export function executePlayerMove(state: EncounterState, move: Move): EncounterS
     if (move.effect === "def_up") {
       if (next.playerStages.defense < 6) {
         next.playerStages.defense = Math.min(6, next.playerStages.defense + 1);
-        next.battleLog.push(logEntry(`You used ${move.name}!`, "player_attack", undefined, move.animation));
+        next.battleLog.push(
+          logEntry(`You used ${move.name}!`, "player_attack", undefined, move.animation)
+        );
         next.battleLog.push(logEntry("Your Defense rose!", "stat_change"));
       } else {
-        next.battleLog.push(logEntry(`You used ${move.name}!`, "player_attack", undefined, move.animation));
+        next.battleLog.push(
+          logEntry(`You used ${move.name}!`, "player_attack", undefined, move.animation)
+        );
         next.battleLog.push(logEntry("Your Defense won't go higher!", "stat_change"));
       }
     }
@@ -206,7 +209,9 @@ export function executePlayerMove(state: EncounterState, move: Move): EncounterS
 
   // Accuracy check
   if (move.accuracy < 100 && Math.random() * 100 > move.accuracy) {
-    next.battleLog.push(logEntry(`You used ${move.name}!`, "player_attack", undefined, move.animation));
+    next.battleLog.push(
+      logEntry(`You used ${move.name}!`, "player_attack", undefined, move.animation)
+    );
     next.battleLog.push(logEntry("But it missed!", "info"));
     next.phase = "creature_turn";
     return next;
@@ -224,7 +229,7 @@ export function executePlayerMove(state: EncounterState, move: Move): EncounterS
     move.type,
     "normal", // Player type for STAB (only Ember matches fire, but player is "normal")
     next.creature.type,
-    next.playerStatus === "burn",
+    next.playerStatus === "burn"
   );
 
   // Reset creature defending after absorbing one hit
@@ -300,7 +305,10 @@ export function executePlayerFlee(state: EncounterState): EncounterState {
   // Crystal flee formula: (playerSpeed * 128 / enemySpeed) + 30 * (attempts - 1)
   // If player speed >= enemy speed, always flee
   const playerSpeed = next.player.speed * getStatMultiplier(next.playerStages.speed);
-  const enemySpeed = Math.max(1, next.creature.stats.speed * getStatMultiplier(next.creatureStages.speed));
+  const enemySpeed = Math.max(
+    1,
+    next.creature.stats.speed * getStatMultiplier(next.creatureStages.speed)
+  );
   const attempts = next.turnNumber; // Each turn counts as an attempt
 
   if (playerSpeed >= enemySpeed) {
@@ -345,20 +353,32 @@ export function executeCreatureTurn(state: EncounterState): EncounterState {
   const moveIdx = next.creature.moves.findIndex((m) => m.name === move.name);
   if (moveIdx >= 0) {
     next.creature = { ...next.creature, moves: [...next.creature.moves] };
-    next.creature.moves[moveIdx] = { ...next.creature.moves[moveIdx], pp: Math.max(0, move.pp - 1) };
+    next.creature.moves[moveIdx] = {
+      ...next.creature.moves[moveIdx],
+      pp: Math.max(0, move.pp - 1),
+    };
   }
 
   next.lastMoveUsed = move;
 
   // Status moves
   if (move.power === 0) {
-    next.battleLog.push(logEntry(`${next.creature.name} used ${move.name}!`, "creature_attack", undefined, move.animation));
+    next.battleLog.push(
+      logEntry(
+        `${next.creature.name} used ${move.name}!`,
+        "creature_attack",
+        undefined,
+        move.animation
+      )
+    );
     if (move.effect === "def_up") {
       if (next.creatureStages.defense < 6) {
         next.creatureStages.defense = Math.min(6, next.creatureStages.defense + 1);
         next.battleLog.push(logEntry(`${next.creature.name}'s Defense rose!`, "stat_change"));
       } else {
-        next.battleLog.push(logEntry(`${next.creature.name}'s Defense won't go higher!`, "stat_change"));
+        next.battleLog.push(
+          logEntry(`${next.creature.name}'s Defense won't go higher!`, "stat_change")
+        );
       }
     } else if (move.effect === "spd_down") {
       if (next.playerStages.speed > -6) {
@@ -373,11 +393,14 @@ export function executeCreatureTurn(state: EncounterState): EncounterState {
     } else if (move.effect === "leech") {
       const leechDmg = Math.max(1, Math.floor(next.player.maxHp / 8));
       next.playerHp = Math.max(0, next.playerHp - leechDmg);
-      next.battleLog.push(logEntry(`${next.creature.name} drained your HP!`, "status_damage", leechDmg));
+      next.battleLog.push(
+        logEntry(`${next.creature.name} drained your HP!`, "status_damage", leechDmg)
+      );
       const heal = Math.min(leechDmg, next.creature.stats.maxHp - next.creatureHp);
       if (heal > 0) next.creatureHp += heal;
       if (next.playerHp <= 0) {
-        next.result = "lose"; next.phase = "result";
+        next.result = "lose";
+        next.phase = "result";
         next.battleLog.push(logEntry("You were defeated...", "result"));
         return next;
       }
@@ -392,7 +415,14 @@ export function executeCreatureTurn(state: EncounterState): EncounterState {
 
   // Accuracy check
   if (move.accuracy < 100 && Math.random() * 100 > move.accuracy) {
-    next.battleLog.push(logEntry(`${next.creature.name} used ${move.name}!`, "creature_attack", undefined, move.animation));
+    next.battleLog.push(
+      logEntry(
+        `${next.creature.name} used ${move.name}!`,
+        "creature_attack",
+        undefined,
+        move.animation
+      )
+    );
     next.battleLog.push(logEntry("But it missed!", "info"));
     applyBurnDamage(next);
     if (next.result) return next;
@@ -416,14 +446,16 @@ export function executeCreatureTurn(state: EncounterState): EncounterState {
     move.type,
     next.creature.type,
     "normal", // Player defensive type
-    next.creatureStatus === "burn",
+    next.creatureStatus === "burn"
   );
 
   // Reset defending flag after absorbing one hit
   next.playerDefending = false;
 
   next.playerHp = Math.max(0, next.playerHp - damage);
-  next.battleLog.push(logEntry(`${next.creature.name} used ${move.name}!`, "creature_attack", damage, move.animation));
+  next.battleLog.push(
+    logEntry(`${next.creature.name} used ${move.name}!`, "creature_attack", damage, move.animation)
+  );
 
   if (effectiveness > 1) {
     next.battleLog.push(logEntry("It's super effective!", "effectiveness"));
@@ -455,16 +487,23 @@ function executeCreatureStruggle(next: EncounterState): EncounterState {
   next.lastMoveUsed = move;
 
   const { damage } = calculateMoveDamage(
-    next.creature.level, move.power,
-    next.creature.stats.attack, next.player.defense,
-    0, next.playerDefending ? next.playerStages.defense + 2 : next.playerStages.defense,
-    "normal", next.creature.type, "normal",
-    next.creatureStatus === "burn",
+    next.creature.level,
+    move.power,
+    next.creature.stats.attack,
+    next.player.defense,
+    0,
+    next.playerDefending ? next.playerStages.defense + 2 : next.playerStages.defense,
+    "normal",
+    next.creature.type,
+    "normal",
+    next.creatureStatus === "burn"
   );
 
   next.playerDefending = false;
   next.playerHp = Math.max(0, next.playerHp - damage);
-  next.battleLog.push(logEntry(`${next.creature.name} used Struggle!`, "creature_attack", damage, move.animation));
+  next.battleLog.push(
+    logEntry(`${next.creature.name} used Struggle!`, "creature_attack", damage, move.animation)
+  );
 
   // Struggle recoil: 1/4 of damage dealt
   const recoil = Math.max(1, Math.floor(damage / 4));
