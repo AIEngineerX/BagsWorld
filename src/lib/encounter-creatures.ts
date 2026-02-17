@@ -93,7 +93,7 @@ const ZONE_CREATURES: Record<CreatureZone, CreatureTemplate[]> = {
         { name: "Vine Whip", type: "grass", power: 40, accuracy: 100, pp: 25, maxPp: 25, animation: "slash" },
         { name: "Tackle", type: "normal", power: 40, accuracy: 100, pp: 35, maxPp: 35, animation: "slash" },
         { name: "Growl", type: "debuff", power: 0, accuracy: 100, pp: 30, maxPp: 30, effect: "def_down", animation: "debuff" },
-        { name: "Leech Seed", type: "grass", power: 25, accuracy: 90, pp: 20, maxPp: 20, animation: "shimmer" },
+        { name: "Leech Seed", type: "grass", power: 0, accuracy: 90, pp: 20, maxPp: 20, effect: "leech", animation: "shimmer" },
       ],
     },
   ],
@@ -110,7 +110,7 @@ const ZONE_CREATURES: Record<CreatureZone, CreatureTemplate[]> = {
     },
     {
       name: "Lobster Brawler", type: "aquatic", spriteKey: "fighter_9",
-      baseStats: { hp: 60, attack: 16, defense: 8, speed: 10 },
+      baseStats: { hp: 55, attack: 13, defense: 9, speed: 10 },
       moves: [
         { name: "Crunch", type: "normal", power: 50, accuracy: 100, pp: 20, maxPp: 20, animation: "bite" },
         { name: "Bubble Beam", type: "water", power: 45, accuracy: 100, pp: 20, maxPp: 20, animation: "water" },
@@ -120,7 +120,7 @@ const ZONE_CREATURES: Record<CreatureZone, CreatureTemplate[]> = {
     },
     {
       name: "Octopus Ink", type: "aquatic", spriteKey: "fighter_11",
-      baseStats: { hp: 50, attack: 14, defense: 7, speed: 13 },
+      baseStats: { hp: 48, attack: 12, defense: 7, speed: 13 },
       moves: [
         { name: "Tentacle Slap", type: "aquatic", power: 40, accuracy: 100, pp: 25, maxPp: 25, animation: "slash" },
         { name: "Ink Jet", type: "water", power: 45, accuracy: 90, pp: 20, maxPp: 20, animation: "water" },
@@ -130,7 +130,7 @@ const ZONE_CREATURES: Record<CreatureZone, CreatureTemplate[]> = {
     },
     {
       name: "Jellyfish Zap", type: "aquatic", spriteKey: "fighter_13",
-      baseStats: { hp: 35, attack: 15, defense: 6, speed: 14 },
+      baseStats: { hp: 38, attack: 13, defense: 6, speed: 13 },
       moves: [
         { name: "Sting", type: "aquatic", power: 45, accuracy: 100, pp: 25, maxPp: 25, animation: "slash" },
         { name: "Bubble", type: "water", power: 35, accuracy: 100, pp: 30, maxPp: 30, animation: "water" },

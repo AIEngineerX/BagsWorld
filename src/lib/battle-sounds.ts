@@ -2,6 +2,18 @@
 // Pokemon Crystal-inspired blips, hits, and tones
 
 let audioCtx: AudioContext | null = null;
+let audioReady = false;
+
+/** Call once from a user-gesture handler (click/keydown) to ensure AudioContext is active */
+export function ensureAudioReady(): void {
+  if (audioReady) return;
+  const ctx = getCtx();
+  if (ctx && ctx.state === "suspended") {
+    ctx.resume().then(() => { audioReady = true; }).catch(() => {});
+  } else if (ctx) {
+    audioReady = true;
+  }
+}
 
 function getCtx(): AudioContext | null {
   if (!audioCtx) {

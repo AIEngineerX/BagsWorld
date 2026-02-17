@@ -1,11 +1,12 @@
 // Wild Encounter Types
-// Turn-based Pokemon-style battles with roaming creatures
+// Turn-based Pokemon Crystal-style battles with roaming creatures
 
 export type BattleAction = "fight" | "defend" | "flee";
 export type BattlePhase = "intro" | "player_turn" | "creature_turn" | "animating" | "result";
 export type BattleResult = "win" | "lose" | "flee";
 export type CreatureZone = "main_city" | "founders" | "moltbook";
 export type MoveType = "normal" | "fire" | "water" | "grass" | "bug" | "flying" | "aquatic" | "buff" | "debuff";
+export type StatusEffect = "burn" | null;
 
 export interface Move {
   name: string;
@@ -14,7 +15,7 @@ export interface Move {
   accuracy: number; // 0-100
   pp: number;
   maxPp: number;
-  effect?: "burn" | "def_up" | "def_down" | "spd_down" | "priority";
+  effect?: "burn" | "def_up" | "def_down" | "spd_down" | "priority" | "leech";
   effectChance?: number; // 0-100, for secondary effects like burn
   animation: "slash" | "ember" | "water" | "gust" | "bite" | "shimmer" | "debuff" | "quick";
 }
@@ -56,7 +57,7 @@ export interface PlayerBattleStats {
 
 export interface BattleLogEntry {
   message: string;
-  type: "info" | "player_attack" | "creature_attack" | "player_defend" | "creature_defend" | "flee" | "result" | "stat_change";
+  type: "info" | "player_attack" | "creature_attack" | "player_defend" | "creature_defend" | "flee" | "result" | "stat_change" | "status_damage" | "effectiveness";
   damage?: number;
   moveAnimation?: Move["animation"];
   timestamp: number;
@@ -71,10 +72,15 @@ export interface EncounterState {
   turnNumber: number;
   playerStages: StatStages;
   creatureStages: StatStages;
+  playerDefending: boolean; // True for exactly one enemy hit, then resets
+  creatureDefending: boolean;
+  playerStatus: StatusEffect;
+  creatureStatus: StatusEffect;
   battleLog: BattleLogEntry[];
   result: BattleResult | null;
   xpGained: number;
   lastMoveUsed?: Move; // For animation purposes
+  creatureGoesFirst?: boolean; // Speed-based turn order for the overlay
 }
 
 export interface PlayerProgress {
@@ -103,6 +109,11 @@ export const ZONE_DIFFICULTY: Record<CreatureZone, { minLevel: number; maxLevel:
   moltbook: { minLevel: 2, maxLevel: 3 },
 };
 
+// Struggle — used when all moves are at 0 PP
+export const STRUGGLE_MOVE: Move = {
+  name: "Struggle", type: "normal", power: 50, accuracy: 100, pp: 999, maxPp: 999, animation: "slash",
+};
+
 // Player starter moves
 export const PLAYER_MOVES: Move[] = [
   { name: "Tackle", type: "normal", power: 40, accuracy: 100, pp: 35, maxPp: 35, animation: "slash" },
@@ -116,4 +127,36 @@ export function getStatMultiplier(stage: number): number {
   const clamped = Math.max(-6, Math.min(6, stage));
   if (clamped >= 0) return (2 + clamped) / 2;
   return 2 / (2 - clamped);
+}
+
+// ========== TYPE EFFECTIVENESS ==========
+// Simplified chart covering our move types vs creature types
+// Only offensive types matter: normal, fire, water, grass, bug, flying, aquatic
+// Defensive types: fire, water, grass, beast, bug, flying, aquatic, normal
+
+type OffensiveType = "normal" | "fire" | "water" | "grass" | "bug" | "flying" | "aquatic";
+type DefensiveType = string; // creature.type
+
+const TYPE_CHART: Partial<Record<OffensiveType, Partial<Record<DefensiveType, number>>>> = {
+  fire:    { grass: 2, water: 0.5, fire: 0.5, bug: 2, aquatic: 0.5 },
+  water:   { fire: 2, grass: 0.5, water: 0.5, aquatic: 0.5 },
+  grass:   { water: 2, fire: 0.5, grass: 0.5, bug: 0.5, aquatic: 2 },
+  bug:     { grass: 2, fire: 0.5, flying: 0.5 },
+  flying:  { bug: 2, grass: 2, beast: 1 },
+  aquatic: { fire: 2, grass: 0.5, aquatic: 0.5 },
+  // normal: no super-effective or not-very-effective matchups
+};
+
+/** Returns the type effectiveness multiplier (0.5, 1, or 2). buff/debuff types always return 1. */
+export function getTypeEffectiveness(moveType: MoveType, defenderType: string): number {
+  if (moveType === "buff" || moveType === "debuff") return 1;
+  const matchups = TYPE_CHART[moveType as OffensiveType];
+  if (!matchups) return 1;
+  return matchups[defenderType] ?? 1;
+}
+
+/** Returns the STAB multiplier (1.5 if move type matches attacker type, else 1). */
+export function getStabMultiplier(moveType: MoveType, attackerType: string): number {
+  if (moveType === "buff" || moveType === "debuff") return 1;
+  return moveType === attackerType ? 1.5 : 1;
 }
