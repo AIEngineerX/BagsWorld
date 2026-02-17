@@ -249,9 +249,11 @@ export class WorldScene extends Phaser.Scene {
 
   // Wild Encounter system
   private encounterCooldowns: Map<string, number> = new Map();
-  private readonly ENCOUNTER_COOLDOWN_MS = 60000;
-  private readonly ENCOUNTER_RADIUS = 60;
-  private readonly ENCOUNTER_CHANCE = 0.3;
+  private readonly ENCOUNTER_COOLDOWN_MS = 90000;
+  private readonly ENCOUNTER_RADIUS = 50;
+  private readonly ENCOUNTER_CHANCE = 0.08;
+  private lastGlobalEncounter = 0;
+  private readonly GLOBAL_ENCOUNTER_COOLDOWN_MS = 45000;
   private encounterActive = false;
   private playerStunned = false;
   private stunStars: Phaser.GameObjects.Text[] = [];
@@ -9408,6 +9410,10 @@ export class WorldScene extends Phaser.Scene {
     if (!this.localPlayer || this.encounterActive) return;
 
     const now = Date.now();
+
+    // Global cooldown — no encounters too close together regardless of creature
+    if (now - this.lastGlobalEncounter < this.GLOBAL_ENCOUNTER_COOLDOWN_MS) return;
+
     const px = this.localPlayer.x;
     const py = this.localPlayer.y;
 
@@ -9441,13 +9447,14 @@ export class WorldScene extends Phaser.Scene {
 
       // Roll for encounter
       if (Math.random() > this.ENCOUNTER_CHANCE) {
-        // Short-circuit cooldown on failed roll (5s) to avoid per-frame re-rolling
-        this.encounterCooldowns.set(target.id, now - this.ENCOUNTER_COOLDOWN_MS + 5000);
+        // Short-circuit cooldown on failed roll (15s) to avoid per-frame re-rolling
+        this.encounterCooldowns.set(target.id, now - this.ENCOUNTER_COOLDOWN_MS + 15000);
         continue;
       }
 
       // Encounter triggered!
       this.encounterCooldowns.set(target.id, now);
+      this.lastGlobalEncounter = now;
       this.encounterActive = true;
 
       window.dispatchEvent(

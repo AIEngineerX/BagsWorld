@@ -24,8 +24,12 @@ export function loadProgress(): PlayerProgress {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_PROGRESS };
     const parsed = JSON.parse(raw) as PlayerProgress;
-    // Validate
+    // Validate all fields
     if (typeof parsed.level !== "number" || parsed.level < 1) return { ...DEFAULT_PROGRESS };
+    if (typeof parsed.xp !== "number" || parsed.xp < 0) return { ...DEFAULT_PROGRESS };
+    if (typeof parsed.wins !== "number") return { ...DEFAULT_PROGRESS };
+    if (typeof parsed.losses !== "number") return { ...DEFAULT_PROGRESS };
+    if (typeof parsed.flees !== "number") return { ...DEFAULT_PROGRESS };
     return parsed;
   } catch {
     return { ...DEFAULT_PROGRESS };

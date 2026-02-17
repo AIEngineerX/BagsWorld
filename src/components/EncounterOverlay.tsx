@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { Creature, EncounterState, Move } from "@/lib/encounter-types";
+import { STRUGGLE_MOVE } from "@/lib/encounter-types";
 import {
   createEncounter,
   executePlayerMove,
@@ -31,10 +32,7 @@ type VisualPhase =
   | "go_text"
   | "player_turn" // Main menu: FIGHT / DEFEND / RUN
   | "move_select" // FIGHT submenu: 4 moves in 2x2 grid
-  | "player_attack_anim"
-  | "player_defend_anim"
-  | "flee_anim"
-  | "creature_turn_anim"
+  | "animating" // Generic animating state (player or creature acting)
   | "faint_anim"
   | "xp_gain"
   | "level_up"
@@ -55,6 +53,10 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
   const [state, setState] = useState<EncounterState>(() =>
     createEncounter(creature, getPlayerBattleStats())
   );
+  // Ref to always access latest state in async callbacks (fixes stale closures)
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
   const [vp, setVp] = useState<VisualPhase>("transition");
   const [text, setText] = useState("");
   const [textDone, setTextDone] = useState(false);
@@ -76,7 +78,6 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
   const [playerLunge, setPlayerLunge] = useState(false);
   const [creatureLunge, setCreatureLunge] = useState(false);
   const [dmgNum, setDmgNum] = useState<{ v: number; side: "p" | "e"; k: number } | null>(null);
-  // Attack effect overlay
   const [atkEffect, setAtkEffect] = useState<{ anim: Move["animation"]; side: "p" | "e" } | null>(null);
   const [enemyBob, setEnemyBob] = useState(true);
   const [playerBob, setPlayerBob] = useState(true);
@@ -89,9 +90,16 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
 
   const stop = useCallback((e: React.SyntheticEvent) => { e.stopPropagation(); e.preventDefault(); }, []);
 
-  // Typewriter with sound blips
+  // Ensure AudioContext is ready on first user gesture
+  const gestureRef = useRef(false);
+  const onFirstGesture = useCallback(() => {
+    if (!gestureRef.current) { gestureRef.current = true; sfx.ensureAudioReady(); }
+  }, []);
+
+  // Typewriter with sound blips — cancels any in-flight call
   const typewrite = useCallback((t: string, speed = 28): Promise<void> => {
     return new Promise((resolve) => {
+      if (twRef.current) clearTimeout(twRef.current); // Fix race: cancel previous
       setText(""); setTextDone(false);
       let i = 0;
       const tick = () => {
@@ -108,14 +116,15 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
     });
   }, []);
 
-  // HP drain animation with sound
+  // HP drain animation with sound — cap min step time to avoid slow small drains
   const drainHp = useCallback(
     (side: "p" | "e", from: number, to: number, dur = 600): Promise<void> => {
       return new Promise((resolve) => {
         const set = side === "p" ? setPlayerHp : setEnemyHp;
-        if (from !== to) sfx.hpDrainSound(dur);
+        if (from === to) { resolve(); return; }
+        sfx.hpDrainSound(Math.min(dur, 400));
         const steps = Math.max(1, Math.abs(from - to));
-        const ms = dur / steps;
+        const ms = Math.min(dur / steps, 50); // Cap at 50ms/step so small drains aren't slow
         let cur = from;
         const tick = () => {
           if ((from > to && cur > to) || (from < to && cur < to)) {
@@ -135,7 +144,6 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
     setTimeout(() => setDmgNum(null), 900);
   }, []);
 
-  // Play attack effect overlay for move animation type
   const playEffect = useCallback((anim: Move["animation"], side: "p" | "e"): Promise<void> => {
     return new Promise((resolve) => {
       setAtkEffect({ anim, side });
@@ -144,7 +152,7 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
   }, []);
 
   // Intro wipe state
-  const [wipePhase, setWipePhase] = useState(0); // 0=hidden, 1=bars closing, 2=solid, 3=bars opening
+  const [wipePhase, setWipePhase] = useState(0);
   const [wipeDir, setWipeDir] = useState<"close" | "open">("close");
   const [introShake, setIntroShake] = useState(0);
 
@@ -153,7 +161,6 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
     if (vp !== "transition") return;
     sfx.battleStartSound();
     const run = async () => {
-      // Phase 1: Rapid alternating black/white flashes (increasing intensity)
       for (let i = 0; i < 4; i++) {
         setFlashOpacity(0.6 + i * 0.1);
         setIntroShake(3 + i);
@@ -162,27 +169,20 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
         await sleep(60 - i * 8);
       }
       setIntroShake(0);
-
-      // Phase 2: Venetian blind bars sweep down
       setWipeDir("close");
       setWipePhase(1);
       await sleep(350);
-      setWipePhase(2); // Fully solid black
+      setWipePhase(2);
       await sleep(200);
-
-      // Phase 3: Reveal the battle scene — bars sweep open
       setBlackOverlay(0);
       setWipeDir("open");
       setWipePhase(3);
       await sleep(400);
       setWipePhase(0);
-
-      // Final bright flash as scene is revealed
       setFlashOpacity(0.7);
       await sleep(60);
       setFlashOpacity(0);
       await sleep(150);
-
       setVp("slide_in");
     };
     run();
@@ -225,64 +225,227 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
     run();
   }, [vp, typewrite]);
 
-  // === PLAYER ATTACK ===
-  const doPlayerAttack = useCallback(async (move: Move) => {
-    setVp("player_attack_anim");
+  // === ANIMATE PLAYER ATTACK (reusable async function) ===
+  const animatePlayerAttack = useCallback(async (
+    move: Move,
+    before: EncounterState,
+    after: EncounterState,
+  ) => {
     setEnemyBob(false);
-
-    const after = executePlayerMove(state, move);
-    const logEntries = after.battleLog.slice(state.battleLog.length);
-    const dmgEntry = logEntries.find((e) => e.damage !== undefined);
+    const logEntries = after.battleLog.slice(before.battleLog.length);
+    const dmgEntry = logEntries.find((e) => e.damage !== undefined && e.type === "player_attack");
     const dmg = dmgEntry?.damage ?? 0;
 
     await typewrite(`You used ${move.name}!`);
     sfx.menuSelect();
 
     if (move.power > 0) {
-      // Lunge
       setPlayerLunge(true); await sleep(150);
-      // Effect overlay on enemy
       await playEffect(move.animation, "e");
       setPlayerLunge(false);
-      // Flash + shake
       setScreenFlash(true); sfx.attackHit(); await sleep(100); setScreenFlash(false);
       setEnemyShake(true); showDmg(dmg, "e"); await sleep(300); setEnemyShake(false);
-      // HP drain
-      await drainHp("e", state.creatureHp, after.creatureHp);
-    } else {
-      // Status move — shimmer on self
-      await playEffect(move.animation, "p");
-      if (logEntries.some((e) => e.type === "stat_change")) {
-        const statMsg = logEntries.find((e) => e.type === "stat_change");
-        if (statMsg) { await sleep(200); await typewrite(statMsg.message); sfx.statUpSound(); }
+      await drainHp("e", before.creatureHp, after.creatureHp);
+
+      // Effectiveness messages
+      const effMsg = logEntries.find((e) => e.type === "effectiveness");
+      if (effMsg) { await typewrite(effMsg.message); await sleep(300); }
+
+      // Secondary effect messages (burn, stat changes)
+      for (const entry of logEntries) {
+        if (entry.type === "stat_change" || (entry.type === "info" && entry.message.includes("burned"))) {
+          await typewrite(entry.message); await sleep(300);
+        }
       }
+
+      // Struggle recoil
+      const recoilEntry = logEntries.find((e) => e.type === "info" && e.message.includes("recoil"));
+      if (recoilEntry) {
+        await typewrite(recoilEntry.message);
+        setPlayerShake(true); await sleep(200); setPlayerShake(false);
+        await drainHp("p", before.playerHp, after.playerHp);
+      }
+    } else {
+      await playEffect(move.animation, "p");
+      const statMsg = logEntries.find((e) => e.type === "stat_change");
+      if (statMsg) { await sleep(200); await typewrite(statMsg.message); sfx.statUpSound(); }
     }
 
     setEnemyBob(true);
-    setState(after);
-    await sleep(300);
+  }, [typewrite, drainHp, showDmg, playEffect]);
 
-    if (after.result === "win") { setVp("faint_anim"); return; }
-    setVp("creature_turn_anim");
-  }, [state, typewrite, drainHp, showDmg, playEffect]);
+  // === ANIMATE CREATURE TURN (reusable async function) ===
+  const animateCreatureTurn = useCallback(async (
+    before: EncounterState,
+    after: EncounterState,
+  ) => {
+    setPlayerBob(false);
+    const logEntries = after.battleLog.slice(before.battleLog.length);
+    const atkEntry = logEntries.find((e) => e.type === "creature_attack");
+    const dmg = atkEntry?.damage ?? 0;
+    const moveAnim = atkEntry?.moveAnimation ?? "slash";
+    const isStatus = dmg === 0 && logEntries.some((e) => e.type === "stat_change");
+    const moveName = atkEntry?.message?.match(/used (.+)!/)?.[1] ?? "attack";
+
+    await typewrite(`${before.creature.name} used ${moveName}!`);
+
+    if (!isStatus && dmg > 0) {
+      setCreatureLunge(true); await sleep(150);
+      await playEffect(moveAnim, "p");
+      setCreatureLunge(false);
+      setScreenFlash(true); sfx.attackHit(); await sleep(100); setScreenFlash(false);
+      setPlayerShake(true); showDmg(dmg, "p"); await sleep(300); setPlayerShake(false);
+      await drainHp("p", before.playerHp, after.playerHp);
+
+      // Effectiveness messages
+      const effMsg = logEntries.find((e) => e.type === "effectiveness");
+      if (effMsg) { await typewrite(effMsg.message); await sleep(300); }
+
+      // Secondary effects from creature's damaging moves
+      for (const entry of logEntries) {
+        if (entry.type === "stat_change" || (entry.type === "info" && entry.message.includes("burned"))) {
+          await typewrite(entry.message);
+          if (entry.message.includes("burned")) { /* no extra sound */ }
+          else if (entry.message.includes("fell")) sfx.statDownSound();
+          await sleep(300);
+        }
+      }
+    } else if (isStatus) {
+      await playEffect(moveAnim, "e");
+      const statMsg = logEntries.find((e) => e.type === "stat_change");
+      if (statMsg) {
+        await sleep(200);
+        await typewrite(statMsg.message);
+        if (statMsg.message.includes("rose")) sfx.statUpSound();
+        else sfx.statDownSound();
+      }
+    }
+
+    // Burn damage at end of turn
+    const burnEntries = logEntries.filter((e) => e.type === "status_damage");
+    for (const burnEntry of burnEntries) {
+      await typewrite(burnEntry.message);
+      const burnDmg = burnEntry.damage ?? 0;
+      if (burnEntry.message.includes("You")) {
+        setPlayerShake(true); showDmg(burnDmg, "p"); await sleep(200); setPlayerShake(false);
+        await drainHp("p", playerHp, Math.max(0, playerHp - burnDmg));
+      } else {
+        setEnemyShake(true); showDmg(burnDmg, "e"); await sleep(200); setEnemyShake(false);
+        await drainHp("e", enemyHp, Math.max(0, enemyHp - burnDmg));
+      }
+      await sleep(200);
+    }
+
+    setPlayerBob(true);
+  }, [typewrite, drainHp, showDmg, playEffect, playerHp, enemyHp]);
+
+  // === FULL TURN: Player picks a move → speed determines who goes first ===
+  const doPlayerAttack = useCallback(async (move: Move) => {
+    onFirstGesture();
+    setVp("animating");
+    const cur = stateRef.current;
+
+    // Check if all moves are exhausted — force Struggle
+    const actualMove = move.name === "Struggle" ? STRUGGLE_MOVE : move;
+
+    // Execute both sides to determine turn order + outcomes
+    const afterPlayer = executePlayerMove(cur, actualMove);
+    const creatureGoesFirst = afterPlayer.creatureGoesFirst ?? false;
+
+    if (creatureGoesFirst) {
+      // Creature attacks first
+      const afterCreature = executeCreatureTurn(cur);
+      await animateCreatureTurn(cur, afterCreature);
+      setState(afterCreature);
+      await sleep(300);
+
+      if (afterCreature.result === "lose") { setVp("faint_anim"); return; }
+
+      // Now player attacks on the post-creature state
+      const afterPlayerOnUpdated = executePlayerMove(afterCreature, actualMove);
+      await animatePlayerAttack(actualMove, afterCreature, afterPlayerOnUpdated);
+      setState(afterPlayerOnUpdated);
+      await sleep(300);
+
+      if (afterPlayerOnUpdated.result === "win") { setVp("faint_anim"); return; }
+      if (afterPlayerOnUpdated.result === "lose") { setVp("faint_anim"); return; }
+
+      setText(""); setMenuIdx(0);
+      setVp("player_turn");
+    } else {
+      // Player attacks first (original flow)
+      await animatePlayerAttack(actualMove, cur, afterPlayer);
+      setState(afterPlayer);
+      await sleep(300);
+
+      if (afterPlayer.result === "win") { setVp("faint_anim"); return; }
+      if (afterPlayer.result === "lose") { setVp("faint_anim"); return; }
+
+      // Creature turn
+      const afterCreature = executeCreatureTurn(afterPlayer);
+      await animateCreatureTurn(afterPlayer, afterCreature);
+      setState(afterCreature);
+      await sleep(300);
+
+      if (afterCreature.result === "lose") { setVp("faint_anim"); return; }
+
+      setText(""); setMenuIdx(0);
+      setVp("player_turn");
+    }
+  }, [animatePlayerAttack, animateCreatureTurn, onFirstGesture]);
 
   // === PLAYER DEFEND ===
   const doPlayerDefend = useCallback(async () => {
-    setVp("player_defend_anim");
-    const after = executePlayerDefend(state);
-    await typewrite("You brace yourself!");
-    await playEffect("shimmer", "p");
-    sfx.statUpSound();
-    await typewrite("Defense rose!");
-    setState(after);
-    await sleep(400);
-    setVp("creature_turn_anim");
-  }, [state, typewrite, playEffect]);
+    onFirstGesture();
+    setVp("animating");
+    const cur = stateRef.current;
+    const afterDefend = executePlayerDefend(cur);
+    const creatureGoesFirst = afterDefend.creatureGoesFirst ?? false;
+
+    if (creatureGoesFirst) {
+      // Creature attacks before player defends
+      const afterCreature = executeCreatureTurn(cur);
+      await animateCreatureTurn(cur, afterCreature);
+      setState(afterCreature);
+      await sleep(300);
+
+      if (afterCreature.result === "lose") { setVp("faint_anim"); return; }
+
+      // Now player defends
+      const afterDefendOnUpdated = executePlayerDefend(afterCreature);
+      await typewrite("You brace yourself!");
+      await playEffect("shimmer", "p");
+      sfx.statUpSound();
+      await typewrite("Defense rose temporarily!");
+      setState(afterDefendOnUpdated);
+      await sleep(300);
+    } else {
+      // Player defends first, then creature attacks
+      await typewrite("You brace yourself!");
+      await playEffect("shimmer", "p");
+      sfx.statUpSound();
+      await typewrite("Defense rose temporarily!");
+      setState(afterDefend);
+      await sleep(300);
+
+      const afterCreature = executeCreatureTurn(afterDefend);
+      await animateCreatureTurn(afterDefend, afterCreature);
+      setState(afterCreature);
+      await sleep(300);
+
+      if (afterCreature.result === "lose") { setVp("faint_anim"); return; }
+    }
+
+    setText(""); setMenuIdx(0);
+    setVp("player_turn");
+  }, [typewrite, playEffect, animateCreatureTurn, onFirstGesture]);
 
   // === PLAYER FLEE ===
   const doPlayerFlee = useCallback(async () => {
-    setVp("flee_anim");
-    const after = executePlayerFlee(state);
+    onFirstGesture();
+    setVp("animating");
+    const cur = stateRef.current;
+    const after = executePlayerFlee(cur);
 
     if (after.result === "flee") {
       sfx.fleeSound();
@@ -299,69 +462,31 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
     setState(after);
     await sleep(400);
 
-    // Creature gets a turn
-    setVp("creature_turn_anim");
-  }, [state, typewrite, onClose]);
+    // Creature gets a free turn
+    const afterCreature = executeCreatureTurn(after);
+    await animateCreatureTurn(after, afterCreature);
+    setState(afterCreature);
+    await sleep(300);
 
-  // === CREATURE TURN ===
-  useEffect(() => {
-    if (vp !== "creature_turn_anim") return;
-    setPlayerBob(false);
-
-    const run = async () => {
-      const after = executeCreatureTurn(state);
-      const logEntries = after.battleLog.slice(state.battleLog.length);
-      const atkEntry = logEntries.find((e) => e.type === "creature_attack");
-      const dmg = atkEntry?.damage ?? 0;
-      const moveAnim = atkEntry?.moveAnimation ?? "slash";
-      const isStatus = dmg === 0 && logEntries.some((e) => e.type === "stat_change");
-      const moveName = atkEntry?.message?.match(/used (.+)!/)?.[1] ?? "attack";
-
-      await typewrite(`${state.creature.name} used ${moveName}!`);
-
-      if (!isStatus && dmg > 0) {
-        setCreatureLunge(true); await sleep(150);
-        await playEffect(moveAnim, "p");
-        setCreatureLunge(false);
-        setScreenFlash(true); sfx.attackHit(); await sleep(100); setScreenFlash(false);
-        setPlayerShake(true); showDmg(dmg, "p"); await sleep(300); setPlayerShake(false);
-        await drainHp("p", state.playerHp, after.playerHp);
-      } else if (isStatus) {
-        await playEffect(moveAnim, "e");
-        const statMsg = logEntries.find((e) => e.type === "stat_change");
-        if (statMsg) {
-          await sleep(200);
-          await typewrite(statMsg.message);
-          if (statMsg.message.includes("rose")) sfx.statUpSound();
-          else sfx.statDownSound();
-        }
-      }
-
-      setPlayerBob(true);
-      setState(after);
-      await sleep(300);
-
-      if (after.result === "lose") { setVp("faint_anim"); return; }
-      setText(""); setMenuIdx(0);
-      setVp("player_turn");
-    };
-    run();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vp]);
+    if (afterCreature.result === "lose") { setVp("faint_anim"); return; }
+    setText(""); setMenuIdx(0);
+    setVp("player_turn");
+  }, [typewrite, animateCreatureTurn, onClose, onFirstGesture]);
 
   // === FAINT ===
   useEffect(() => {
     if (vp !== "faint_anim") return;
     const run = async () => {
-      const isLoss = state.result === "lose";
+      const s = stateRef.current;
+      const isLoss = s.result === "lose";
       sfx.faintSound();
       for (let i = 1; i <= 8; i++) {
         if (isLoss) setPlayerFaintY(i * 10); else setEnemyFaintY(i * 10);
         await sleep(80);
       }
       await sleep(400);
-      if (state.result === "win") {
-        await typewrite(`Wild ${state.creature.name} fainted!`);
+      if (s.result === "win") {
+        await typewrite(`Wild ${s.creature.name} fainted!`);
         await sleep(800); recordWin(); setVp("xp_gain");
       } else {
         await typewrite("You blacked out...");
@@ -376,9 +501,10 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
   useEffect(() => {
     if (vp !== "xp_gain") return;
     const run = async () => {
-      await typewrite(`You gained ${state.xpGained} EXP. Points!`);
+      const s = stateRef.current;
+      await typewrite(`You gained ${s.xpGained} EXP. Points!`);
       const before = getLevelProgress();
-      const { leveledUp, newLevel } = addXp(state.xpGained);
+      const { leveledUp, newLevel } = addXp(s.xpGained);
       const after = getLevelProgress();
       setXpPct(before.percent);
       await sleep(300);
@@ -420,25 +546,33 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
   }, [vp, typewrite]);
 
   const handleDone = useCallback(() => {
-    if (vp === "done") onClose(state.result ?? "win");
-  }, [vp, state.result, onClose]);
+    const s = stateRef.current;
+    if (vp === "done") onClose(s.result ?? "win");
+  }, [vp, onClose]);
+
+  // Check if all player moves are at 0 PP (Struggle condition)
+  const allMovesExhausted = state.player.moves.every((m) => m.pp <= 0);
 
   // Keyboard controls
   useEffect(() => {
     const handle = (e: KeyboardEvent) => {
       e.stopPropagation();
+      sfx.ensureAudioReady(); // Gesture guard
       if (vp === "done") { handleDone(); return; }
       if (vp === "player_turn") {
         if (e.key === "ArrowUp" || e.key === "w") { setMenuIdx((c) => Math.max(0, c - 1)); sfx.menuBlip(); }
         else if (e.key === "ArrowDown" || e.key === "s") { setMenuIdx((c) => Math.min(2, c + 1)); sfx.menuBlip(); }
         else if (e.key === "Enter" || e.key === "e" || e.key === " ") {
           sfx.menuSelect();
-          if (menuIdx === 0) { setMoveIdx(0); setVp("move_select"); }
+          if (menuIdx === 0) {
+            if (allMovesExhausted) { doPlayerAttack(STRUGGLE_MOVE); }
+            else { setMoveIdx(0); setVp("move_select"); }
+          }
           else if (menuIdx === 1) doPlayerDefend();
           else doPlayerFlee();
         }
       } else if (vp === "move_select") {
-        const moves = state.player.moves;
+        const moves = stateRef.current.player.moves;
         if (e.key === "ArrowUp" || e.key === "w") { setMoveIdx((c) => Math.max(0, c - 2)); sfx.menuBlip(); }
         else if (e.key === "ArrowDown" || e.key === "s") { setMoveIdx((c) => Math.min(moves.length - 1, c + 2)); sfx.menuBlip(); }
         else if (e.key === "ArrowLeft" || e.key === "a") { setMoveIdx((c) => Math.max(0, c - 1)); sfx.menuBlip(); }
@@ -452,7 +586,7 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
     };
     window.addEventListener("keydown", handle, true);
     return () => window.removeEventListener("keydown", handle, true);
-  }, [vp, menuIdx, moveIdx, state.player.moves, handleDone, doPlayerAttack, doPlayerDefend, doPlayerFlee]);
+  }, [vp, menuIdx, moveIdx, allMovesExhausted, handleDone, doPlayerAttack, doPlayerDefend, doPlayerFlee]);
 
   useEffect(() => () => { if (twRef.current) clearTimeout(twRef.current); }, []);
 
@@ -467,14 +601,17 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
   const showMainMenu = vp === "player_turn";
   const showMoveMenu = vp === "move_select";
 
+  // Stable intro shake offset (not recalculated on re-renders)
+  const shakeOffset = useMemo(() => ({ x: (Math.random() - 0.5) * 2, y: (Math.random() - 0.5) }), [introShake]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <div className="fixed inset-0 z-[100] select-none" onClick={stop} onPointerDown={stop} onContextMenu={stop} style={{ touchAction: "none" }}>
+    <div className="fixed inset-0 z-[100] select-none" onClick={(e) => { stop(e); onFirstGesture(); }} onPointerDown={stop} onContextMenu={stop} style={{ touchAction: "none" }}>
       <div className="absolute inset-0 flex items-center justify-center bg-black">
         <div className="relative w-full max-w-[640px] max-h-[576px] aspect-[10/9] overflow-hidden" style={{ imageRendering: "pixelated" }}>
 
           {/* Battle background — Pokemon Crystal style with sky, terrain, platforms */}
           <div className="absolute inset-x-0 top-0 bottom-[33.3%]" style={{
-            transform: introShake ? `translate(${(Math.random() - 0.5) * introShake * 2}px, ${(Math.random() - 0.5) * introShake}px)` : undefined,
+            transform: introShake ? `translate(${shakeOffset.x * introShake}px, ${shakeOffset.y * introShake}px)` : undefined,
           }}>
             {/* Sky gradient */}
             <div className="absolute inset-x-0 top-0 h-[45%]" style={{
@@ -491,12 +628,12 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
               `,
             }} />
 
-            {/* Main ground plane — perspective green field */}
+            {/* Main ground plane */}
             <div className="absolute inset-x-0 top-[45%] bottom-0" style={{
               background: "linear-gradient(180deg, #78b860 0%, #88c868 15%, #68a850 40%, #58a040 70%, #489838 100%)",
             }} />
 
-            {/* Ground texture — pixel grass lines for depth */}
+            {/* Ground texture lines */}
             {[...Array(8)].map((_, i) => (
               <div key={`gl-${i}`} className="absolute left-0 right-0" style={{
                 top: `${48 + i * 6.5}%`,
@@ -508,7 +645,7 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
               }} />
             ))}
 
-            {/* Grass tufts scattered across field */}
+            {/* Grass tufts */}
             {[...Array(12)].map((_, i) => (
               <div key={`gt-${i}`} className="absolute" style={{
                 left: `${5 + ((i * 37 + 13) % 90)}%`,
@@ -521,24 +658,22 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
               }} />
             ))}
 
-            {/* Enemy raised platform (top-right) — angled hill */}
+            {/* Enemy platform */}
             <div className="absolute right-[2%] top-[38%] w-[45%] h-[22%]" style={{
               background: "linear-gradient(180deg, #88c868 0%, #78b858 30%, #68a848 100%)",
               clipPath: "polygon(10% 45%, 90% 35%, 100% 100%, 0% 100%)",
             }} />
-            {/* Platform edge highlight */}
             <div className="absolute right-[2%] top-[38%] w-[45%] h-[22%]" style={{
               background: "linear-gradient(180deg, #a0d880 0%, transparent 40%)",
               clipPath: "polygon(10% 45%, 90% 35%, 90% 42%, 10% 52%)",
               opacity: 0.7,
             }} />
 
-            {/* Player raised platform (bottom-left) — angled hill */}
+            {/* Player platform */}
             <div className="absolute left-[-5%] bottom-0 w-[50%] h-[35%]" style={{
               background: "linear-gradient(180deg, #78b858 0%, #68a848 40%, #589838 100%)",
               clipPath: "polygon(0% 30%, 85% 20%, 100% 100%, 0% 100%)",
             }} />
-            {/* Player platform edge highlight */}
             <div className="absolute left-[-5%] bottom-0 w-[50%] h-[35%]" style={{
               background: "linear-gradient(180deg, #98d070 0%, transparent 35%)",
               clipPath: "polygon(0% 30%, 85% 20%, 85% 27%, 0% 37%)",
@@ -561,13 +696,12 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
               </div>
             </div>
 
-            {/* --- ENEMY SPRITE (top-right) --- */}
+            {/* --- ENEMY SPRITE --- */}
             <div className="absolute right-[8%] top-[3%] w-[30%] aspect-square z-[5]" style={{
               transform: `translateX(${enemyX}%) translateY(${enemyFaintY}px)`,
               clipPath: enemyFaintY > 0 ? `inset(0 0 ${enemyFaintY}px 0)` : undefined,
               animation: enemyShake ? "pkmn-shake 0.06s linear infinite" : enemyBob ? "pkmn-idle 0.8s ease-in-out infinite" : undefined,
             }}>
-              {/* Shadow */}
               <div className="absolute bottom-0 left-[15%] right-[15%] h-[8%] bg-black/20 rounded-full" />
               {creatureSpriteUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -577,15 +711,13 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
                   <span className="font-pixel text-white text-[9px] text-center drop-shadow-[1px_1px_0_rgba(0,0,0,0.5)]">{creature.name}</span>
                 </div>
               )}
-              {/* Damage number */}
               {dmgNum && dmgNum.side === "e" && (
                 <div key={dmgNum.k} className="absolute -top-1 left-1/2 -translate-x-1/2 font-pixel text-sm text-white pkmn-dmg-float" style={{ textShadow: "1px 1px 0 #000, -1px -1px 0 #000" }}>-{dmgNum.v}</div>
               )}
-              {/* Attack effect */}
               {atkEffect && atkEffect.side === "e" && <AttackEffect anim={atkEffect.anim} />}
             </div>
 
-            {/* --- PLAYER SPRITE (bottom-left) --- */}
+            {/* --- PLAYER SPRITE --- */}
             <div className="absolute left-[6%] bottom-[2%] w-[26%] aspect-square z-[5]" style={{
               transform: `translateX(${playerX}%) translateY(${playerFaintY}px)`,
               clipPath: playerFaintY > 0 ? `inset(0 0 ${playerFaintY}px 0)` : undefined,
@@ -606,7 +738,7 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
               {atkEffect && atkEffect.side === "p" && <AttackEffect anim={atkEffect.anim} />}
             </div>
 
-            {/* --- PLAYER HUD (bottom-right) --- */}
+            {/* --- PLAYER HUD --- */}
             <div className="absolute right-[2%] bottom-[2%] w-[50%] z-10">
               <div className="bg-[#f8f0d8] border-[3px] border-[#484848] p-1.5" style={{ boxShadow: "3px 3px 0 rgba(0,0,0,0.15)" }}>
                 <div className="flex justify-between items-center mb-1">
@@ -648,14 +780,20 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
               {showMainMenu && (
                 <div className="w-[40%] border-l-[4px] border-[#484848] bg-[#f8f0d8] p-2 flex flex-col justify-center gap-0.5">
                   {(["FIGHT", "DEFEND", "RUN"] as const).map((label, i) => (
-                    <button key={label} onClick={() => { setMenuIdx(i); sfx.menuSelect();
-                      if (i === 0) { setMoveIdx(0); setVp("move_select"); }
+                    <button key={label} onClick={() => {
+                      onFirstGesture(); setMenuIdx(i); sfx.menuSelect();
+                      if (i === 0) {
+                        if (allMovesExhausted) { doPlayerAttack(STRUGGLE_MOVE); }
+                        else { setMoveIdx(0); setVp("move_select"); }
+                      }
                       else if (i === 1) doPlayerDefend();
                       else doPlayerFlee();
                     }} onMouseEnter={() => { setMenuIdx(i); sfx.menuBlip(); }}
                     className="flex items-center gap-1.5 px-2 py-1.5 text-left hover:bg-[#484848]/10 transition-colors">
                       <span className="font-pixel text-[10px] text-[#383838] w-3">{menuIdx === i ? "\u25B6" : ""}</span>
-                      <span className="font-pixel text-[11px] text-[#383838] tracking-wider">{label}</span>
+                      <span className="font-pixel text-[11px] text-[#383838] tracking-wider">
+                        {i === 0 && allMovesExhausted ? "STRUGGLE" : label}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -666,7 +804,7 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
                 <div className="w-[55%] border-l-[4px] border-[#484848] bg-[#f8f0d8] p-1.5 flex flex-col justify-center">
                   <div className="grid grid-cols-2 gap-0.5">
                     {state.player.moves.map((m, i) => (
-                      <button key={m.name} onClick={() => { if (m.pp > 0) { setMoveIdx(i); doPlayerAttack(m); } }}
+                      <button key={m.name} onClick={() => { onFirstGesture(); if (m.pp > 0) { setMoveIdx(i); doPlayerAttack(m); } }}
                         onMouseEnter={() => { setMoveIdx(i); sfx.menuBlip(); }}
                         disabled={m.pp <= 0}
                         className={`flex flex-col px-1.5 py-1 text-left transition-colors ${m.pp <= 0 ? "opacity-30" : "hover:bg-[#484848]/10"}`}>
@@ -737,8 +875,19 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
   );
 }
 
-// Attack effect overlays — render on top of the target sprite
+// Attack effect overlays — stable positions via index-based math (no Math.random in render)
 function AttackEffect({ anim }: { anim: Move["animation"] }) {
+  // Pre-computed stable particle positions per index
+  const particles = useMemo(() => {
+    return [...Array(6)].map((_, i) => ({
+      w: 6 + ((i * 7 + 3) % 5),
+      h: 6 + ((i * 3 + 1) % 4),
+      left: 20 + ((i * 17 + 5) % 60),
+      bottom: 10 + ((i * 11 + 2) % 20),
+      dur: 0.3 + ((i * 13 + 7) % 30) / 100,
+    }));
+  }, []);
+
   switch (anim) {
     case "slash":
     case "bite":
@@ -751,12 +900,12 @@ function AttackEffect({ anim }: { anim: Move["animation"] }) {
     case "ember":
       return (
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-10">
-          {[...Array(6)].map((_, i) => (
+          {particles.map((p, i) => (
             <div key={i} className="absolute rounded-full" style={{
-              width: 6 + Math.random() * 4, height: 6 + Math.random() * 4,
-              left: `${20 + Math.random() * 60}%`, bottom: `${10 + Math.random() * 20}%`,
+              width: p.w, height: p.h,
+              left: `${p.left}%`, bottom: `${p.bottom}%`,
               backgroundColor: ["#f97316", "#ef4444", "#fbbf24"][i % 3],
-              animation: `pkmn-ember-rise ${0.3 + Math.random() * 0.3}s ease-out forwards`,
+              animation: `pkmn-ember-rise ${p.dur}s ease-out forwards`,
               animationDelay: `${i * 0.06}s`,
             }} />
           ))}
