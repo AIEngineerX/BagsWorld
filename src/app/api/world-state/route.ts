@@ -825,17 +825,6 @@ const STARTER_BUILDINGS: RegisteredToken[] = [
     creator: "BagsWorld",
     createdAt: Date.now() - 86400000 * 7, // 7 days ago
   },
-  // STASHED: Trading Dojo
-  // {
-  //   mint: "StarterTradingDojo1111111111111111111111111",
-  //   name: "Trading Dojo",
-  //   symbol: "DOJO",
-  //   description:
-  //     "Train your trading skills! Spar against AI opponents using real historical price data. Earn belts and climb the ranks!",
-  //   imageUrl: "/assets/buildings/tradingdojo.png",
-  //   creator: "BagsWorld",
-  //   createdAt: Date.now() - 86400000 * 7, // 7 days ago
-  // },
   {
     mint: "StarterCasino1111111111111111111111111111111",
     name: "BagsWorld Casino",

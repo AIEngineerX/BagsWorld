@@ -274,7 +274,7 @@ export async function getPortfolioState(agentId: string): Promise<PortfolioState
       balance: token.balance,
       valueSol,
       percentOfPortfolio: 0, // Calculate after we have total
-      unrealizedPnlPercent: 0, // Would need purchase price tracking
+      unrealizedPnlPercent: 0, // No entry price tracking available
     });
   }
 
@@ -693,6 +693,7 @@ async function diversifyStrategy(
 }
 
 async function followWhalesStrategy(
+  agentId: string,
   portfolio: PortfolioState,
   market: MarketState,
   availableSol: number,
@@ -705,7 +706,12 @@ async function followWhalesStrategy(
   // Ghost's edge: cross-reference earners and token creators against 518 tracked
   // alpha wallets. When a known smart money wallet is earning fees or created a
   // token, Ghost's confidence in that token increases significantly.
+  //
+  // NOTE: Exit logic (stop-loss, take-profit, stale exits) is NOT implemented here.
+  // The agent-economy brain is an API-callable suggestion engine, not an autonomous trader.
+  // Real autonomous trading + exit management is handled by GhostTrader in eliza-agents/.
 
+  // --- BUY LOGIC ---
   const topEarners = await fetchTopEarners();
 
   if (topEarners.length === 0) {
@@ -864,22 +870,22 @@ async function aggressiveStrategy(
   // - Higher position sizes
   // - Quicker rotations
 
-  // First, check for profit-taking opportunities
-  const profitablePositions = portfolio.positions.filter(
-    (p) => p.unrealizedPnlPercent > 50 || p.percentOfPortfolio > 30
+  // Check for over-concentrated positions (>30% of portfolio in one token)
+  const overConcentrated = portfolio.positions.filter(
+    (p) => p.percentOfPortfolio > 30
   );
 
-  if (profitablePositions.length > 0) {
-    const toTake = profitablePositions[0];
-    const sellPercent = toTake.unrealizedPnlPercent > 100 ? 0.5 : 0.3;
-    const sellAmountSol = toTake.valueSol * sellPercent;
+  if (overConcentrated.length > 0) {
+    const toTrim = overConcentrated[0];
+    const sellPercent = 0.3;
+    const sellAmountSol = toTrim.valueSol * sellPercent;
 
     return {
       action: "sell",
-      tokenMint: toTake.mint,
-      tokenSymbol: toTake.symbol,
+      tokenMint: toTrim.mint,
+      tokenSymbol: toTrim.symbol,
       amountSol: sellAmountSol,
-      reason: `Taking profits: ${toTake.symbol} up ${toTake.unrealizedPnlPercent.toFixed(1)}%, selling ${(sellPercent * 100).toFixed(0)}%`,
+      reason: `Rebalancing: ${toTrim.symbol} is ${toTrim.percentOfPortfolio.toFixed(0)}% of portfolio, trimming 30%`,
       confidence: 80,
       riskLevel: "medium",
     };
@@ -1085,7 +1091,7 @@ export async function makeTradeDecision(
       return diversifyStrategy(portfolio, market, availableSol, fullConfig);
 
     case "follow_whales":
-      return followWhalesStrategy(portfolio, market, availableSol, fullConfig);
+      return followWhalesStrategy(agentId, portfolio, market, availableSol, fullConfig);
 
     case "aggressive":
       return aggressiveStrategy(portfolio, market, availableSol, fullConfig);

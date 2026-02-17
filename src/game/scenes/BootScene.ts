@@ -101,7 +101,7 @@ export class BootScene extends Phaser.Scene {
     // Generate diverse buildings (levels 1-5)
     generateBuildings(this);
 
-    // Generate special buildings (PokeCenter, TradingGym, Casino, Terminal, Oracle, HQ)
+    // Generate special buildings (PokeCenter, Casino, Terminal, Oracle, HQ)
     generateSpecialBuildings(this);
 
     // Generate Ballers Valley mansions (for top BagsWorld token holders)

@@ -315,7 +315,6 @@ BagsWorld/
 |   |   +-- autonomous-dialogue.ts  # NPC self-dialogue
 |   |   +-- x-client.ts             # X API client
 |   |   +-- x-oauth.ts              # X OAuth implementation
-|   |   +-- trading-dojo.ts         # Trading training system
 |   |   +-- ...                     # 30+ more utilities
 +-- eliza-agents/                   # ElizaOS microservice
 |   +-- src/characters/definitions/ # 17 character personality files

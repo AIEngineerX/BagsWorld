@@ -17,13 +17,6 @@ import {
   getAgentCharacters,
   moveAgentToZone,
   getSpawnStats,
-  // Economy loop
-  runLoopIteration,
-  startEconomyLoop,
-  stopEconomyLoop,
-  getLoopStatus,
-  resetLoopStats,
-  DEFAULT_LOOP_CONFIG,
   // Brain
   makeTradeDecision,
   getPortfolioState,
@@ -238,20 +231,6 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      // ===== ECONOMY LOOP =====
-
-      case "loop-status": {
-        // Get economy loop status
-        const status = getLoopStatus();
-        return NextResponse.json({
-          success: true,
-          loop: {
-            ...status,
-            lastRun: status.lastRun?.toISOString() || null,
-          },
-        });
-      }
-
       // ===== BRAIN / ANALYSIS =====
 
       case "market": {
@@ -423,34 +402,6 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json({ success: true, character });
-    }
-
-    // ===== ECONOMY LOOP ACTIONS =====
-
-    if (action === "loop-start") {
-      // Start the economy loop
-      const config = { ...DEFAULT_LOOP_CONFIG, ...params.config };
-      startEconomyLoop(config);
-      return NextResponse.json({ success: true, message: "Economy loop started", config });
-    }
-
-    if (action === "loop-stop") {
-      // Stop the economy loop
-      stopEconomyLoop();
-      return NextResponse.json({ success: true, message: "Economy loop stopped" });
-    }
-
-    if (action === "loop-run") {
-      // Run one iteration of the loop manually
-      const config = { ...DEFAULT_LOOP_CONFIG, ...params.config };
-      const result = await runLoopIteration(config);
-      return NextResponse.json({ success: true, result });
-    }
-
-    if (action === "loop-reset") {
-      // Reset loop statistics
-      resetLoopStats();
-      return NextResponse.json({ success: true, message: "Loop stats reset" });
     }
 
     // ===== AGENT-SPECIFIC ACTIONS (require agentId) =====

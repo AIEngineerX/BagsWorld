@@ -348,7 +348,6 @@ Complete subsystem for autonomous agent operations (15 files):
 | `auth.ts` | Agent authentication |
 | `onboarding.ts` | Agent onboarding flow |
 | `external-registry.ts` | External agent registry |
-| `loop.ts` | Continuous operation loop |
 
 **API:** `/api/agent-economy`, `/api/agent-economy/external`, `/api/agent-economy/docs`
 
@@ -735,7 +734,6 @@ src/
     agent-websocket-bridge.ts          # WebSocket bridge
     alpha-finder.ts                    # Token opportunity discovery
     creator-rewards-agent.ts           # Rewards distribution
-    trading-dojo.ts                    # Trading training system
     x-client.ts                        # X API client
     x-oauth.ts                         # X OAuth implementation
     daily-report.ts                    # Daily report generation
@@ -769,7 +767,6 @@ src/
     OracleTowerModal.tsx               # Prediction market
     TradingTerminal.tsx                # Market data terminal
     TradingTerminalModal.tsx           # Terminal in modal
-    TradingDojo Modal.tsx              # Trading training
     MoltbookFeed.tsx                   # Social feed display
     MoltbookDashboard.tsx              # Moltbook dashboard
     ProfessorOakChat.tsx               # AI token generation wizard

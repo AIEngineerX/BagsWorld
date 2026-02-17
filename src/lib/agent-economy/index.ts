@@ -81,16 +81,6 @@ export {
 } from "./spawn";
 
 export {
-  runLoopIteration,
-  startEconomyLoop,
-  stopEconomyLoop,
-  getLoopStatus,
-  resetLoopStats,
-  DEFAULT_LOOP_CONFIG,
-  type EconomyLoopConfig,
-} from "./loop";
-
-export {
   makeTradeDecision,
   getPortfolioState,
   getMarketState,

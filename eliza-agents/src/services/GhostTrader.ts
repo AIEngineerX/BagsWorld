@@ -59,13 +59,13 @@ const DEFAULT_CONFIG = {
   maxTotalExposureSol: 3.0, // Allow 3 full positions
   maxOpenPositions: 3, // Conservative position limit
   // Profit taking - BagBot style: partial sell at each tier, trailing stop for rest
-  takeProfitTiers: [1.5, 2.0, 3.0], // Take partialSellPercent% at each tier
+  takeProfitTiers: [1.3, 2.0, 3.0], // Take partialSellPercent% at each tier (1.3x secures early profit)
   partialSellPercent: 33, // Sell 33% of remaining tokens at each take-profit tier
-  trailingStopPercent: 15, // After 2x, trail by 15% — micro-caps retrace 15-20% after spikes
+  trailingStopPercent: 25, // After 2x, trail by 25% — micro-caps routinely retrace 20-30%
   // Risk management
   stopLossPercent: 30, // 30% — micro-caps need room for normal volatility (Ghost character uses -30%)
   // Dead position detection
-  maxHoldTimeMinutes: 480, // 8 hours - Bags runners need time
+  maxHoldTimeMinutes: 2880, // 48 hours - Bags runners need days, not hours
   minVolumeToHoldUsd: 500, // Need some volume to keep holding
   deadPositionDecayPercent: 25, // If down 25%+ and stale, consider dead
   // Liquidity requirements - TUNED FOR BAGS.FM (most tokens have $400-$4K liquidity)
@@ -1181,8 +1181,23 @@ export class GhostTrader {
         continue;
       }
 
+      // === BREAKEVEN PROTECTION (after reaching 1.3x) ===
+      // Once a position has been up 30%+, never let it bleed back to entry.
+      // Threshold at 1.04x (not 1.0x) to absorb swap slippage + fees on exit.
+      if (position.peakMultiplier >= 1.3 && currentMultiplier <= 1.04) {
+        console.log(
+          `[GhostTrader] Breakeven stop triggered for ${position.tokenSymbol} ` +
+            `(peak: ${position.peakMultiplier.toFixed(2)}x, now back to ${currentMultiplier.toFixed(2)}x)`
+        );
+        this.chatter(`closing $${position.tokenSymbol} at breakeven — was up ${((position.peakMultiplier - 1) * 100).toFixed(0)}%`, "concerned");
+        await this.executeClose(position, "trailing_stop", currentPriceSol);
+        continue;
+      }
+
       // === DEAD POSITION CHECK ===
       // Detect tokens that are slowly dying: held too long + no volume + decaying price
+      // IMPORTANT: Never kill a position that's currently in profit — only dead if losing
+      const isInProfit = currentMultiplier > 1.05; // 5% buffer above breakeven
       const isHeldTooLong = holdTimeMinutes > this.config.maxHoldTimeMinutes;
       const isVolumeDead = volume24hUsd < this.config.minVolumeToHoldUsd;
       const isDecaying =
@@ -1190,8 +1205,9 @@ export class GhostTrader {
         priceChangePercent > -this.config.stopLossPercent;
       const isLiquidityDrained = liquidityUsd < 200; // Less than $200 liquidity (including $0)
 
-      // Dead if: (held too long AND low volume) OR (decaying AND no volume) OR (liquidity drained)
-      if ((isHeldTooLong && isVolumeDead) || (isDecaying && isVolumeDead) || isLiquidityDrained) {
+      // Dead if: liquidity drained (always exit — can't sell at any price)
+      // OR NOT in profit AND: (held too long AND low volume) OR (decaying AND no volume)
+      if (isLiquidityDrained || (!isInProfit && ((isHeldTooLong && isVolumeDead) || (isDecaying && isVolumeDead)))) {
         const reasons: string[] = [];
         if (isHeldTooLong) reasons.push(`held ${holdTimeMinutes.toFixed(0)}min`);
         if (isVolumeDead) reasons.push(`vol $${volume24hUsd.toFixed(0)}`);
@@ -1224,7 +1240,7 @@ export class GhostTrader {
       const nextTierIndex = position.tiersSold || 0;
 
       if (nextTierIndex < sortedTiers.length) {
-        // Partial exit tiers (e.g., 1.5x, 2.0x, 3.0x) — trailing stop manages remainder
+        // Partial exit tiers (e.g., 1.3x, 2.0x, 3.0x) — trailing stop manages remainder
         const nextTier = sortedTiers[nextTierIndex];
         if (currentMultiplier >= nextTier) {
           console.log(

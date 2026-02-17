@@ -1083,7 +1083,6 @@ export class WorldScene extends Phaser.Scene {
   private interactWithBuilding(building: GameBuilding): void {
     // Simulate the exact same click behavior as building pointerdown handlers
     const isPokeCenter = building.id.includes("PokeCenter");
-    const isTradingGym = building.id.includes("TradingGym");
     const isCasino = building.id.includes("Casino");
     const isOracle = building.id.includes("Oracle") || building.symbol === "ORACLE";
     const isArcade = building.id.includes("Arcade") || building.symbol === "ARCADE";
@@ -1106,12 +1105,6 @@ export class WorldScene extends Phaser.Scene {
     } else if (isPokeCenter) {
       window.dispatchEvent(
         new CustomEvent("bagsworld-pokecenter-click", {
-          detail: { buildingId: building.id, name: building.name },
-        })
-      );
-    } else if (isTradingGym) {
-      window.dispatchEvent(
-        new CustomEvent("bagsworld-tradinggym-click", {
           detail: { buildingId: building.id, name: building.name },
         })
       );
@@ -6427,7 +6420,6 @@ export class WorldScene extends Phaser.Scene {
 
     // Special buildings have fixed textures - no need to update
     const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
-    const isTradingGym = building.id.includes("TradingGym") || building.symbol === "DOJO";
     const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
     const isOracle = building.id.includes("Oracle") || building.symbol === "ORACLE";
     const isArcade = building.id.includes("Arcade") || building.symbol === "ARCADE";
@@ -6443,7 +6435,6 @@ export class WorldScene extends Phaser.Scene {
     // Skip texture updates for special buildings (they don't change)
     if (
       isPokeCenter ||
-      isTradingGym ||
       isCasino ||
       isOracle ||
       isArcade ||
@@ -6533,9 +6524,8 @@ export class WorldScene extends Phaser.Scene {
       container.add(shadow);
     }
 
-    // Use special texture for PokeCenter/TradingGym/Casino/Oracle/HQ/Mansions, otherwise use level-based building with style
+    // Use special texture for PokeCenter/Casino/Oracle/HQ/Mansions, otherwise use level-based building with style
     const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
-    const isTradingGym = building.id.includes("TradingGym") || building.symbol === "DOJO";
     const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
     const isOracle = building.id.includes("Oracle") || building.symbol === "ORACLE";
     const isArcade = building.id.includes("Arcade") || building.symbol === "ARCADE";
@@ -6569,19 +6559,17 @@ export class WorldScene extends Phaser.Scene {
         ? `mansion_${mansionStyleIndex}`
         : isPokeCenter
           ? "pokecenter"
-          : isTradingGym
-            ? "tradinggym"
-            : isCasino
-              ? "casino"
-              : isOracle
-                ? "oracle_tower"
-                : isArcade
-                  ? "arcade_building"
-                  : isTreasury
-                    ? "treasury"
-                    : isBeachBuilding
-                      ? `beach_building_${beachBuildingLevel}`
-                      : `building_${building.level}_${styleIndex}`;
+          : isCasino
+            ? "casino"
+            : isOracle
+              ? "oracle_tower"
+              : isArcade
+                ? "arcade_building"
+                : isTreasury
+                  ? "treasury"
+                  : isBeachBuilding
+                    ? `beach_building_${beachBuildingLevel}`
+                    : `building_${building.level}_${styleIndex}`;
     const sprite = this.add.sprite(0, 0, buildingTexture);
     sprite.setOrigin(0.5, 1);
     // HQ is larger and floating, mansions use rank-based scaling from building data
@@ -6595,17 +6583,15 @@ export class WorldScene extends Phaser.Scene {
           ? mansionScale
           : isPokeCenter
             ? 1.0
-            : isTradingGym
+            : isCasino
               ? 1.0
-              : isCasino
+              : isOracle
                 ? 1.0
-                : isOracle
+                : isArcade
                   ? 1.0
-                  : isArcade
+                  : isTreasury
                     ? 1.0
-                    : isTreasury
-                      ? 1.0
-                      : buildingScale
+                    : buildingScale
     );
     container.add(sprite);
 
@@ -6781,7 +6767,6 @@ export class WorldScene extends Phaser.Scene {
         return;
       }
       const isPokeCenter = building.id.includes("PokeCenter");
-      const isTradingGym = building.id.includes("TradingGym") || building.symbol === "DOJO";
       const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
       const isOracle = building.id.includes("Oracle") || building.symbol === "ORACLE";
       const isArcade = building.id.includes("Arcade") || building.symbol === "ARCADE";
@@ -6806,13 +6791,6 @@ export class WorldScene extends Phaser.Scene {
         // PokeCenter opens the auto-claim hub modal
         window.dispatchEvent(
           new CustomEvent("bagsworld-pokecenter-click", {
-            detail: { buildingId: building.id, name: building.name },
-          })
-        );
-      } else if (isTradingGym) {
-        // TradingGym opens the AI trading arena modal
-        window.dispatchEvent(
-          new CustomEvent("bagsworld-tradinggym-click", {
             detail: { buildingId: building.id, name: building.name },
           })
         );
