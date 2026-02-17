@@ -93,6 +93,12 @@ const GhostTraderButton = dynamic(
   { ssr: false }
 );
 
+// Wild encounter overlay — only downloaded when encounter triggers
+const EncounterOverlay = dynamic(
+  () => import("@/components/EncounterOverlay").then((m) => m.EncounterOverlay),
+  { ssr: false }
+);
+
 // Lazy-loaded modal components — only downloaded when modal is opened
 const BuildingModal = dynamic(
   () => import("@/components/BuildingModal").then((m) => m.BuildingModal),
@@ -172,6 +178,8 @@ const OakIntroWizard = dynamic(
 import { useGameStore } from "@/lib/store";
 import { useGameEvents } from "@/hooks/useGameEvents";
 import type { ZoneType } from "@/lib/types";
+import type { Creature, CreatureZone } from "@/lib/encounter-types";
+import { generateCreature } from "@/lib/encounter-creatures";
 import { initDialogueSystem, cleanupDialogueSystem } from "@/lib/autonomous-dialogue";
 import {
   initDialogueEventBridge,
@@ -185,6 +193,7 @@ import {
   updateWorldStateForBehavior,
 } from "@/lib/character-behavior";
 import { AgentActivityIndicator } from "@/components/AgentActivityIndicator";
+import { ImmersiveHUD } from "@/components/ImmersiveHUD";
 import { useWallet } from "@solana/wallet-adapter-react";
 
 const CASINO_ADMIN_WALLET = "7BAHgz9Q2ubiTaVo9sCy5AdDvNMiJaK8FebGHTM3PEwm";
@@ -328,6 +337,51 @@ export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<"leaderboard" | "market">("market");
+  const [isImmersive, setIsImmersive] = useState(false);
+  const [encounterCreature, setEncounterCreature] = useState<Creature | null>(null);
+
+  // Listen for wild encounter events
+  useEffect(() => {
+    const onEncounterStart = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      const zone = detail?.zone as CreatureZone;
+      if (!zone) return;
+      const creature = generateCreature(zone);
+      setEncounterCreature(creature);
+    };
+    window.addEventListener("bagsworld-encounter-start", onEncounterStart);
+    return () => window.removeEventListener("bagsworld-encounter-start", onEncounterStart);
+  }, []);
+
+  const handleEncounterClose = useCallback(
+    (result: "win" | "lose" | "flee") => {
+      setEncounterCreature(null);
+      window.dispatchEvent(
+        new CustomEvent("bagsworld-encounter-end", { detail: { result } })
+      );
+    },
+    []
+  );
+
+  // Listen for player enter/exit to toggle immersive mode
+  useEffect(() => {
+    const onEnter = () => setIsImmersive(true);
+    const onExit = () => setIsImmersive(false);
+    window.addEventListener("bagsworld-player-entered", onEnter);
+    window.addEventListener("bagsworld-player-exited", onExit);
+    return () => {
+      window.removeEventListener("bagsworld-player-entered", onEnter);
+      window.removeEventListener("bagsworld-player-exited", onExit);
+    };
+  }, []);
+
+  // After UI collapse/expand transition, trigger resize so Phaser recalculates canvas
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      window.dispatchEvent(new Event("resize"));
+    }, 520);
+    return () => clearTimeout(timer);
+  }, [isImmersive]);
 
   // Listen for Phaser game events — single hook handles all 16 event listeners
   const gameEventHandlers = useMemo(
@@ -442,8 +496,8 @@ export default function Home() {
       <Suspense fallback={null}>
         <DeepLinkHandler />
       </Suspense>
-      {/* Header - responsive */}
-      <header className="h-14 md:h-16 bg-bags-dark hud-border-bottom hud-panel flex items-center justify-between px-1.5 md:px-4 relative z-50 safe-area-top shrink-0">
+      {/* Header - responsive, collapses in immersive mode */}
+      <header className={`h-14 md:h-16 bg-bags-dark hud-border-bottom hud-panel flex items-center justify-between px-1.5 md:px-4 relative z-50 safe-area-top shrink-0 transition-transform duration-500 ease-in-out ${isImmersive ? "-translate-y-full" : ""}`}>
         {/* Left side - Logo and health */}
         <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
           <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2">
@@ -581,13 +635,18 @@ export default function Home() {
             {/* Scanlines disabled on mobile via CSS for better touch handling */}
             <div className="scanlines" aria-hidden="true" />
 
-            {/* Desktop zone nav overlay (2-row grid with Dungeon) */}
-            <div className="hidden sm:block absolute top-2 left-1/2 -translate-x-1/2 z-20">
-              <ZoneNav />
-            </div>
+            {/* Desktop zone nav overlay (2-row grid with Dungeon) — hidden in immersive mode */}
+            {!isImmersive && (
+              <div className="hidden sm:block absolute top-2 left-1/2 -translate-x-1/2 z-20">
+                <ZoneNav />
+              </div>
+            )}
 
             {/* Agent Activity Indicator - shows when agents are talking */}
             <AgentActivityIndicator />
+
+            {/* Immersive HUD — floating overlay when player is in world */}
+            <ImmersiveHUD visible={isImmersive} worldHealth={worldState?.health ?? 50} />
 
             {/* Chat windows - always rendered but can show/hide based on click events */}
             {/* On mobile, users use MobileCharacterMenu to trigger these */}
@@ -628,14 +687,14 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Sidebar - hidden on mobile, slide-in drawer on tablet, always visible on desktop */}
+        {/* Sidebar - hidden on mobile, slide-in drawer on tablet, always visible on desktop. Slides right in immersive mode. */}
         <aside
           className={`
-          ${mobileSidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}
+          ${mobileSidebarOpen && !isImmersive ? "translate-x-0" : isImmersive ? "translate-x-full" : "translate-x-full lg:translate-x-0"}
           fixed lg:relative right-0 top-14 md:top-16 lg:top-0
           w-[85vw] sm:w-80 h-[calc(100dvh-3.5rem)] md:h-[calc(100dvh-4rem)] lg:h-full
           sidebar-panel hud-border-left flex flex-col
-          transition-transform duration-300 ease-in-out z-40
+          transition-transform duration-500 ease-in-out z-40
           pb-safe
         `}
         >
@@ -708,8 +767,8 @@ export default function Home() {
         )}
       </div>
 
-      {/* Footer status bar - simplified on mobile */}
-      <footer className="min-h-[36px] sm:min-h-[36px] hud-panel hud-border-top flex items-center justify-between px-2 md:px-4 font-pixel text-[10px] sm:text-[9px] md:text-[10px] safe-area-bottom shrink-0 overflow-hidden">
+      {/* Footer status bar - simplified on mobile, collapses in immersive mode */}
+      <footer className={`min-h-[36px] sm:min-h-[36px] hud-panel hud-border-top flex items-center justify-between px-2 md:px-4 font-pixel text-[10px] sm:text-[9px] md:text-[10px] safe-area-bottom shrink-0 overflow-hidden transition-transform duration-500 ease-in-out ${isImmersive ? "translate-y-full" : ""}`}>
         <div className="flex items-center gap-2 md:gap-4">
           <span className="text-gray-400">
             [POP:<span className="text-white ml-1">{worldState?.population?.length ?? 0}</span>]
@@ -842,6 +901,11 @@ export default function Home() {
           />
         )}
       </ErrorBoundary>
+
+      {/* Wild Encounter Overlay — full-screen battle when triggered */}
+      {encounterCreature && (
+        <EncounterOverlay creature={encounterCreature} onClose={handleEncounterClose} />
+      )}
 
       {/* Scout Alerts - shows new token launch notifications */}
       <ScoutAlerts />

@@ -240,6 +240,21 @@ export class WorldScene extends Phaser.Scene {
   private nearbyNPC: GameCharacter | null = null; // NPC player is near (for interaction)
   private nearbyBuilding: GameBuilding | null = null; // Building player is near (for interaction)
   private interactPrompt: Phaser.GameObjects.Container | null = null; // "Press E to talk/enter" UI
+
+  // NPC Awareness — NPCs greet the player when approached
+  private previousNearbyNPC: GameCharacter | null = null;
+  private npcGreetCooldowns: Map<string, number> = new Map();
+  private readonly NPC_GREET_COOLDOWN_MS = 30000; // 30s per NPC
+
+  // Wild Encounter system
+  private encounterCooldowns: Map<string, number> = new Map();
+  private readonly ENCOUNTER_COOLDOWN_MS = 60000;
+  private readonly ENCOUNTER_RADIUS = 60;
+  private readonly ENCOUNTER_CHANCE = 0.3;
+  private encounterActive = false;
+  private playerStunned = false;
+  private stunStars: Phaser.GameObjects.Text[] = [];
+  private boundEncounterEnd: ((e: Event) => void) | null = null;
   private boundEnterWorld: ((e: Event) => void) | null = null;
   private boundExitWorld: ((e: Event) => void) | null = null;
   private pendingEnterWorld: (() => void) | null = null; // Queued spawn when zone is transitioning
@@ -252,6 +267,10 @@ export class WorldScene extends Phaser.Scene {
   > = new Map();
 
   public isMobile = false;
+
+  // Immersive camera state
+  private cameraFollowing = false;
+  private irisGraphics: Phaser.GameObjects.Graphics | null = null;
 
   // Drag detection: prevents accidental taps when scrolling on mobile
   private touchStartPos: { x: number; y: number } | null = null;
@@ -361,6 +380,10 @@ export class WorldScene extends Phaser.Scene {
     // Listen for quest marker events from QuestTracker
     this.boundQuestMarkers = (e: Event) => this.handleQuestMarkers(e as CustomEvent);
     window.addEventListener("bagsworld-quest-markers", this.boundQuestMarkers);
+
+    // Listen for encounter end events (from React overlay)
+    this.boundEncounterEnd = (e: Event) => this.handleEncounterEnd(e as CustomEvent);
+    window.addEventListener("bagsworld-encounter-end", this.boundEncounterEnd);
 
     // Setup local player controls (WASD/arrow keys to walk around)
     this.setupLocalPlayer();
@@ -533,6 +556,14 @@ export class WorldScene extends Phaser.Scene {
     // Cool spawn effect
     this.playSpawnEffect(startX, pathLevel);
 
+    // Camera follow + zoom (skip on mobile — mobile has its own camera controls)
+    if (!this.isMobile && this.localPlayer) {
+      this.cameras.main.setBounds(0, 0, GAME_WIDTH, GAME_HEIGHT);
+      this.cameras.main.startFollow(this.localPlayer, true, 0.08, 0.08);
+      this.cameras.main.zoomTo(1.3, 800, "Sine.easeInOut");
+      this.cameraFollowing = true;
+    }
+
     window.dispatchEvent(new CustomEvent("bagsworld-player-entered"));
   }
 
@@ -561,12 +592,26 @@ export class WorldScene extends Phaser.Scene {
     // Play cool spawn effect
     this.playSpawnEffect(startX, pathLevel, 1.4);
 
+    // Camera follow + zoom (skip on mobile — mobile has its own camera controls)
+    if (!this.isMobile) {
+      this.cameras.main.setBounds(0, 0, GAME_WIDTH, GAME_HEIGHT);
+      this.cameras.main.startFollow(this.localPlayer, true, 0.08, 0.08);
+      this.cameras.main.zoomTo(1.3, 800, "Sine.easeInOut");
+      this.cameraFollowing = true;
+    }
+
     // Notify React that player entered
     window.dispatchEvent(new CustomEvent("bagsworld-player-entered"));
   }
 
   private playSpawnEffect(x: number, y: number, targetScale: number = 1.4): void {
     if (!this.localPlayer) return;
+
+    // Play entry sound effect
+    this.playSpawnSfx();
+
+    // Play iris-in reveal
+    this.playIrisIn(x, y);
 
     // Start from above and drop down with effects
     const spawnY = y - 200;
@@ -633,10 +678,74 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
+  private playIrisIn(cx: number, cy: number): void {
+    // Clean up any previous iris
+    if (this.irisGraphics) {
+      this.cameras.main.clearMask();
+      this.irisGraphics.destroy();
+      this.irisGraphics = null;
+    }
+
+    const maxRadius = Math.max(GAME_WIDTH, GAME_HEIGHT);
+    const gfx = this.add.graphics();
+    gfx.setDepth(200);
+    this.irisGraphics = gfx;
+
+    // Start with a tiny circle at spawn point
+    gfx.clear();
+    gfx.fillStyle(0xffffff);
+    gfx.fillCircle(cx, cy, 1);
+
+    const mask = gfx.createGeometryMask();
+    this.cameras.main.setMask(mask);
+
+    // Tween a custom property to drive the radius
+    const proxy = { radius: 1 };
+    this.tweens.add({
+      targets: proxy,
+      radius: maxRadius,
+      duration: 700,
+      ease: "Cubic.easeOut",
+      onUpdate: () => {
+        gfx.clear();
+        gfx.fillStyle(0xffffff);
+        gfx.fillCircle(cx, cy, proxy.radius);
+      },
+      onComplete: () => {
+        this.cameras.main.clearMask();
+        gfx.destroy();
+        if (this.irisGraphics === gfx) {
+          this.irisGraphics = null;
+        }
+      },
+    });
+  }
+
   private exitWorld(): void {
     if (!this.playerEnabled || !this.localPlayer) return;
 
     this.playerEnabled = false;
+
+    // Play exit sound
+    this.playExitSfx();
+
+    // Stop camera follow and zoom back to overview
+    if (this.cameraFollowing) {
+      this.cameras.main.stopFollow();
+      this.cameraFollowing = false;
+      this.cameras.main.zoomTo(1.0, 500, "Sine.easeInOut");
+      this.time.delayedCall(500, () => {
+        this.cameras.main.scrollX = 0;
+        this.cameras.main.scrollY = 0;
+      });
+    }
+
+    // Clean up iris if mid-animation
+    if (this.irisGraphics) {
+      this.cameras.main.clearMask();
+      this.irisGraphics.destroy();
+      this.irisGraphics = null;
+    }
 
     // Capture references before nulling — the fade-out tween needs the sprite
     const exitingPlayer = this.localPlayer;
@@ -657,6 +766,9 @@ export class WorldScene extends Phaser.Scene {
       nameLabel.destroy();
     }
 
+    // Camera fade out
+    this.cameras.main.fade(300, 0, 0, 0);
+
     // Fade out animation on the captured sprite
     this.tweens.add({
       targets: exitingPlayer,
@@ -672,6 +784,8 @@ export class WorldScene extends Phaser.Scene {
             this.textures.remove(key);
           }
         }
+        // Reset camera FX after fade completes
+        this.cameras.main.resetFX();
       },
     });
 
@@ -725,6 +839,9 @@ export class WorldScene extends Phaser.Scene {
 
     // Skip all movement when a modal (arcade, casino, etc.) is open
     if ((window as any).__bagsworld_modal_open) return;
+
+    // Skip movement when stunned (after encounter loss) or in encounter
+    if (this.playerStunned || this.encounterActive) return;
 
     // Skip WASD movement when a text input or textarea is focused (chat boxes, modals, etc.)
     const activeTag = document.activeElement?.tagName;
@@ -859,6 +976,9 @@ export class WorldScene extends Phaser.Scene {
     // Check NPC and building proximity for interaction
     this.checkProximityForInteraction();
 
+    // Check for wild creature encounters
+    this.checkCreatureEncounters();
+
     // Handle E key interaction (NPCs take priority over buildings)
     if (interact) {
       if (this.nearbyNPC) {
@@ -884,7 +1004,7 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
-    // Zone order: labs -> moltbook -> main_city -> trending -> ballers -> founders -> arena (left to right)
+    // Zone order: labs -> moltbook -> main_city -> trending -> ballers -> founders -> arena -> disclosure (left to right)
     const zoneOrder: ZoneType[] = [
       "labs",
       "moltbook",
@@ -893,6 +1013,7 @@ export class WorldScene extends Phaser.Scene {
       "ballers",
       "founders",
       "arena",
+      "disclosure",
     ];
     const currentIndex = zoneOrder.indexOf(this.currentZone);
 
@@ -962,6 +1083,12 @@ export class WorldScene extends Phaser.Scene {
     });
 
     this.nearbyNPC = npcResult.npc;
+
+    // NPC Awareness: greet player on first approach
+    if (this.nearbyNPC && this.nearbyNPC !== this.previousNearbyNPC) {
+      this.triggerNPCGreeting(this.nearbyNPC);
+    }
+    this.previousNearbyNPC = this.nearbyNPC;
 
     // Check buildings (only if no NPC nearby)
     // Buildings are positioned higher on screen, so use X distance primarily
@@ -1301,6 +1428,11 @@ export class WorldScene extends Phaser.Scene {
   private transitionToZone(newZone: ZoneType): void {
     // Mark transition in progress
     this.isTransitioning = true;
+
+    // Pause camera follow during transition
+    if (this.cameraFollowing) {
+      this.cameras.main.stopFollow();
+    }
 
     // CLEANUP: Kill any existing transition tweens to prevent accumulation
     this.decorations.forEach((d) => this.tweens.killTweensOf(d));
@@ -1646,6 +1778,11 @@ export class WorldScene extends Phaser.Scene {
       // Update zone and set up new content
       this.currentZone = newZone;
 
+      // Sync zone to Zustand store (used by ImmersiveHUD)
+      window.dispatchEvent(
+        new CustomEvent("bagsworld-phaser-zone-change", { detail: { zone: newZone } })
+      );
+
       // Change ground texture based on zone
       const groundTextures: Record<ZoneType, string> = {
         labs: "labs_ground", // Tech Labs has futuristic floor tiles
@@ -1719,6 +1856,11 @@ export class WorldScene extends Phaser.Scene {
 
       // Mark transition complete
       this.isTransitioning = false;
+
+      // Resume camera follow after transition
+      if (this.cameraFollowing && this.localPlayer) {
+        this.cameras.main.startFollow(this.localPlayer, true, 0.08, 0.08);
+      }
 
       // Flush any pending player spawn that was queued during this transition
       if (this.pendingEnterWorld) {
@@ -2731,6 +2873,12 @@ export class WorldScene extends Phaser.Scene {
       qm.glow.destroy();
     }
     this.questMarkers.clear();
+
+    // Clean up encounter listener
+    if (this.boundEncounterEnd) {
+      window.removeEventListener("bagsworld-encounter-end", this.boundEncounterEnd);
+      this.boundEncounterEnd = null;
+    }
 
     // Clean up behavior handlers
     if (this.boundBehaviorHandler) {
@@ -4894,6 +5042,41 @@ export class WorldScene extends Phaser.Scene {
       },
       (totalDuration + 2) * 1000
     );
+  }
+
+  private playSpawnSfx(): void {
+    if (!this.audioContext || !this.gainNode) return;
+
+    const t = this.audioContext.currentTime + 0.05;
+    // 4-note ascending arpeggio: C5→E5→G5→C6 (square wave)
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((freq, i) => {
+      this.playNote(freq, t + i * 0.1, 0.1, 0.05, "square");
+    });
+
+    // Subtle sine sweep underneath (200→800 Hz over 0.3s)
+    const sweep = this.audioContext.createOscillator();
+    const sweepGain = this.audioContext.createGain();
+    sweep.type = "sine";
+    sweep.frequency.setValueAtTime(200, t);
+    sweep.frequency.exponentialRampToValueAtTime(800, t + 0.3);
+    sweepGain.gain.setValueAtTime(0.03, t);
+    sweepGain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    sweep.connect(sweepGain);
+    sweepGain.connect(this.gainNode);
+    sweep.start(t);
+    sweep.stop(t + 0.35);
+  }
+
+  private playExitSfx(): void {
+    if (!this.audioContext || !this.gainNode) return;
+
+    const t = this.audioContext.currentTime + 0.05;
+    // 3-note descending: G5→E5→C5
+    const notes = [783.99, 659.25, 523.25];
+    notes.forEach((freq, i) => {
+      this.playNote(freq, t + i * 0.1, 0.12, 0.04, "square");
+    });
   }
 
   private playNote(
@@ -9137,5 +9320,196 @@ export class WorldScene extends Phaser.Scene {
 
     // Start walking
     takeStep();
+  }
+
+  // === NPC AWARENESS ===
+
+  private triggerNPCGreeting(character: GameCharacter): void {
+    const behaviorId = this.getCharacterBehaviorId(character);
+    if (!behaviorId) return;
+
+    // Check cooldown
+    const lastGreet = this.npcGreetCooldowns.get(behaviorId) ?? 0;
+    if (Date.now() - lastGreet < this.NPC_GREET_COOLDOWN_MS) return;
+
+    const sprite = this.findCharacterSprite(behaviorId);
+    if (!sprite || !sprite.active) return;
+
+    // Skip if already doing something
+    if ((sprite as any).isDoingActivity || (sprite as any).isWalking) return;
+
+    // Set cooldown
+    this.npcGreetCooldowns.set(behaviorId, Date.now());
+
+    // Face the player
+    if (this.localPlayer) {
+      sprite.setFlipX(this.localPlayer.x < sprite.x);
+    }
+
+    // Mark as busy
+    (sprite as any).isDoingActivity = true;
+
+    // Get idle tween to pause it
+    const idleTween = (sprite as any).idleTween as Phaser.Tweens.Tween | null;
+    if (idleTween) idleTween.pause();
+
+    const baseY = (sprite as any).baseY ?? sprite.y;
+
+    // Wave animation (reuse existing pattern)
+    this.activityWave(sprite, baseY, null, this.localPlayer);
+
+    // Show greeting bubble
+    const greeting = this.getNPCGreeting(behaviorId);
+    window.dispatchEvent(
+      new CustomEvent("bagsworld-character-speak", {
+        detail: { characterId: behaviorId, message: greeting, emotion: "happy" },
+      })
+    );
+
+    // Hold NPC still for 3.5s (speech bubble display duration)
+    this.time.delayedCall(3500, () => {
+      (sprite as any).isDoingActivity = false;
+      if (idleTween) idleTween.resume();
+    });
+  }
+
+  private getNPCGreeting(characterId: string): string {
+    const greetings: Record<string, string[]> = {
+      finn: ["Hey! Welcome to BagsWorld!", "Yo, nice to see you here!", "The vibes are immaculate today!"],
+      ghost: ["Sup, legend. Stay ghostly.", "Welcome back, fren.", "Bags up, always."],
+      neo: ["*scanning*... New launch detected: YOU!", "Tracking your moves... impressive.", "Welcome, builder."],
+      ash: ["A new trainer approaches!", "Gotta catch 'em all, right?", "Ready for an adventure?"],
+      toly: ["Building on Solana? Based.", "Welcome, anon. Ship fast.", "The future is onchain."],
+      shaw: ["Agents are the future.", "Welcome to the swarm.", "Let's build something autonomous."],
+      cj: ["Yo, what's good homie!", "Welcome to the block!", "Big things happening, stay sharp!"],
+      ramo: ["The smart contracts are ready.", "Welcome, developer.", "Let's ship some code."],
+      sincara: ["The UI is looking clean!", "Hey there, pixel friend!", "Welcome to the frontend!"],
+      stuu: ["Need help? I got you!", "Welcome aboard!", "Operations running smooth!"],
+      sam: ["Let's grow this thing!", "Hey, welcome!", "Spreading the word!"],
+      alaa: ["Research lab is open!", "Something experimental today?", "Welcome to Skunk Works!"],
+      carlo: ["Welcome, ambassador!", "Great to have you here!", "Community first, always!"],
+      bnn: ["Breaking: New visitor spotted!", "Welcome! News at 11.", "Reporting live from BagsWorld!"],
+      professorOak: ["Ah, a new trainer!", "Ready to launch your first token?", "The world awaits, young one!"],
+      bagsy: ["HYPE! Welcome fren!", "LFG! Bags are pumping!", "The vibes are IMMACULATE!"],
+    };
+
+    const options = greetings[characterId] ?? ["Hey there!", "Welcome!", "Nice to see you!"];
+    return options[Math.floor(Math.random() * options.length)];
+  }
+
+  // === WILD ENCOUNTER SYSTEM ===
+
+  private checkCreatureEncounters(): void {
+    if (!this.localPlayer || this.encounterActive) return;
+
+    const now = Date.now();
+    const px = this.localPlayer.x;
+    const py = this.localPlayer.y;
+
+    // Determine which creature arrays to check based on current zone
+    type EncounterTarget = { sprite: Phaser.GameObjects.Sprite; id: string; zone: "main_city" | "founders" | "moltbook" };
+    const targets: EncounterTarget[] = [];
+
+    if (this.currentZone === "main_city") {
+      this.animals.forEach((a, i) => {
+        targets.push({ sprite: a.sprite, id: `animal_${i}`, zone: "main_city" });
+      });
+    } else if (this.currentZone === "founders") {
+      this.pokemon.forEach((p, i) => {
+        targets.push({ sprite: p.sprite, id: `pokemon_${i}`, zone: "founders" });
+      });
+    } else if (this.currentZone === "moltbook") {
+      this.ambientCreatures.forEach((c, i) => {
+        targets.push({ sprite: c.sprite, id: `ambient_${i}`, zone: "moltbook" });
+      });
+    }
+
+    for (const target of targets) {
+      if (!target.sprite.active || !target.sprite.visible) continue;
+
+      const dist = Phaser.Math.Distance.Between(px, py, target.sprite.x, target.sprite.y);
+      if (dist > this.ENCOUNTER_RADIUS) continue;
+
+      // Check cooldown
+      const lastEncounter = this.encounterCooldowns.get(target.id) ?? 0;
+      if (now - lastEncounter < this.ENCOUNTER_COOLDOWN_MS) continue;
+
+      // Roll for encounter
+      if (Math.random() > this.ENCOUNTER_CHANCE) {
+        // Short-circuit cooldown on failed roll (5s) to avoid per-frame re-rolling
+        this.encounterCooldowns.set(target.id, now - this.ENCOUNTER_COOLDOWN_MS + 5000);
+        continue;
+      }
+
+      // Encounter triggered!
+      this.encounterCooldowns.set(target.id, now);
+      this.encounterActive = true;
+
+      window.dispatchEvent(
+        new CustomEvent("bagsworld-encounter-start", {
+          detail: { zone: target.zone },
+        })
+      );
+      break; // Only one encounter at a time
+    }
+  }
+
+  private handleEncounterEnd(event: CustomEvent): void {
+    this.encounterActive = false;
+    const result = event.detail?.result as string;
+
+    if (result === "lose") {
+      this.showPlayerStunEffect();
+    }
+  }
+
+  private showPlayerStunEffect(): void {
+    if (!this.localPlayer) return;
+
+    this.playerStunned = true;
+
+    // Create 3 orbiting star emojis above the player
+    const starOffsets = [0, (Math.PI * 2) / 3, (Math.PI * 4) / 3];
+    const starTexts: Phaser.GameObjects.Text[] = [];
+
+    for (const offset of starOffsets) {
+      const star = this.add.text(this.localPlayer.x, this.localPlayer.y - 40, "*", {
+        fontSize: "16px",
+        color: "#FFD700",
+        fontFamily: "monospace",
+      });
+      star.setOrigin(0.5);
+      star.setDepth(20);
+      starTexts.push(star);
+    }
+
+    this.stunStars = starTexts;
+
+    // Animate stars orbiting
+    let angle = 0;
+    const orbitRadius = 15;
+    const orbitTimer = this.time.addEvent({
+      delay: 30,
+      loop: true,
+      callback: () => {
+        if (!this.localPlayer) return;
+        angle += 0.08;
+        starTexts.forEach((star, i) => {
+          const a = angle + starOffsets[i];
+          star.setPosition(
+            this.localPlayer!.x + Math.cos(a) * orbitRadius,
+            this.localPlayer!.y - 40 + Math.sin(a) * 5
+          );
+        });
+      },
+    });
+
+    // Remove stun after 3s
+    this.time.delayedCall(3000, () => {
+      this.playerStunned = false;
+      orbitTimer.destroy();
+      starTexts.forEach((s) => s.destroy());
+      this.stunStars = [];
+    });
   }
 }
