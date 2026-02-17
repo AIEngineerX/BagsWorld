@@ -5,7 +5,6 @@
 const textureCache: Map<string, string> = new Map();
 let extracted = false;
 
-// All texture keys needed for the battle overlay
 const BATTLE_TEXTURE_KEYS = [
   // Animals (main_city encounters)
   "dog",
@@ -45,14 +44,6 @@ const BATTLE_TEXTURE_KEYS = [
   "character_6",
   "character_7",
   "character_8",
-  // Named characters (for future use)
-  "finn",
-  "dev",
-  "neo",
-  "ash",
-  "toly",
-  "shaw",
-  "cj",
 ];
 
 function extractTextureToDataUrl(
@@ -142,19 +133,4 @@ export function getCreatureBattleSpriteUrl(spriteKey: string): string | null {
   if (idle) return idle;
 
   return null;
-}
-
-/** Get creature attack pose sprite (for arena fighters) */
-export function getCreatureAttackSpriteUrl(spriteKey: string): string | null {
-  return getTextureDataUrl(`${spriteKey}_attack`);
-}
-
-/** Get creature hurt pose sprite (for arena fighters) */
-export function getCreatureHurtSpriteUrl(spriteKey: string): string | null {
-  return getTextureDataUrl(`${spriteKey}_hurt`);
-}
-
-/** Check if textures have been extracted */
-export function areTexturesReady(): boolean {
-  return extracted && textureCache.size > 0;
 }

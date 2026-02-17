@@ -23,24 +23,37 @@ export function loadProgress(): PlayerProgress {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_PROGRESS };
-    const parsed = JSON.parse(raw) as PlayerProgress;
-    // Validate all fields
-    if (typeof parsed.level !== "number" || parsed.level < 1) return { ...DEFAULT_PROGRESS };
-    if (typeof parsed.xp !== "number" || parsed.xp < 0) return { ...DEFAULT_PROGRESS };
-    if (typeof parsed.wins !== "number") return { ...DEFAULT_PROGRESS };
-    if (typeof parsed.losses !== "number") return { ...DEFAULT_PROGRESS };
-    if (typeof parsed.flees !== "number") return { ...DEFAULT_PROGRESS };
-    return parsed;
+    const parsed = JSON.parse(raw);
+    // Repair individual fields instead of nuking all data on one bad field
+    return {
+      level:
+        typeof parsed.level === "number" && parsed.level >= 1 && parsed.level <= MAX_PLAYER_LEVEL
+          ? parsed.level
+          : DEFAULT_PROGRESS.level,
+      xp: typeof parsed.xp === "number" && parsed.xp >= 0 ? parsed.xp : DEFAULT_PROGRESS.xp,
+      wins:
+        typeof parsed.wins === "number" && parsed.wins >= 0 ? parsed.wins : DEFAULT_PROGRESS.wins,
+      losses:
+        typeof parsed.losses === "number" && parsed.losses >= 0
+          ? parsed.losses
+          : DEFAULT_PROGRESS.losses,
+      flees:
+        typeof parsed.flees === "number" && parsed.flees >= 0
+          ? parsed.flees
+          : DEFAULT_PROGRESS.flees,
+    };
   } catch {
     return { ...DEFAULT_PROGRESS };
   }
 }
 
-export function saveProgress(progress: PlayerProgress): void {
+export function saveProgress(progress: PlayerProgress): boolean {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+    return true;
   } catch {
-    // localStorage full or unavailable — silently ignore
+    // localStorage full or unavailable
+    return false;
   }
 }
 
@@ -69,7 +82,6 @@ export function addXp(amount: number): {
   progress.level = newLevel;
   saveProgress(progress);
 
-  // Dispatch event for HUD updates
   window.dispatchEvent(
     new CustomEvent("bagsworld-xp-changed", { detail: { progress, leveledUp, newLevel } })
   );
@@ -77,22 +89,20 @@ export function addXp(amount: number): {
   return { progress, leveledUp, newLevel };
 }
 
+function incrementStat(key: "wins" | "losses" | "flees"): void {
+  const progress = loadProgress();
+  progress[key]++;
+  saveProgress(progress);
+}
+
 export function recordWin(): void {
-  const progress = loadProgress();
-  progress.wins++;
-  saveProgress(progress);
+  incrementStat("wins");
 }
-
 export function recordLoss(): void {
-  const progress = loadProgress();
-  progress.losses++;
-  saveProgress(progress);
+  incrementStat("losses");
 }
-
 export function recordFlee(): void {
-  const progress = loadProgress();
-  progress.flees++;
-  saveProgress(progress);
+  incrementStat("flees");
 }
 
 export function getPlayerBattleStats(): PlayerBattleStats {
@@ -115,11 +125,10 @@ export function getLevelProgress(): { current: number; max: number; percent: num
   const nextStats = PLAYER_LEVEL_STATS[progress.level + 1];
 
   if (!nextStats) {
-    // Max level
     return { current: progress.xp, max: progress.xp, percent: 100 };
   }
 
-  const currentThreshold = currentStats?.xpNeeded ?? 0;
+  const currentThreshold = currentStats.xpNeeded;
   const nextThreshold = nextStats.xpNeeded;
   const xpInLevel = progress.xp - currentThreshold;
   const xpForLevel = nextThreshold - currentThreshold;

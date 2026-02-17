@@ -633,10 +633,6 @@ function scaleStats(
   };
 }
 
-function cloneMoves(moves: Move[]): Move[] {
-  return moves.map((m) => ({ ...m }));
-}
-
 export function generateCreature(zone: CreatureZone): Creature {
   const templates = ZONE_CREATURES[zone];
   const template = templates[Math.floor(Math.random() * templates.length)];
@@ -655,66 +651,7 @@ export function generateCreature(zone: CreatureZone): Creature {
     zone,
     level,
     stats,
-    moves: cloneMoves(template.moves),
+    moves: template.moves.map((m) => ({ ...m })),
     spriteKey: template.spriteKey,
   };
-}
-
-// Sprite pool cache for Fal.ai generated sprites
-const spritePool: Map<CreatureZone, { url: string; creatureType: string }[]> = new Map();
-
-export async function preGenerateCreaturePool(zone: CreatureZone): Promise<void> {
-  const existing = spritePool.get(zone);
-  if (existing && existing.length > 0) return;
-
-  try {
-    const cached = localStorage.getItem(`bagsworld_creature_sprites_${zone}`);
-    if (cached) {
-      const parsed = JSON.parse(cached) as { url: string; creatureType: string }[];
-      if (parsed.length > 0) {
-        spritePool.set(zone, parsed);
-        return;
-      }
-    }
-  } catch {
-    // ignore
-  }
-
-  const templates = ZONE_CREATURES[zone];
-  const pool: { url: string; creatureType: string }[] = [];
-
-  for (const template of templates.slice(0, 5)) {
-    try {
-      const res = await fetch("/api/generate-creature", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ zone, creatureType: template.type, creatureName: template.name }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.imageUrl) {
-          pool.push({ url: data.imageUrl, creatureType: template.type });
-        }
-      }
-    } catch {
-      // Fal.ai unavailable
-    }
-  }
-
-  if (pool.length > 0) {
-    spritePool.set(zone, pool);
-    try {
-      localStorage.setItem(`bagsworld_creature_sprites_${zone}`, JSON.stringify(pool));
-    } catch {
-      // ignore
-    }
-  }
-}
-
-export function getPooledSpriteUrl(zone: CreatureZone, creatureType: string): string | undefined {
-  const pool = spritePool.get(zone);
-  if (!pool || pool.length === 0) return undefined;
-  const match = pool.find((p) => p.creatureType === creatureType);
-  if (match) return match.url;
-  return pool[Math.floor(Math.random() * pool.length)]?.url;
 }

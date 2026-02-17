@@ -26,7 +26,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "creatureName is required" }, { status: 400 });
     }
 
-    const fullPrompt = `A ${creatureName}, a cute ${creatureType || "fantasy"} creature. ${CREATURE_STYLE_PROMPT}`;
+    // Sanitize user-influenced inputs to prevent prompt injection
+    const safeName = String(creatureName)
+      .replace(/[^a-zA-Z0-9 -]/g, "")
+      .slice(0, 40);
+    const safeType = String(creatureType || "fantasy")
+      .replace(/[^a-zA-Z0-9 -]/g, "")
+      .slice(0, 20);
+
+    const fullPrompt = `A ${safeName}, a cute ${safeType} creature. ${CREATURE_STYLE_PROMPT}`;
 
     console.log("[Creature Gen] Generating:", creatureName);
 

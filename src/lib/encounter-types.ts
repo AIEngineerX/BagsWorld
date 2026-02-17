@@ -1,7 +1,6 @@
 // Wild Encounter Types
 // Turn-based Pokemon Crystal-style battles with roaming creatures
 
-export type BattleAction = "fight" | "defend" | "flee";
 export type BattlePhase = "intro" | "player_turn" | "creature_turn" | "animating" | "result";
 export type BattleResult = "win" | "lose" | "flee";
 export type CreatureZone = "main_city" | "founders" | "moltbook";
@@ -71,7 +70,6 @@ export interface BattleLogEntry {
     | "player_attack"
     | "creature_attack"
     | "player_defend"
-    | "creature_defend"
     | "flee"
     | "result"
     | "stat_change"
@@ -98,6 +96,7 @@ export interface EncounterState {
   battleLog: BattleLogEntry[];
   result: BattleResult | null;
   xpGained: number;
+  fleeAttempts: number; // Dedicated counter for Crystal flee formula
   lastMoveUsed?: Move; // For animation purposes
   creatureGoesFirst?: boolean; // Speed-based turn order for the overlay
 }
@@ -110,7 +109,6 @@ export interface PlayerProgress {
   flees: number;
 }
 
-// Player stats per level
 export const PLAYER_LEVEL_STATS: Record<
   number,
   { hp: number; attack: number; defense: number; speed: number; xpNeeded: number }
@@ -124,14 +122,12 @@ export const PLAYER_LEVEL_STATS: Record<
 
 export const MAX_PLAYER_LEVEL = 5;
 
-// Zone difficulty ranges
 export const ZONE_DIFFICULTY: Record<CreatureZone, { minLevel: number; maxLevel: number }> = {
   main_city: { minLevel: 1, maxLevel: 2 },
   founders: { minLevel: 2, maxLevel: 3 },
   moltbook: { minLevel: 2, maxLevel: 3 },
 };
 
-// Struggle — used when all moves are at 0 PP
 export const STRUGGLE_MOVE: Move = {
   name: "Struggle",
   type: "normal",
@@ -142,7 +138,6 @@ export const STRUGGLE_MOVE: Move = {
   animation: "slash",
 };
 
-// Player starter moves
 export const PLAYER_MOVES: Move[] = [
   {
     name: "Tackle",
@@ -199,14 +194,13 @@ export function getStatMultiplier(stage: number): number {
 // Defensive types: fire, water, grass, beast, bug, flying, aquatic, normal
 
 type OffensiveType = "normal" | "fire" | "water" | "grass" | "bug" | "flying" | "aquatic";
-type DefensiveType = string; // creature.type
 
-const TYPE_CHART: Partial<Record<OffensiveType, Partial<Record<DefensiveType, number>>>> = {
+const TYPE_CHART: Partial<Record<OffensiveType, Partial<Record<string, number>>>> = {
   fire: { grass: 2, water: 0.5, fire: 0.5, bug: 2, aquatic: 0.5 },
   water: { fire: 2, grass: 0.5, water: 0.5, aquatic: 0.5 },
   grass: { water: 2, fire: 0.5, grass: 0.5, bug: 0.5, aquatic: 2 },
   bug: { grass: 2, fire: 0.5, flying: 0.5 },
-  flying: { bug: 2, grass: 2, beast: 1 },
+  flying: { bug: 2, grass: 2 },
   aquatic: { fire: 2, grass: 0.5, aquatic: 0.5 },
   // normal: no super-effective or not-very-effective matchups
 };

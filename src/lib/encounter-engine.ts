@@ -25,6 +25,26 @@ function logEntry(
   return { message, type, damage, moveAnimation, timestamp: Date.now() };
 }
 
+function setPlayerDefeated(next: EncounterState): void {
+  next.result = "lose";
+  next.phase = "result";
+  next.battleLog.push(logEntry("You were defeated...", "result"));
+}
+
+function setCreatureDefeated(next: EncounterState): void {
+  next.xpGained = calculateXpGained(next.creature);
+  next.result = "win";
+  next.phase = "result";
+}
+
+function endCreatureTurn(next: EncounterState): EncounterState {
+  applyBurnDamage(next);
+  if (next.result) return next;
+  next.phase = "player_turn";
+  next.turnNumber++;
+  return next;
+}
+
 // Pokemon Crystal damage formula:
 // damage = ((2 * level / 5 + 2) * power * (atk / def)) / 50 + 2
 // * STAB * type effectiveness * random(0.85 - 1.0), minimum 2
@@ -93,10 +113,10 @@ export function createEncounter(
     battleLog: [logEntry(`Wild ${creature.name} appeared!`, "info")],
     result: null,
     xpGained: 0,
+    fleeAttempts: 0,
   };
 }
 
-// Apply burn damage at end of turn for the burned party
 function applyBurnDamage(next: EncounterState): void {
   if (next.creatureStatus === "burn") {
     const burnDmg = Math.max(1, Math.floor(next.creature.stats.maxHp / 16));
@@ -105,10 +125,7 @@ function applyBurnDamage(next: EncounterState): void {
       logEntry(`${next.creature.name} is hurt by its burn!`, "status_damage", burnDmg)
     );
     if (next.creatureHp <= 0) {
-      const xp = calculateXpGained(next.creature);
-      next.xpGained = xp;
-      next.result = "win";
-      next.phase = "result";
+      setCreatureDefeated(next);
     }
   }
   if (next.playerStatus === "burn" && !next.result) {
@@ -116,14 +133,11 @@ function applyBurnDamage(next: EncounterState): void {
     next.playerHp = Math.max(0, next.playerHp - burnDmg);
     next.battleLog.push(logEntry("You are hurt by your burn!", "status_damage", burnDmg));
     if (next.playerHp <= 0) {
-      next.result = "lose";
-      next.phase = "result";
-      next.battleLog.push(logEntry("You were defeated...", "result"));
+      setPlayerDefeated(next);
     }
   }
 }
 
-// Apply secondary effects from a damaging move (burn, def_down, spd_down on the target)
 function applySecondaryEffect(next: EncounterState, move: Move, targetIsPlayer: boolean): void {
   if (!move.effect || !move.effectChance) return;
   if (Math.random() * 100 >= move.effectChance) return;
@@ -187,7 +201,6 @@ export function executePlayerMove(state: EncounterState, move: Move): EncounterS
     }
   }
 
-  // Status moves (buff/debuff)
   if (move.power === 0) {
     if (move.effect === "def_up") {
       if (next.playerStages.defense < 6) {
@@ -207,7 +220,6 @@ export function executePlayerMove(state: EncounterState, move: Move): EncounterS
     return next;
   }
 
-  // Accuracy check
   if (move.accuracy < 100 && Math.random() * 100 > move.accuracy) {
     next.battleLog.push(
       logEntry(`You used ${move.name}!`, "player_attack", undefined, move.animation)
@@ -217,7 +229,6 @@ export function executePlayerMove(state: EncounterState, move: Move): EncounterS
     return next;
   }
 
-  // Calculate damage with type effectiveness and STAB
   // Player type is "normal" (generic trainer)
   const { damage, effectiveness, stab } = calculateMoveDamage(
     next.player.level,
@@ -232,23 +243,16 @@ export function executePlayerMove(state: EncounterState, move: Move): EncounterS
     next.playerStatus === "burn"
   );
 
-  // Reset creature defending after absorbing one hit
   next.creatureDefending = false;
 
   next.creatureHp = Math.max(0, next.creatureHp - damage);
   next.battleLog.push(logEntry(`You used ${move.name}!`, "player_attack", damage, move.animation));
 
-  // Effectiveness messages
   if (effectiveness > 1) {
     next.battleLog.push(logEntry("It's super effective!", "effectiveness"));
   } else if (effectiveness < 1) {
     next.battleLog.push(logEntry("It's not very effective...", "effectiveness"));
   }
-  if (stab) {
-    // STAB is silent in Crystal, but we keep it implicit in damage
-  }
-
-  // Secondary effects on damaging moves (burn, def_down, spd_down)
   applySecondaryEffect(next, move, false);
 
   // Struggle recoil: 1/4 of damage dealt
@@ -259,17 +263,12 @@ export function executePlayerMove(state: EncounterState, move: Move): EncounterS
   }
 
   if (next.creatureHp <= 0) {
-    const xp = calculateXpGained(next.creature);
-    next.xpGained = xp;
-    next.result = "win";
-    next.phase = "result";
+    setCreatureDefeated(next);
     return next;
   }
 
   if (next.playerHp <= 0) {
-    next.result = "lose";
-    next.phase = "result";
-    next.battleLog.push(logEntry("You were defeated...", "result"));
+    setPlayerDefeated(next);
     return next;
   }
 
@@ -286,7 +285,6 @@ export function executePlayerDefend(state: EncounterState): EncounterState {
     creatureGoesFirst: doesCreatureGoFirst(state, null),
   };
 
-  // Set defending flag — lasts for exactly one incoming hit, then resets
   next.playerDefending = true;
   next.battleLog.push(logEntry("You brace yourself!", "player_defend", undefined, "shimmer"));
   next.battleLog.push(logEntry("Defense rose temporarily!", "stat_change"));
@@ -309,10 +307,10 @@ export function executePlayerFlee(state: EncounterState): EncounterState {
     1,
     next.creature.stats.speed * getStatMultiplier(next.creatureStages.speed)
   );
-  const attempts = next.turnNumber; // Each turn counts as an attempt
+  next.fleeAttempts++;
+  const attempts = next.fleeAttempts;
 
   if (playerSpeed >= enemySpeed) {
-    // Guaranteed escape when faster
     next.result = "flee";
     next.phase = "result";
     next.battleLog.push(logEntry("Got away safely!", "flee"));
@@ -342,14 +340,12 @@ export function executeCreatureTurn(state: EncounterState): EncounterState {
     creatureStages: { ...state.creatureStages },
   };
 
-  // Pick move — wild Pokemon in Crystal use purely random selection
   const move = pickCreatureMove(next.creature);
   if (!move) {
     // No moves left — creature uses Struggle
     return executeCreatureStruggle(next);
   }
 
-  // Deduct PP
   const moveIdx = next.creature.moves.findIndex((m) => m.name === move.name);
   if (moveIdx >= 0) {
     next.creature = { ...next.creature, moves: [...next.creature.moves] };
@@ -399,21 +395,13 @@ export function executeCreatureTurn(state: EncounterState): EncounterState {
       const heal = Math.min(leechDmg, next.creature.stats.maxHp - next.creatureHp);
       if (heal > 0) next.creatureHp += heal;
       if (next.playerHp <= 0) {
-        next.result = "lose";
-        next.phase = "result";
-        next.battleLog.push(logEntry("You were defeated...", "result"));
+        setPlayerDefeated(next);
         return next;
       }
     }
-    // End-of-turn burn damage
-    applyBurnDamage(next);
-    if (next.result) return next;
-    next.phase = "player_turn";
-    next.turnNumber++;
-    return next;
+    return endCreatureTurn(next);
   }
 
-  // Accuracy check
   if (move.accuracy < 100 && Math.random() * 100 > move.accuracy) {
     next.battleLog.push(
       logEntry(
@@ -424,14 +412,9 @@ export function executeCreatureTurn(state: EncounterState): EncounterState {
       )
     );
     next.battleLog.push(logEntry("But it missed!", "info"));
-    applyBurnDamage(next);
-    if (next.result) return next;
-    next.phase = "player_turn";
-    next.turnNumber++;
-    return next;
+    return endCreatureTurn(next);
   }
 
-  // Damage with type effectiveness and STAB
   const defenseStage = next.playerDefending
     ? next.playerStages.defense + 2 // Defending gives +2 stage bonus for one hit
     : next.playerStages.defense;
@@ -449,7 +432,6 @@ export function executeCreatureTurn(state: EncounterState): EncounterState {
     next.creatureStatus === "burn"
   );
 
-  // Reset defending flag after absorbing one hit
   next.playerDefending = false;
 
   next.playerHp = Math.max(0, next.playerHp - damage);
@@ -463,23 +445,14 @@ export function executeCreatureTurn(state: EncounterState): EncounterState {
     next.battleLog.push(logEntry("It's not very effective...", "effectiveness"));
   }
 
-  // Secondary effects on the target (player)
   applySecondaryEffect(next, move, true);
 
   if (next.playerHp <= 0) {
-    next.result = "lose";
-    next.phase = "result";
-    next.battleLog.push(logEntry("You were defeated...", "result"));
+    setPlayerDefeated(next);
     return next;
   }
 
-  // End-of-turn burn damage
-  applyBurnDamage(next);
-  if (next.result) return next;
-
-  next.phase = "player_turn";
-  next.turnNumber++;
-  return next;
+  return endCreatureTurn(next);
 }
 
 function executeCreatureStruggle(next: EncounterState): EncounterState {
@@ -505,31 +478,20 @@ function executeCreatureStruggle(next: EncounterState): EncounterState {
     logEntry(`${next.creature.name} used Struggle!`, "creature_attack", damage, move.animation)
   );
 
-  // Struggle recoil: 1/4 of damage dealt
   const recoil = Math.max(1, Math.floor(damage / 4));
   next.creatureHp = Math.max(0, next.creatureHp - recoil);
   next.battleLog.push(logEntry(`${next.creature.name} is hit with recoil!`, "info", recoil));
 
   if (next.playerHp <= 0) {
-    next.result = "lose";
-    next.phase = "result";
-    next.battleLog.push(logEntry("You were defeated...", "result"));
+    setPlayerDefeated(next);
     return next;
   }
   if (next.creatureHp <= 0) {
-    const xp = calculateXpGained(next.creature);
-    next.xpGained = xp;
-    next.result = "win";
-    next.phase = "result";
+    setCreatureDefeated(next);
     return next;
   }
 
-  applyBurnDamage(next);
-  if (next.result) return next;
-
-  next.phase = "player_turn";
-  next.turnNumber++;
-  return next;
+  return endCreatureTurn(next);
 }
 
 // Wild Pokemon in Crystal select moves purely randomly (no AI scoring)

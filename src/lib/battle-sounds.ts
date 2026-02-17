@@ -113,12 +113,6 @@ export function attackHit(): void {
   playNoise(100, 0.1);
 }
 
-/** Critical hit — louder, longer noise */
-export function criticalHit(): void {
-  playNoise(150, 0.15);
-  setTimeout(() => playTone(880, 80, "square", 0.08), 50);
-}
-
 /** HP drain — descending tone */
 export function hpDrainSound(durationMs = 500): void {
   playSlide(330, 110, durationMs, 0.04);
