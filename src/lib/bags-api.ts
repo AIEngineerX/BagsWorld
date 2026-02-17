@@ -356,15 +356,19 @@ class BagsApiClient {
     }
   }
 
-  async createLaunchTransaction(data: {
-    ipfs: string;
-    tokenMint: string;
-    wallet: string;
-    initialBuyLamports: number;
-    configKey: string;
-    tipWallet?: string;
-    tipLamports?: number;
-  }): Promise<{ transaction: string; lastValidBlockHeight?: number }> {
+  async createLaunchTransaction(
+    data: {
+      ipfs: string;
+      tokenMint: string;
+      wallet: string;
+      initialBuyLamports: number;
+      configKey: string;
+      tipWallet?: string;
+      tipLamports?: number;
+    },
+    retryCount: number = 0
+  ): Promise<{ transaction: string; lastValidBlockHeight?: number }> {
+    const maxRetries = 3;
     const apiBody = {
       ipfs: data.ipfs,
       tokenMint: data.tokenMint,
@@ -380,57 +384,80 @@ class BagsApiClient {
     };
 
     const url = `${this.baseUrl}/token-launch/create-launch-transaction`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "x-api-key": this.apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(apiBody),
-    });
 
-    const rawText = await response.text();
-
-    if (!response.ok) {
-      throw new Error(`API error ${response.status}: ${rawText}`);
-    }
-
-    let data_response;
     try {
-      data_response = JSON.parse(rawText);
-    } catch (parseError) {
-      console.error("Launch tx JSON parse error:", parseError);
-      throw new Error(`Invalid JSON response from Bags API: ${rawText.substring(0, 200)}`);
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "x-api-key": this.apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(apiBody),
+      });
+
+      const rawText = await response.text();
+
+      if (!response.ok) {
+        if (response.status >= 500 && retryCount < maxRetries) {
+          const delay = Math.pow(2, retryCount) * 1000;
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          return this.createLaunchTransaction(data, retryCount + 1);
+        }
+        throw new Error(`API error ${response.status}: ${rawText}`);
+      }
+
+      let data_response;
+      try {
+        data_response = JSON.parse(rawText);
+      } catch (parseError) {
+        console.error("Launch tx JSON parse error:", parseError);
+        throw new Error(`Invalid JSON response from Bags API: ${rawText.substring(0, 200)}`);
+      }
+
+      let transaction: string | undefined;
+      let lastValidBlockHeight: number | undefined;
+
+      // Per API docs, primary format is { success: true, response: "<Base58 string>" }
+      if (typeof data_response.response === "string") {
+        transaction = data_response.response;
+      } else if (data_response.response?.transaction) {
+        console.log("Launch tx: matched fallback format response.transaction");
+        transaction = data_response.response.transaction;
+        lastValidBlockHeight = data_response.response.lastValidBlockHeight;
+      } else if (data_response.transaction) {
+        console.log("Launch tx: matched fallback format top-level transaction");
+        transaction = data_response.transaction;
+        lastValidBlockHeight = data_response.lastValidBlockHeight;
+      } else if (typeof data_response === "string") {
+        console.log("Launch tx: matched fallback format raw string");
+        transaction = data_response;
+      }
+
+      if (!transaction) {
+        throw new Error(
+          `No transaction found in Bags API response. Keys: ${Object.keys(data_response).join(", ")}`
+        );
+      }
+
+      if (transaction.length < 100) {
+        throw new Error(
+          `Transaction too short (${transaction.length} chars) - API may have returned an error`
+        );
+      }
+
+      return { transaction, lastValidBlockHeight };
+    } catch (error) {
+      if (
+        error instanceof TypeError &&
+        error.message.includes("fetch") &&
+        retryCount < maxRetries
+      ) {
+        const delay = Math.pow(2, retryCount) * 1000;
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return this.createLaunchTransaction(data, retryCount + 1);
+      }
+      throw error;
     }
-
-    let transaction: string | undefined;
-    let lastValidBlockHeight: number | undefined;
-
-    if (data_response.response?.transaction) {
-      transaction = data_response.response.transaction;
-      lastValidBlockHeight = data_response.response.lastValidBlockHeight;
-    } else if (typeof data_response.response === "string") {
-      transaction = data_response.response;
-    } else if (data_response.transaction) {
-      transaction = data_response.transaction;
-      lastValidBlockHeight = data_response.lastValidBlockHeight;
-    } else if (typeof data_response === "string") {
-      transaction = data_response;
-    }
-
-    if (!transaction) {
-      throw new Error(
-        `No transaction found in Bags API response. Keys: ${Object.keys(data_response).join(", ")}`
-      );
-    }
-
-    if (transaction.length < 100) {
-      throw new Error(
-        `Transaction too short (${transaction.length} chars) - API may have returned an error`
-      );
-    }
-
-    return { transaction, lastValidBlockHeight };
   }
 
   async createFeeShareConfig(
@@ -442,7 +469,8 @@ class BagsApiClient {
     }>,
     payer: string,
     partnerWallet?: string,
-    partnerConfigPda?: string
+    partnerConfigPda?: string,
+    retryCount: number = 0
   ): Promise<{
     configId: string;
     totalBps: number;
@@ -536,63 +564,113 @@ class BagsApiClient {
       requestBody.partnerConfig = partnerConfigPda;
     }
 
+    const maxRetries = 3;
     const url = `${this.baseUrl}/fee-share/config`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "x-api-key": this.apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    });
 
-    const rawText = await response.text();
-
-    if (!response.ok) {
-      throw new Error(`Fee config API error ${response.status}: ${rawText.substring(0, 500)}`);
-    }
-
-    let parsed;
     try {
-      parsed = JSON.parse(rawText);
-    } catch (parseError) {
-      console.error("Fee config JSON parse error:", parseError);
-      throw new Error(`Invalid JSON from fee config API: ${rawText.substring(0, 200)}`);
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "x-api-key": this.apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const rawText = await response.text();
+
+      if (!response.ok) {
+        if (response.status >= 500 && retryCount < maxRetries) {
+          const delay = Math.pow(2, retryCount) * 1000;
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          return this.createFeeShareConfig(
+            mint,
+            feeClaimers,
+            payer,
+            partnerWallet,
+            partnerConfigPda,
+            retryCount + 1
+          );
+        }
+        throw new Error(`Fee config API error ${response.status}: ${rawText.substring(0, 500)}`);
+      }
+
+      let parsed;
+      try {
+        parsed = JSON.parse(rawText);
+      } catch (parseError) {
+        console.error("Fee config JSON parse error:", parseError);
+        throw new Error(`Invalid JSON from fee config API: ${rawText.substring(0, 200)}`);
+      }
+
+      const result = parsed.response || parsed;
+
+      // Try config ID field names in priority order, log when a non-primary field matches
+      const configIdFields = [
+        "meteoraConfigKey",
+        "configId",
+        "configKey",
+        "config_id",
+        "config_key",
+        "key",
+        "id",
+        "config",
+      ] as const;
+      let configId: string | null = null;
+      for (const field of configIdFields) {
+        if (result[field]) {
+          configId = result[field] as string;
+          if (field !== "meteoraConfigKey") {
+            console.log(`Fee config: configId matched via fallback field "${field}"`);
+          }
+          break;
+        }
+      }
+      if (!configId && typeof result === "string") {
+        console.log("Fee config: configId matched via raw string response");
+        configId = result;
+      }
+
+      const totalBps = (result.totalBps || result.total_bps || result.bps || 0) as number;
+      const needsCreation = result.needsCreation as boolean | undefined;
+      const transactions = result.transactions as
+        | Array<{
+            transaction: string;
+            blockhash: { blockhash: string; lastValidBlockHeight: number };
+          }>
+        | undefined;
+
+      if (!configId) {
+        throw new Error(
+          `No configKey in fee share response. Keys: ${Object.keys(result).join(", ")}`
+        );
+      }
+
+      return {
+        configId,
+        totalBps,
+        needsCreation,
+        transactions,
+      };
+    } catch (error) {
+      if (
+        error instanceof TypeError &&
+        error.message.includes("fetch") &&
+        retryCount < maxRetries
+      ) {
+        const delay = Math.pow(2, retryCount) * 1000;
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return this.createFeeShareConfig(
+          mint,
+          feeClaimers,
+          payer,
+          partnerWallet,
+          partnerConfigPda,
+          retryCount + 1
+        );
+      }
+      throw error;
     }
-
-    const result = parsed.response || parsed;
-
-    const configId = (result.meteoraConfigKey ||
-      result.configId ||
-      result.configKey ||
-      result.config_id ||
-      result.config_key ||
-      result.key ||
-      result.id ||
-      result.config ||
-      (typeof result === "string" ? result : null)) as string;
-
-    const totalBps = (result.totalBps || result.total_bps || result.bps || 0) as number;
-    const needsCreation = result.needsCreation as boolean | undefined;
-    const transactions = result.transactions as
-      | Array<{
-          transaction: string;
-          blockhash: { blockhash: string; lastValidBlockHeight: number };
-        }>
-      | undefined;
-
-    if (!configId) {
-      throw new Error(
-        `No configKey in fee share response. Keys: ${Object.keys(result).join(", ")}`
-      );
-    }
-
-    return {
-      configId,
-      totalBps,
-      needsCreation,
-      transactions,
-    };
   }
 
   async getBagsPools(): Promise<

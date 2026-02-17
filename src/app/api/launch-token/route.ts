@@ -220,6 +220,10 @@ async function handleConfigureFees(
       "tiktok",
       "instagram",
       "solana",
+      "apple",
+      "google",
+      "email",
+      "onlyfans",
     ];
     if (!validProviders.includes(claimer.provider)) {
       return NextResponse.json(
@@ -329,7 +333,7 @@ async function handleCreateLaunchTx(
       ipfs: data.ipfs,
       tokenMint: data.tokenMint,
       wallet: data.wallet,
-      initialBuyLamports: data.initialBuyLamports || 0,
+      initialBuyLamports: data.initialBuyLamports || 0, // 0 = no initial buy (intentional default)
       configKey: data.configKey,
       tipWallet: data.tipWallet,
       tipLamports: data.tipLamports,

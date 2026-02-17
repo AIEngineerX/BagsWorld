@@ -46,7 +46,7 @@ export async function preSimulateTransaction(
   }
 }
 
-/** Deserialize a transaction from base64/base58. Tries Versioned first, then legacy. */
+/** Deserialize a transaction from base58/base64. Tries Versioned first, then legacy. */
 export function deserializeTransaction(
   encoded: string | Record<string, unknown>,
   context: string = "transaction"
@@ -75,6 +75,7 @@ export function deserializeTransaction(
   }
 
   txString = txString.trim().replace(/\s/g, "");
+  // Heuristic: Base64 uses +, /, = which are not in Base58. If absent, try Base58 first.
   const isLikelyBase64 = txString.includes("+") || txString.includes("/") || txString.endsWith("=");
 
   let buffer: Uint8Array;
