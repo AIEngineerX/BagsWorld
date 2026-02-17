@@ -48,14 +48,8 @@ export interface LaunchFlowResult {
  * This function has no React dependencies and can be called from any context.
  */
 export async function executeLaunchFlow(params: LaunchFlowParams): Promise<LaunchFlowResult> {
-  const {
-    tokenData,
-    feeShares,
-    initialBuySOL,
-    walletPublicKey,
-    signAndSendTransaction,
-    onStatus,
-  } = params;
+  const { tokenData, feeShares, initialBuySOL, walletPublicKey, signAndSendTransaction, onStatus } =
+    params;
 
   const ecosystemFee = getEcosystemFeeShare();
 
@@ -208,6 +202,15 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
                 "Transaction cancelled. Please try again and approve all transactions in your wallet."
               );
             }
+            if (
+              signErrorMsg.includes("Blockhash not found") ||
+              signErrorMsg.includes("block height exceeded") ||
+              signErrorMsg.includes("expired")
+            ) {
+              throw new Error(
+                "Transaction expired. This happens when signing takes too long. Please try again."
+              );
+            }
             throw new Error(`Transaction failed: ${signErrorMsg}`);
           }
 
@@ -275,15 +278,15 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
 
       const launchResult = await launchTxResponse.json();
 
-      // Handle various response formats - extract the base64 transaction string
-      let txBase64 = launchResult.transaction;
+      // Handle various response formats - extract the encoded transaction string
+      let txEncoded = launchResult.transaction;
 
       // If transaction is nested (some API versions return { transaction: { transaction: "..." } })
-      if (txBase64 && typeof txBase64 === "object" && "transaction" in txBase64) {
-        txBase64 = txBase64.transaction;
+      if (txEncoded && typeof txEncoded === "object" && "transaction" in txEncoded) {
+        txEncoded = txEncoded.transaction;
       }
 
-      if (!txBase64 || typeof txBase64 !== "string") {
+      if (!txEncoded || typeof txEncoded !== "string") {
         console.error("Invalid transaction response:", launchResult);
         throw new Error(
           "No valid transaction received from API. The token may already exist or there was a server error."
@@ -291,7 +294,7 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
       }
 
       // Decode transaction (handles both versioned and legacy formats)
-      const transaction = deserializeTransaction(txBase64, "launch-transaction");
+      const transaction = deserializeTransaction(txEncoded, "launch-transaction");
 
       const preSigned = checkExistingSignatures(transaction);
 
@@ -350,6 +353,15 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
         }
         if (signErrorMsg.includes("Popup closed") || signErrorMsg.includes("closed")) {
           throw new Error("Wallet popup was closed. Please try again and complete the approval.");
+        }
+        if (
+          signErrorMsg.includes("Blockhash not found") ||
+          signErrorMsg.includes("block height exceeded") ||
+          signErrorMsg.includes("expired")
+        ) {
+          throw new Error(
+            "Transaction expired. This happens when signing takes too long. Please try again."
+          );
         }
         if (signErrorMsg.includes("simulation") || signErrorMsg.includes("Simulation")) {
           throw new Error(
