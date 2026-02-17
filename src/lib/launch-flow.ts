@@ -78,8 +78,14 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
     });
 
     if (!tokenInfoResponse.ok) {
-      const err = await tokenInfoResponse.json();
-      throw new Error(err.error || "Failed to create token info");
+      let errMsg = "Failed to create token info";
+      try {
+        const err = await tokenInfoResponse.json();
+        errMsg = err.error || errMsg;
+      } catch {
+        errMsg = `API error ${tokenInfoResponse.status}: ${tokenInfoResponse.statusText}`;
+      }
+      throw new Error(errMsg);
     }
 
     const { tokenMint, tokenMetadata } = await tokenInfoResponse.json();
@@ -205,7 +211,8 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
             if (
               signErrorMsg.includes("Blockhash not found") ||
               signErrorMsg.includes("block height exceeded") ||
-              signErrorMsg.includes("expired")
+              signErrorMsg.includes("BlockhashNotFound") ||
+              signErrorMsg.includes("TransactionExpired")
             ) {
               throw new Error(
                 "Transaction expired. This happens when signing takes too long. Please try again."
@@ -229,8 +236,13 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
         }
       }
     } else {
-      const feeError = await feeConfigResponse.json();
-      const errorMsg = feeError.error || "Failed to configure fee sharing";
+      let errorMsg = "Failed to configure fee sharing";
+      try {
+        const feeError = await feeConfigResponse.json();
+        errorMsg = feeError.error || errorMsg;
+      } catch {
+        errorMsg = `Fee config API error ${feeConfigResponse.status}: ${feeConfigResponse.statusText}`;
+      }
       console.error("Fee config error:", errorMsg);
       console.error("Fee claimers sent:", JSON.stringify(allFeeClaimers, null, 2));
 
@@ -272,8 +284,14 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
       });
 
       if (!launchTxResponse.ok) {
-        const err = await launchTxResponse.json();
-        throw new Error(err.error || "Failed to create launch transaction");
+        let errMsg = "Failed to create launch transaction";
+        try {
+          const err = await launchTxResponse.json();
+          errMsg = err.error || errMsg;
+        } catch {
+          errMsg = `API error ${launchTxResponse.status}: ${launchTxResponse.statusText}`;
+        }
+        throw new Error(errMsg);
       }
 
       const launchResult = await launchTxResponse.json();
@@ -357,7 +375,8 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
         if (
           signErrorMsg.includes("Blockhash not found") ||
           signErrorMsg.includes("block height exceeded") ||
-          signErrorMsg.includes("expired")
+          signErrorMsg.includes("BlockhashNotFound") ||
+          signErrorMsg.includes("TransactionExpired")
         ) {
           throw new Error(
             "Transaction expired. This happens when signing takes too long. Please try again."
@@ -437,28 +456,31 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
     const errorMessage = err instanceof Error ? err.message : "Failed to launch token";
 
     // Provide user-friendly error messages for common issues
-    if (errorMessage.toLowerCase().includes("internal server error")) {
+    // Always log the original error for server-side debugging
+    const lowerError = errorMessage.toLowerCase();
+    if (lowerError.includes("internal server error")) {
+      console.error("Launch flow error (API unavailable):", errorMessage);
       return {
         success: false,
         error:
           "Bags.fm API is temporarily unavailable. Please try again in a few minutes. If this persists, check bags.fm status.",
       };
-    } else if (errorMessage.toLowerCase().includes("rate limit")) {
+    } else if (lowerError.includes("rate limit")) {
       return {
         success: false,
         error: "Too many requests. Please wait a minute before trying again.",
       };
-    } else if (
-      errorMessage.toLowerCase().includes("api key") ||
-      errorMessage.toLowerCase().includes("unauthorized")
-    ) {
+    } else if (lowerError.includes("api key") || lowerError.includes("unauthorized")) {
+      console.error("Launch flow error (auth):", errorMessage);
       return {
         success: false,
         error: "API configuration issue. Please contact support.",
       };
     } else if (
-      errorMessage.toLowerCase().includes("insufficient") ||
-      errorMessage.toLowerCase().includes("balance")
+      lowerError.includes("insufficient") &&
+      (lowerError.includes("sol") ||
+        lowerError.includes("balance") ||
+        lowerError.includes("lamport"))
     ) {
       return {
         success: false,
