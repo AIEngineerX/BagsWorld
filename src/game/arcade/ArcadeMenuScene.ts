@@ -184,7 +184,7 @@ export class ArcadeMenuScene extends Phaser.Scene {
       .text(
         ARCADE_WIDTH / 2,
         ARCADE_HEIGHT - 35,
-        "\u2191\u2193 SELECT    Z SHOOT    X JUMP    C GRENADE",
+        "\u2191\u2193 SELECT    Z SHOOT/MELEE    X JUMP    C GRENADE",
         {
           fontFamily: "monospace",
           fontSize: "6px",
