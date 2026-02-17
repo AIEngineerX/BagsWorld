@@ -82,7 +82,7 @@ Agent discovery must be dynamic, never hardcoded. API endpoints should discover 
 | `src/lib/store.ts`                    | Zustand store                                                  |
 | `src/lib/config.ts`                   | Ecosystem configuration (wallets, gates, decay)                |
 | `src/lib/bags-api.ts`                 | BagsApiClient class                                            |
-| `src/lib/agent-economy/`              | 15 files: wallets, trading, brain, spawn, credentials          |
+| `src/lib/agent-economy/`              | Agent economy API: wallets, trading, brain, spawn, credentials |
 | `src/lib/chadghost-*.ts`              | 4 files: brain, engagement, service, startup                   |
 | `src/lib/arena-*.ts`                  | 5 files: engine, matchmaking, db, types, moltbook              |
 | `src/lib/moltbook-*.ts`               | 4 files: client, agent, autonomous, chat                       |
@@ -90,7 +90,6 @@ Agent discovery must be dynamic, never hardcoded. API endpoints should discover 
 | `src/lib/autonomous-dialogue.ts`      | NPC self-dialogue system                                       |
 | `src/lib/x-client.ts`                 | X API client                                                   |
 | `src/lib/x-oauth.ts`                  | X OAuth implementation                                         |
-| `src/lib/trading-dojo.ts`             | Trading training system                                        |
 | `src/components/ProfessorOakChat.tsx` | AI-powered token generation wizard                             |
 | `src/components/AgentDashboard.tsx`   | Agent monitoring dashboard                                     |
 | `src/components/TradingTerminal.tsx`  | In-game market terminal                                        |
@@ -198,7 +197,6 @@ Complete autonomous agent subsystem in `src/lib/agent-economy/`:
 | `onboarding.ts`        | Agent onboarding flow                     |
 | `external-registry.ts` | External agent registry                   |
 | `external.ts`          | External agent integration                |
-| `loop.ts`              | Continuous operation loop                 |
 | `launch.ts`            | Launch operations                         |
 | `types.ts`             | Type definitions                          |
 | `index.ts`             | Main export                               |

@@ -109,10 +109,6 @@ const FeeClaimModal = dynamic(
   () => import("@/components/FeeClaimModal").then((m) => m.FeeClaimModal),
   { ssr: false }
 );
-const TradingGymModal = dynamic(
-  () => import("@/components/TradingGymModal").then((m) => m.TradingGymModal),
-  { ssr: false }
-);
 const CommunityFundModal = dynamic(
   () => import("@/components/CommunityFundModal").then((m) => m.CommunityFundModal),
   { ssr: false }
@@ -293,7 +289,6 @@ export default function Home() {
   type ModalType =
     | "pokeCenter"
     | "feeClaim"
-    | "tradingGym"
     | "communityFund"
     | "casino"
     | "oracle"
@@ -341,7 +336,6 @@ export default function Home() {
         setTradeToken(e.detail);
       }) as EventListener,
       "bagsworld-pokecenter-click": (() => openModal("pokeCenter")) as EventListener,
-      "bagsworld-tradinggym-click": (() => openModal("tradingGym")) as EventListener,
       "bagsworld-treasury-click": (() => openModal("communityFund")) as EventListener,
       "bagsworld-casino-click": (() => openModal("casino")) as EventListener,
       "bagsworld-oracle-click": (() => openModal("oracle")) as EventListener,
@@ -790,7 +784,6 @@ export default function Home() {
         {activeModal === "pokeCenter" && (
           <PokeCenterModal onClose={closeModal} onOpenFeeClaimModal={() => openModal("feeClaim")} />
         )}
-        {activeModal === "tradingGym" && <TradingGymModal onClose={closeModal} />}
         {activeModal === "communityFund" && <CommunityFundModal onClose={closeModal} />}
         {activeModal === "casino" && <CasinoModal onClose={closeModal} />}
         {activeModal === "oracle" && <OracleTowerModal onClose={closeModal} />}

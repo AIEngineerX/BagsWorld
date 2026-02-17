@@ -243,7 +243,6 @@ const LANDMARK_X_POSITIONS = [
   Math.round(200 * SCALE), // Oracle Tower (320) - between Casino and center
   Math.round(280 * SCALE), // PokeCenter (448)
   Math.round(520 * SCALE), // Arcade (832)
-  // Math.round(380 * SCALE), // TradingDojo (608) - STASHED
   WORLD_WIDTH / 2, // HQ/Treasury (640)
 ];
 const LANDMARK_CLEARANCE = 80; // Pixels to stay clear of landmarks
@@ -368,7 +367,6 @@ function isLandmark(token: { mint: string; symbol: string }): {
   if (mint === BAGSHQ_MINT || symbol === "BAGSWORLD") return { type: "hq", isPermanent: true };
   if (symbol === "POKECENTER" || mint.includes("PokeCenter"))
     return { type: "pokecenter", isPermanent: true };
-  // if (symbol === "DOJO" || mint.includes("TradingGym")) return { type: "dojo", isPermanent: true }; // STASHED
   if (symbol === "CASINO" || mint.includes("Casino")) return { type: "casino", isPermanent: true };
   if (symbol === "ORACLE" || mint.includes("OracleTower") || mint.includes("Oracle"))
     return { type: "oracle", isPermanent: true };
@@ -638,8 +636,6 @@ export function transformTokenToBuilding(
     position = { x: existingBuilding.x, y: existingBuilding.y };
   } else if (landmark.type === "casino") {
     position = { x: Math.round(50 * SCALE), y: landmarkY };
-    // } else if (landmark.type === "dojo") { // STASHED
-    //   position = { x: Math.round(380 * SCALE), y: landmarkY };
   } else if (landmark.type === "oracle") {
     position = { x: Math.round(200 * SCALE), y: landmarkY };
   } else if (landmark.type === "arcade") {

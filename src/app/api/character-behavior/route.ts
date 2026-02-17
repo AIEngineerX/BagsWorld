@@ -361,7 +361,7 @@ export async function GET() {
       { id: "neo", name: "Neo", x: 800, y: 560, isMoving: true },
     ],
     buildings: [{ id: "test-1", name: "Test Token", symbol: "TEST", x: 300, y: 500, level: 2 }],
-    specialBuildings: ["PokeCenter", "TradingGym", "Treasury", "Casino"],
+    specialBuildings: ["PokeCenter", "Treasury", "Casino"],
     recentEvents: ["New token launched", "Fee claimed"],
     worldHealth: 75,
     weather: "sunny",

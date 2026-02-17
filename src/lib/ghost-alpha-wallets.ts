@@ -4,11 +4,10 @@
  * Data file (data/alpha-wallets.json) is gitignored — never committed.
  *
  * Isomorphic: works on both server (reads file) and client (returns empty).
- * The actual wallet data only loads server-side. Client-side code (Trading Dojo)
- * uses the wallet count to know Ghost has on-chain intel loaded.
+ * The actual wallet data only loads server-side.
  *
  * Used by:
- * - Trading Dojo (client): Ghost gets signal boosts from on-chain intelligence
+ * - Agent Economy brain (server): Ghost's follow_whales strategy cross-references alpha wallets
  * - Alpha Finder (server): ChadGhost flags transactions from known smart money
  */
 

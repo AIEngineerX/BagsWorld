@@ -192,7 +192,7 @@ function buildContext(worldState: WorldState) {
   }));
 
   // Special buildings
-  const specialBuildings = ["PokeCenter", "TradingGym", "Treasury", "Casino"];
+  const specialBuildings = ["PokeCenter", "Treasury", "Casino"];
 
   // Recent events
   const recentEvents = worldState.events?.slice(0, 5).map((e) => e.message) || [];

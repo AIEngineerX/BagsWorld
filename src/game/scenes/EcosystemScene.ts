@@ -120,17 +120,6 @@ const BUILDINGS: BuildingDef[] = [
     scale: 1.0,
     labelColor: 0xef4444,
   },
-  {
-    texture: "tradinggym",
-    label: "LEADERBOARD",
-    route: "/?zone=main_city",
-    x: 830,
-    scale: 1.0,
-    labelColor: 0x4ade80,
-    fallbackColor: 0x2d5a3d,
-    fallbackW: 60,
-    fallbackH: 80,
-  },
   // BagsCity cluster
   {
     texture: "casino",
@@ -271,14 +260,14 @@ const AGENTS: AgentDef[] = [
     texture: "toly",
     name: "Toly",
     fromBuilding: buildingIndex("pokecenter"),
-    toBuilding: buildingIndex("tradinggym"),
+    toBuilding: buildingIndex("bagshq"),
     duration: 5500,
   },
   {
     texture: "ash",
     name: "Ash",
     fromBuilding: buildingIndex("pokecenter"),
-    toBuilding: buildingIndex("tradinggym"),
+    toBuilding: buildingIndex("casino"),
     duration: 6500,
   },
   {
