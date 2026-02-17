@@ -1867,9 +1867,9 @@ export class GhostTrader {
         return;
       }
 
-      if (actualBalance < position.amountTokens) {
+      if (actualBalance !== position.amountTokens) {
         console.log(
-          `[GhostTrader] Balance mismatch for ${position.tokenSymbol}: recorded ${position.amountTokens}, actual ${actualBalance} — using actual`
+          `[GhostTrader] Balance mismatch for ${position.tokenSymbol}: recorded ${position.amountTokens}, actual ${actualBalance} — selling actual`
         );
         position.amountTokens = actualBalance;
       }
