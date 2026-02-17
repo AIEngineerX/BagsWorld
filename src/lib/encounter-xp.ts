@@ -5,6 +5,7 @@ import {
   type PlayerProgress,
   type PlayerBattleStats,
   PLAYER_LEVEL_STATS,
+  PLAYER_MOVES,
   MAX_PLAYER_LEVEL,
 } from "./encounter-types";
 
@@ -92,7 +93,9 @@ export function getPlayerBattleStats(): PlayerBattleStats {
     maxHp: stats.hp,
     attack: stats.attack,
     defense: stats.defense,
+    speed: stats.speed,
     level: progress.level,
+    moves: PLAYER_MOVES.map((m) => ({ ...m })),
   };
 }
 
