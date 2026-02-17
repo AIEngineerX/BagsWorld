@@ -60,6 +60,17 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
   const stateRef = useRef(state);
   stateRef.current = state;
 
+  // Track whether onClose has been called to avoid double-dispatch on unmount
+  const closedRef = useRef(false);
+  const safeOnClose = useCallback(
+    (result: "win" | "lose" | "flee") => {
+      if (closedRef.current) return;
+      closedRef.current = true;
+      onClose(result);
+    },
+    [onClose]
+  );
+
   const [vp, setVp] = useState<VisualPhase>("transition");
   const [text, setText] = useState("");
   const [textDone, setTextDone] = useState(false);
@@ -89,7 +100,6 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
   const dkRef = useRef(0);
   const twRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Resolve sprite URLs
   const creatureSpriteUrl =
     creature.spriteUrl ?? getCreatureBattleSpriteUrl(creature.spriteKey) ?? null;
   const playerSpriteUrl = getPlayerSpriteUrl();
@@ -175,7 +185,6 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
     });
   }, []);
 
-  // Intro wipe state
   const [wipePhase, setWipePhase] = useState(0);
   const [wipeDir, setWipeDir] = useState<"close" | "open">("close");
   const [introShake, setIntroShake] = useState(0);
@@ -209,8 +218,11 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
       await sleep(150);
       setVp("slide_in");
     };
-    run();
-  }, [vp]);
+    run().catch((err) => {
+      console.error("[EncounterOverlay] transition crashed:", err);
+      safeOnClose("flee");
+    });
+  }, [vp]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // === SLIDE IN ===
   useEffect(() => {
@@ -239,8 +251,11 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
       await sleep(700);
       setVp("go_text");
     };
-    run();
-  }, [vp, creature.name, typewrite]);
+    run().catch((err) => {
+      console.error("[EncounterOverlay] appeared_text crashed:", err);
+      safeOnClose("flee");
+    });
+  }, [vp, creature.name, typewrite, safeOnClose]);
 
   // === GO TEXT ===
   useEffect(() => {
@@ -252,10 +267,13 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
       setMenuIdx(0);
       setVp("player_turn");
     };
-    run();
-  }, [vp, typewrite]);
+    run().catch((err) => {
+      console.error("[EncounterOverlay] go_text crashed:", err);
+      safeOnClose("flee");
+    });
+  }, [vp, typewrite, safeOnClose]);
 
-  // === ANIMATE PLAYER ATTACK (reusable async function) ===
+  // === ANIMATE PLAYER ATTACK ===
   const animatePlayerAttack = useCallback(
     async (move: Move, before: EncounterState, after: EncounterState) => {
       setEnemyBob(false);
@@ -325,7 +343,7 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
     [typewrite, drainHp, showDmg, playEffect]
   );
 
-  // === ANIMATE CREATURE TURN (reusable async function) ===
+  // === ANIMATE CREATURE TURN ===
   const animateCreatureTurn = useCallback(
     async (before: EncounterState, after: EncounterState) => {
       setPlayerBob(false);
@@ -384,30 +402,40 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
         }
       }
 
-      // Burn damage at end of turn
+      // Burn damage at end of turn — use engine state, not React state (avoids stale closures)
       const burnEntries = logEntries.filter((e) => e.type === "status_damage");
+      let runningPlayerHp =
+        after.playerHp +
+        burnEntries.reduce((s, e) => s + (e.message.includes("You") ? (e.damage ?? 0) : 0), 0);
+      let runningEnemyHp =
+        after.creatureHp +
+        burnEntries.reduce((s, e) => s + (!e.message.includes("You") ? (e.damage ?? 0) : 0), 0);
       for (const burnEntry of burnEntries) {
         await typewrite(burnEntry.message);
         const burnDmg = burnEntry.damage ?? 0;
         if (burnEntry.message.includes("You")) {
+          const fromHp = runningPlayerHp;
+          runningPlayerHp = Math.max(0, runningPlayerHp - burnDmg);
           setPlayerShake(true);
           showDmg(burnDmg, "p");
           await sleep(200);
           setPlayerShake(false);
-          await drainHp("p", playerHp, Math.max(0, playerHp - burnDmg));
+          await drainHp("p", fromHp, runningPlayerHp);
         } else {
+          const fromHp = runningEnemyHp;
+          runningEnemyHp = Math.max(0, runningEnemyHp - burnDmg);
           setEnemyShake(true);
           showDmg(burnDmg, "e");
           await sleep(200);
           setEnemyShake(false);
-          await drainHp("e", enemyHp, Math.max(0, enemyHp - burnDmg));
+          await drainHp("e", fromHp, runningEnemyHp);
         }
         await sleep(200);
       }
 
       setPlayerBob(true);
     },
-    [typewrite, drainHp, showDmg, playEffect, playerHp, enemyHp]
+    [typewrite, drainHp, showDmg, playEffect]
   );
 
   // === FULL TURN: Player picks a move → speed determines who goes first ===
@@ -415,17 +443,89 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
     async (move: Move) => {
       onFirstGesture();
       setVp("animating");
+      try {
+        const cur = stateRef.current;
+
+        const actualMove = move.name === "Struggle" ? STRUGGLE_MOVE : move;
+        const afterPlayer = executePlayerMove(cur, actualMove);
+        const creatureGoesFirst = afterPlayer.creatureGoesFirst ?? false;
+
+        if (creatureGoesFirst) {
+          const afterCreature = executeCreatureTurn(cur);
+          await animateCreatureTurn(cur, afterCreature);
+          setState(afterCreature);
+          await sleep(300);
+
+          if (afterCreature.result === "lose") {
+            setVp("faint_anim");
+            return;
+          }
+
+          // Now player attacks on the post-creature state
+          const afterPlayerOnUpdated = executePlayerMove(afterCreature, actualMove);
+          await animatePlayerAttack(actualMove, afterCreature, afterPlayerOnUpdated);
+          setState(afterPlayerOnUpdated);
+          await sleep(300);
+
+          if (afterPlayerOnUpdated.result === "win") {
+            setVp("faint_anim");
+            return;
+          }
+          if (afterPlayerOnUpdated.result === "lose") {
+            setVp("faint_anim");
+            return;
+          }
+
+          setText("");
+          setMenuIdx(0);
+          setVp("player_turn");
+        } else {
+          await animatePlayerAttack(actualMove, cur, afterPlayer);
+          setState(afterPlayer);
+          await sleep(300);
+
+          if (afterPlayer.result === "win") {
+            setVp("faint_anim");
+            return;
+          }
+          if (afterPlayer.result === "lose") {
+            setVp("faint_anim");
+            return;
+          }
+
+          // Creature turn
+          const afterCreature = executeCreatureTurn(afterPlayer);
+          await animateCreatureTurn(afterPlayer, afterCreature);
+          setState(afterCreature);
+          await sleep(300);
+
+          if (afterCreature.result === "lose") {
+            setVp("faint_anim");
+            return;
+          }
+
+          setText("");
+          setMenuIdx(0);
+          setVp("player_turn");
+        }
+      } catch (err) {
+        console.error("[EncounterOverlay] doPlayerAttack crashed:", err);
+        safeOnClose("flee");
+      }
+    },
+    [animatePlayerAttack, animateCreatureTurn, onFirstGesture, safeOnClose]
+  );
+
+  // === PLAYER DEFEND ===
+  const doPlayerDefend = useCallback(async () => {
+    onFirstGesture();
+    setVp("animating");
+    try {
       const cur = stateRef.current;
-
-      // Check if all moves are exhausted — force Struggle
-      const actualMove = move.name === "Struggle" ? STRUGGLE_MOVE : move;
-
-      // Execute both sides to determine turn order + outcomes
-      const afterPlayer = executePlayerMove(cur, actualMove);
-      const creatureGoesFirst = afterPlayer.creatureGoesFirst ?? false;
+      const afterDefend = executePlayerDefend(cur);
+      const creatureGoesFirst = afterDefend.creatureGoesFirst ?? false;
 
       if (creatureGoesFirst) {
-        // Creature attacks first
         const afterCreature = executeCreatureTurn(cur);
         await animateCreatureTurn(cur, afterCreature);
         setState(afterCreature);
@@ -436,42 +536,24 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
           return;
         }
 
-        // Now player attacks on the post-creature state
-        const afterPlayerOnUpdated = executePlayerMove(afterCreature, actualMove);
-        await animatePlayerAttack(actualMove, afterCreature, afterPlayerOnUpdated);
-        setState(afterPlayerOnUpdated);
+        const afterDefendOnUpdated = executePlayerDefend(afterCreature);
+        await typewrite("You brace yourself!");
+        await playEffect("shimmer", "p");
+        sfx.statUpSound();
+        await typewrite("Defense rose temporarily!");
+        setState(afterDefendOnUpdated);
         await sleep(300);
-
-        if (afterPlayerOnUpdated.result === "win") {
-          setVp("faint_anim");
-          return;
-        }
-        if (afterPlayerOnUpdated.result === "lose") {
-          setVp("faint_anim");
-          return;
-        }
-
-        setText("");
-        setMenuIdx(0);
-        setVp("player_turn");
       } else {
-        // Player attacks first (original flow)
-        await animatePlayerAttack(actualMove, cur, afterPlayer);
-        setState(afterPlayer);
+        // Player defends first, then creature attacks
+        await typewrite("You brace yourself!");
+        await playEffect("shimmer", "p");
+        sfx.statUpSound();
+        await typewrite("Defense rose temporarily!");
+        setState(afterDefend);
         await sleep(300);
 
-        if (afterPlayer.result === "win") {
-          setVp("faint_anim");
-          return;
-        }
-        if (afterPlayer.result === "lose") {
-          setVp("faint_anim");
-          return;
-        }
-
-        // Creature turn
-        const afterCreature = executeCreatureTurn(afterPlayer);
-        await animateCreatureTurn(afterPlayer, afterCreature);
+        const afterCreature = executeCreatureTurn(afterDefend);
+        await animateCreatureTurn(afterDefend, afterCreature);
         setState(afterCreature);
         await sleep(300);
 
@@ -479,104 +561,58 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
           setVp("faint_anim");
           return;
         }
-
-        setText("");
-        setMenuIdx(0);
-        setVp("player_turn");
-      }
-    },
-    [animatePlayerAttack, animateCreatureTurn, onFirstGesture]
-  );
-
-  // === PLAYER DEFEND ===
-  const doPlayerDefend = useCallback(async () => {
-    onFirstGesture();
-    setVp("animating");
-    const cur = stateRef.current;
-    const afterDefend = executePlayerDefend(cur);
-    const creatureGoesFirst = afterDefend.creatureGoesFirst ?? false;
-
-    if (creatureGoesFirst) {
-      // Creature attacks before player defends
-      const afterCreature = executeCreatureTurn(cur);
-      await animateCreatureTurn(cur, afterCreature);
-      setState(afterCreature);
-      await sleep(300);
-
-      if (afterCreature.result === "lose") {
-        setVp("faint_anim");
-        return;
       }
 
-      // Now player defends
-      const afterDefendOnUpdated = executePlayerDefend(afterCreature);
-      await typewrite("You brace yourself!");
-      await playEffect("shimmer", "p");
-      sfx.statUpSound();
-      await typewrite("Defense rose temporarily!");
-      setState(afterDefendOnUpdated);
-      await sleep(300);
-    } else {
-      // Player defends first, then creature attacks
-      await typewrite("You brace yourself!");
-      await playEffect("shimmer", "p");
-      sfx.statUpSound();
-      await typewrite("Defense rose temporarily!");
-      setState(afterDefend);
-      await sleep(300);
-
-      const afterCreature = executeCreatureTurn(afterDefend);
-      await animateCreatureTurn(afterDefend, afterCreature);
-      setState(afterCreature);
-      await sleep(300);
-
-      if (afterCreature.result === "lose") {
-        setVp("faint_anim");
-        return;
-      }
+      setText("");
+      setMenuIdx(0);
+      setVp("player_turn");
+    } catch (err) {
+      console.error("[EncounterOverlay] doPlayerDefend crashed:", err);
+      safeOnClose("flee");
     }
-
-    setText("");
-    setMenuIdx(0);
-    setVp("player_turn");
-  }, [typewrite, playEffect, animateCreatureTurn, onFirstGesture]);
+  }, [typewrite, playEffect, animateCreatureTurn, onFirstGesture, safeOnClose]);
 
   // === PLAYER FLEE ===
   const doPlayerFlee = useCallback(async () => {
     onFirstGesture();
     setVp("animating");
-    const cur = stateRef.current;
-    const after = executePlayerFlee(cur);
+    try {
+      const cur = stateRef.current;
+      const after = executePlayerFlee(cur);
 
-    if (after.result === "flee") {
-      sfx.fleeSound();
-      await typewrite("Got away safely!");
+      if (after.result === "flee") {
+        sfx.fleeSound();
+        await typewrite("Got away safely!");
+        setState(after);
+        await sleep(800);
+        recordFlee();
+        safeOnClose("flee");
+        return;
+      }
+
+      sfx.fleeFailSound();
+      await typewrite("Can't escape!");
       setState(after);
-      await sleep(800);
-      recordFlee();
-      onClose("flee");
-      return;
+      await sleep(400);
+
+      // Creature gets a free turn
+      const afterCreature = executeCreatureTurn(after);
+      await animateCreatureTurn(after, afterCreature);
+      setState(afterCreature);
+      await sleep(300);
+
+      if (afterCreature.result === "lose") {
+        setVp("faint_anim");
+        return;
+      }
+      setText("");
+      setMenuIdx(0);
+      setVp("player_turn");
+    } catch (err) {
+      console.error("[EncounterOverlay] doPlayerFlee crashed:", err);
+      safeOnClose("flee");
     }
-
-    sfx.fleeFailSound();
-    await typewrite("Can't escape!");
-    setState(after);
-    await sleep(400);
-
-    // Creature gets a free turn
-    const afterCreature = executeCreatureTurn(after);
-    await animateCreatureTurn(after, afterCreature);
-    setState(afterCreature);
-    await sleep(300);
-
-    if (afterCreature.result === "lose") {
-      setVp("faint_anim");
-      return;
-    }
-    setText("");
-    setMenuIdx(0);
-    setVp("player_turn");
-  }, [typewrite, animateCreatureTurn, onClose, onFirstGesture]);
+  }, [typewrite, animateCreatureTurn, safeOnClose, onFirstGesture]);
 
   // === FAINT ===
   useEffect(() => {
@@ -600,10 +636,13 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
         await typewrite("You blacked out...");
         await sleep(1500);
         recordLoss();
-        onClose("lose");
+        safeOnClose("lose");
       }
     };
-    run();
+    run().catch((err) => {
+      console.error("[EncounterOverlay] faint_anim crashed:", err);
+      safeOnClose("flee");
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vp]);
 
@@ -639,7 +678,10 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
         setVp("done");
       }
     };
-    run();
+    run().catch((err) => {
+      console.error("[EncounterOverlay] xp_gain crashed:", err);
+      safeOnClose("flee");
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vp]);
 
@@ -651,7 +693,10 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
       await sleep(1500);
       setVp("done");
     };
-    run();
+    run().catch((err) => {
+      console.error("[EncounterOverlay] level_up crashed:", err);
+      safeOnClose("flee");
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vp]);
 
@@ -664,10 +709,9 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
 
   const handleDone = useCallback(() => {
     const s = stateRef.current;
-    if (vp === "done") onClose(s.result ?? "win");
-  }, [vp, onClose]);
+    if (vp === "done") safeOnClose(s.result ?? "win");
+  }, [vp, safeOnClose]);
 
-  // Check if all player moves are at 0 PP (Struggle condition)
   const allMovesExhausted = state.player.moves.every((m) => m.pp <= 0);
 
   // Keyboard controls
@@ -734,14 +778,21 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
     doPlayerFlee,
   ]);
 
+  // Cleanup: cancel typewriter on unmount
   useEffect(
     () => () => {
       if (twRef.current) clearTimeout(twRef.current);
+      if (!closedRef.current) {
+        // Component unmounted without calling onClose (crash, React error boundary, etc.)
+        // Fire encounter-end so WorldScene resets encounterActive
+        window.dispatchEvent(
+          new CustomEvent("bagsworld-encounter-end", { detail: { result: "flee" } })
+        );
+      }
     },
     []
   );
 
-  // HP bar helpers
   const hpColor = (cur: number, max: number) => {
     const p = max > 0 ? (cur / max) * 100 : 0;
     return p >= 50 ? "#22c55e" : p >= 21 ? "#eab308" : "#ef4444";
@@ -1347,9 +1398,7 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
   );
 }
 
-// Attack effect overlays — stable positions via index-based math (no Math.random in render)
 function AttackEffect({ anim }: { anim: Move["animation"] }) {
-  // Pre-computed stable particle positions per index
   const particles = useMemo(() => {
     return [...Array(6)].map((_, i) => ({
       w: 6 + ((i * 7 + 3) % 5),

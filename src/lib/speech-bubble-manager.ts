@@ -61,6 +61,26 @@ const CHARACTER_COLORS: Record<string, { bg: number; border: number; text: strin
 // Characters that should NOT show speech bubbles (tooltip-only)
 const SILENT_CHARACTERS = new Set(["bags-bot", "bagsbot"]);
 
+// Map character IDs to their sprite flag property names
+const CHARACTER_SPRITE_FLAGS: Record<string, string> = {
+  finn: "isFinn",
+  ghost: "isDev",
+  neo: "isScout",
+  ash: "isAsh",
+  toly: "isToly",
+  cj: "isCJ",
+  shaw: "isShaw",
+  ramo: "isRamo",
+  sincara: "isSincara",
+  stuu: "isStuu",
+  sam: "isSam",
+  alaa: "isAlaa",
+  carlo: "isCarlo",
+  bnn: "isBNN",
+  professorOak: "isProfessorOak",
+  bagsy: "isBagsy",
+};
+
 export class SpeechBubbleManager {
   private scene: Phaser.Scene;
   private bubbles: Map<string, SpeechBubble> = new Map();
@@ -222,9 +242,6 @@ export class SpeechBubbleManager {
     return bubble;
   }
 
-  /**
-   * Hide a speech bubble
-   */
   hideBubble(characterId: string): void {
     const bubble = this.bubbles.get(characterId);
     if (!bubble) return;
@@ -252,20 +269,19 @@ export class SpeechBubbleManager {
    * Hide all bubbles immediately (no fade animation to prevent stacking)
    */
   hideAllBubbles(): void {
-    this.bubbles.forEach((bubble, characterId) => {
-      // Cancel any scheduled fade out
+    // Snapshot keys to avoid mutating Map during iteration
+    const keys = Array.from(this.bubbles.keys());
+    for (const characterId of keys) {
+      const bubble = this.bubbles.get(characterId);
+      if (!bubble) continue;
       if (bubble.fadeOutTimer) {
         bubble.fadeOutTimer.destroy();
       }
-      // Immediately destroy without animation
       bubble.container.destroy();
       this.bubbles.delete(characterId);
-    });
+    }
   }
 
-  /**
-   * Update bubble positions to follow characters
-   */
   update(): void {
     this.bubbles.forEach((bubble, characterId) => {
       const spriteId = this.findCharacterSpriteId(characterId);
@@ -289,76 +305,20 @@ export class SpeechBubbleManager {
    * Special characters use their character ID directly
    */
   private findCharacterSpriteId(characterId: string): string | null {
-    // Check if any sprite has the special character flag
+    const flag = CHARACTER_SPRITE_FLAGS[characterId];
     for (const [spriteId, sprite] of this.characterSprites) {
-      const spriteData = sprite as any;
-
-      // Check special character flags
-      if (characterId === "finn" && spriteData.isFinn) return spriteId;
-      if (characterId === "ghost" && spriteData.isDev) return spriteId;
-      if (characterId === "neo" && spriteData.isScout) return spriteId;
-      if (characterId === "ash" && spriteData.isAsh) return spriteId;
-      if (characterId === "toly" && spriteData.isToly) return spriteId;
-      if (characterId === "cj" && spriteData.isCJ) return spriteId;
-      if (characterId === "shaw" && spriteData.isShaw) return spriteId;
-
-      // Direct ID match
+      if (flag && (sprite as unknown as Record<string, unknown>)[flag]) return spriteId;
       if (spriteId === characterId) return spriteId;
     }
-
     return null;
   }
 
-  /**
-   * Update the character sprites reference
-   */
   setCharacterSprites(sprites: Map<string, Phaser.GameObjects.Sprite>): void {
     this.characterSprites = sprites;
   }
 
-  /**
-   * Get active bubble count
-   */
-  getActiveBubbleCount(): number {
-    return this.bubbles.size;
-  }
-
-  /**
-   * Cleanup
-   */
   destroy(): void {
     this.hideAllBubbles();
     this.bubbles.clear();
-  }
-}
-
-// ============================================================================
-// HELPER: Map character IDs to sprite finder functions
-// ============================================================================
-
-export function getCharacterSpriteKey(characterId: string): {
-  flag: string;
-  fallback?: string;
-} | null {
-  // Silent characters don't have speech bubbles
-  if (SILENT_CHARACTERS.has(characterId.toLowerCase())) {
-    return null;
-  }
-
-  switch (characterId) {
-    case "finn":
-      return { flag: "isFinn" };
-    case "ghost":
-      return { flag: "isDev" };
-    case "neo":
-      return { flag: "isScout" };
-    case "ash":
-      return { flag: "isAsh" };
-    case "cj":
-      return { flag: "isCJ" };
-    case "shaw":
-      return { flag: "isShaw" };
-    default:
-      return { flag: characterId };
   }
 }

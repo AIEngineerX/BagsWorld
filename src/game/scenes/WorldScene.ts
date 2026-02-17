@@ -259,6 +259,8 @@ export class WorldScene extends Phaser.Scene {
   private lastGlobalEncounter = 0;
   private readonly GLOBAL_ENCOUNTER_COOLDOWN_MS = 45000;
   private encounterActive = false;
+  private encounterActiveTimeout: ReturnType<typeof setTimeout> | null = null;
+  private readonly ENCOUNTER_MAX_DURATION_MS = 300000; // 5 min safety timeout
   private playerStunned = false;
   private stunStars: Phaser.GameObjects.Text[] = [];
   private boundEncounterEnd: ((e: Event) => void) | null = null;
@@ -2573,6 +2575,20 @@ export class WorldScene extends Phaser.Scene {
     const { characterId, message, emotion } = event.detail;
     if (!characterId || !message || !this.speechBubbleManager) return;
 
+    // Sanitize: skip raw JSON/code strings that leak from AI responses
+    const msg = typeof message === "string" ? message : String(message);
+    if (
+      msg.startsWith("{") ||
+      msg.startsWith("[") ||
+      msg.startsWith("<") ||
+      msg.includes('"type"') ||
+      msg.includes("```")
+    )
+      return;
+
+    // Truncate overly long messages
+    const cleanMessage = msg.length > 120 ? msg.slice(0, 117) + "..." : msg;
+
     // Don't interrupt autonomous dialogue conversations
     const activeConversation = getActiveConversation();
     if (activeConversation?.isActive) return;
@@ -2581,7 +2597,7 @@ export class WorldScene extends Phaser.Scene {
     const line = {
       characterId,
       characterName: characterId,
-      message,
+      message: cleanMessage,
       timestamp: Date.now(),
       emotion: emotion || "neutral",
     };
@@ -2600,8 +2616,19 @@ export class WorldScene extends Phaser.Scene {
     const currentLine = getCurrentLine();
 
     if (currentLine) {
+      // Skip raw JSON/code that leaks from AI responses
+      const msg = currentLine.message;
+      if (
+        msg.startsWith("{") ||
+        msg.startsWith("[") ||
+        msg.startsWith("<") ||
+        msg.includes('"type"') ||
+        msg.includes("```")
+      )
+        return;
+
       // Create a unique ID for this line
-      const lineId = `${currentLine.characterId}-${currentLine.timestamp}-${currentLine.message.slice(0, 20)}`;
+      const lineId = `${currentLine.characterId}-${currentLine.timestamp}-${msg.slice(0, 20)}`;
 
       // Only show if it's a new line
       if (lineId !== this.lastDialogueLine) {
@@ -2610,8 +2637,14 @@ export class WorldScene extends Phaser.Scene {
         // Update character sprites reference (in case they changed)
         this.speechBubbleManager.setCharacterSprites(this.characterSprites);
 
+        // Truncate overly long messages
+        const sanitized = {
+          ...currentLine,
+          message: msg.length > 120 ? msg.slice(0, 117) + "..." : msg,
+        };
+
         // Show the speech bubble
-        this.speechBubbleManager.showBubble(currentLine);
+        this.speechBubbleManager.showBubble(sanitized);
       }
     }
   }
@@ -2745,7 +2778,15 @@ export class WorldScene extends Phaser.Scene {
           break;
 
         case "character-speak":
-          window.dispatchEvent(new CustomEvent("bagsworld-character-speak", { detail: command }));
+          window.dispatchEvent(
+            new CustomEvent("bagsworld-character-speak", {
+              detail: {
+                characterId: command.characterId,
+                message: command.message,
+                emotion: command.emotion,
+              },
+            })
+          );
           break;
 
         case "zone-transition":
@@ -9501,6 +9542,15 @@ export class WorldScene extends Phaser.Scene {
       this.lastGlobalEncounter = now;
       this.encounterActive = true;
 
+      // Safety timeout: if overlay crashes without dispatching encounter-end,
+      // reset encounterActive so future encounters aren't permanently blocked
+      if (this.encounterActiveTimeout) clearTimeout(this.encounterActiveTimeout);
+      this.encounterActiveTimeout = setTimeout(() => {
+        if (this.encounterActive) {
+          this.encounterActive = false;
+        }
+      }, this.ENCOUNTER_MAX_DURATION_MS);
+
       window.dispatchEvent(
         new CustomEvent("bagsworld-encounter-start", {
           detail: { zone: target.zone },
@@ -9512,6 +9562,10 @@ export class WorldScene extends Phaser.Scene {
 
   private handleEncounterEnd(event: CustomEvent): void {
     this.encounterActive = false;
+    if (this.encounterActiveTimeout) {
+      clearTimeout(this.encounterActiveTimeout);
+      this.encounterActiveTimeout = null;
+    }
     const result = event.detail?.result as string;
 
     if (result === "lose") {
