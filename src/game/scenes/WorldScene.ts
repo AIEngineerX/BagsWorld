@@ -7,6 +7,7 @@ import type {
   BuildingStatus,
 } from "@/lib/types";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
+import { extractBattleTextures } from "@/lib/texture-bridge";
 import { SpeechBubbleManager } from "@/lib/speech-bubble-manager";
 import { getCurrentLine, getActiveConversation } from "@/lib/autonomous-dialogue";
 import { useGameStore } from "@/lib/store";
@@ -394,6 +395,9 @@ export class WorldScene extends Phaser.Scene {
     // Connect to agent server for bidirectional communication
     this.connectToAgentServer();
 
+    // Extract Phaser textures to data URLs for React battle overlay
+    extractBattleTextures(this);
+
     // Signal to React that the scene is ready for worldState updates
     window.dispatchEvent(new Event("worldscene-ready"));
   }
@@ -577,6 +581,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.playerSpriteVariant = spriteVariant;
+    (window as unknown as Record<string, unknown>).__bagsworld_player_variant = spriteVariant;
     this.playerEnabled = true;
 
     // Create player sprite with chosen variant
