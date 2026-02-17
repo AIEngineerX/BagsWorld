@@ -1554,6 +1554,13 @@ export class ArcadeGameScene extends Phaser.Scene {
         }
       }
 
+      // Melee range indicator: yellow tint when player is close enough to melee
+      if (distToPlayer < MELEE_RANGE) {
+        enemy.setTint(0xffff44);
+      } else if (!(enemy as any).staggerUntil || time >= (enemy as any).staggerUntil) {
+        enemy.clearTint();
+      }
+
       if (distToPlayer < 300 && time - ((enemy as any).lastFire || 0) > stats.fireRate) {
         (enemy as any).lastFire = time;
         enemy.setTexture(`${type}_shoot`);
@@ -1717,6 +1724,19 @@ export class ArcadeGameScene extends Phaser.Scene {
       } else {
         this.boss.setTexture(this.enemyAnimFrame === 0 ? `${bp}idle` : `${bp}idle_2`);
       }
+    }
+
+    // Melee range indicator for boss
+    const bossDist = Phaser.Math.Distance.Between(
+      this.player.x,
+      this.player.y,
+      this.boss.x,
+      this.boss.y
+    );
+    if (bossDist < MELEE_RANGE) {
+      this.boss.setTint(0xffff44);
+    } else if (this.bossPhase === 1) {
+      this.boss.clearTint();
     }
   }
 
