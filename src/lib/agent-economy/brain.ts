@@ -871,9 +871,7 @@ async function aggressiveStrategy(
   // - Quicker rotations
 
   // Check for over-concentrated positions (>30% of portfolio in one token)
-  const overConcentrated = portfolio.positions.filter(
-    (p) => p.percentOfPortfolio > 30
-  );
+  const overConcentrated = portfolio.positions.filter((p) => p.percentOfPortfolio > 30);
 
   if (overConcentrated.length > 0) {
     const toTrim = overConcentrated[0];

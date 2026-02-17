@@ -6433,15 +6433,7 @@ export class WorldScene extends Phaser.Scene {
     const isAgentBuilding = building.id.startsWith("agent-building-");
 
     // Skip texture updates for special buildings (they don't change)
-    if (
-      isPokeCenter ||
-      isCasino ||
-      isOracle ||
-      isArcade ||
-      isBagsHQ ||
-      isTreasury ||
-      isMansion
-    ) {
+    if (isPokeCenter || isCasino || isOracle || isArcade || isBagsHQ || isTreasury || isMansion) {
       return;
     }
 
