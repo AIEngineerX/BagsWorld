@@ -15,8 +15,7 @@ export function EcosystemStats() {
   useEffect(() => {
     const fetchBalance = async () => {
       try {
-        const rpcUrl =
-          process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana";
+        const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana";
         const connection = new Connection(rpcUrl, "confirmed");
         const pubkey = new PublicKey(walletAddress);
         const lamports = await connection.getBalance(pubkey);

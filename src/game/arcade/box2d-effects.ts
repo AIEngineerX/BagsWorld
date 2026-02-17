@@ -115,7 +115,7 @@ export function spawnGrenade(
   x: number,
   y: number,
   vx: number,
-  vy: number,
+  vy: number
 ): Phaser.GameObjects.Sprite {
   const sprite = scene.add.sprite(x, y, "grenade");
   sprite.setDepth(10);
@@ -140,8 +140,7 @@ export function spawnGrenade(
   b2Body_SetLinearVelocity(bodyId, new b2Vec2(pxm(vx), -pxm(vy)));
 
   // Apply random angular impulse for spin
-  const spin =
-    (Math.random() - 0.5) * 2 * GRENADE_ANGULAR_IMPULSE_RANGE;
+  const spin = (Math.random() - 0.5) * 2 * GRENADE_ANGULAR_IMPULSE_RANGE;
   b2Body_ApplyAngularImpulse(bodyId, spin, true);
 
   // Register sprite-body pair for auto-sync
@@ -161,7 +160,7 @@ export function spawnDebrisField(
   x: number,
   y: number,
   count: number,
-  texturePrefix: string,
+  texturePrefix: string
 ): void {
   if (!worldId) return;
 
@@ -246,7 +245,8 @@ const SOLDIER_PARTS: RagdollPartDef[] = [
   // head → top of torso
   {
     texture: "soldier_head",
-    halfW: 5, halfH: 5,
+    halfW: 5,
+    halfH: 5,
     parentAnchor: { x: 0, y: -8 },
     selfAnchor: { x: 0, y: 5 },
     angleLimits: [-0.5, 0.5],
@@ -254,7 +254,8 @@ const SOLDIER_PARTS: RagdollPartDef[] = [
   // left arm → left shoulder
   {
     texture: "soldier_arm",
-    halfW: 3, halfH: 6,
+    halfW: 3,
+    halfH: 6,
     parentAnchor: { x: -5, y: -5 },
     selfAnchor: { x: 3, y: -6 },
     angleLimits: [-1.2, 1.2],
@@ -262,7 +263,8 @@ const SOLDIER_PARTS: RagdollPartDef[] = [
   // right arm → right shoulder
   {
     texture: "soldier_arm",
-    halfW: 3, halfH: 6,
+    halfW: 3,
+    halfH: 6,
     parentAnchor: { x: 5, y: -5 },
     selfAnchor: { x: -3, y: -6 },
     angleLimits: [-1.2, 1.2],
@@ -270,7 +272,8 @@ const SOLDIER_PARTS: RagdollPartDef[] = [
   // left leg → bottom-left of torso
   {
     texture: "soldier_leg",
-    halfW: 3, halfH: 8,
+    halfW: 3,
+    halfH: 8,
     parentAnchor: { x: -2, y: 8 },
     selfAnchor: { x: 0, y: -8 },
     angleLimits: [-0.8, 0.8],
@@ -278,7 +281,8 @@ const SOLDIER_PARTS: RagdollPartDef[] = [
   // right leg → bottom-right of torso
   {
     texture: "soldier_leg",
-    halfW: 3, halfH: 8,
+    halfW: 3,
+    halfH: 8,
     parentAnchor: { x: 2, y: 8 },
     selfAnchor: { x: 0, y: -8 },
     angleLimits: [-0.8, 0.8],
@@ -289,7 +293,8 @@ const HEAVY_PARTS: RagdollPartDef[] = [
   // head → top of torso
   {
     texture: "heavy_head",
-    halfW: 6, halfH: 5,
+    halfW: 6,
+    halfH: 5,
     parentAnchor: { x: 0, y: -9 },
     selfAnchor: { x: 0, y: 5 },
     angleLimits: [-0.4, 0.4],
@@ -297,7 +302,8 @@ const HEAVY_PARTS: RagdollPartDef[] = [
   // left arm → left shoulder
   {
     texture: "heavy_arm",
-    halfW: 4, halfH: 6,
+    halfW: 4,
+    halfH: 6,
     parentAnchor: { x: -8, y: -6 },
     selfAnchor: { x: 4, y: -6 },
     angleLimits: [-1.0, 1.0],
@@ -305,7 +311,8 @@ const HEAVY_PARTS: RagdollPartDef[] = [
   // right arm → right shoulder
   {
     texture: "heavy_arm",
-    halfW: 4, halfH: 6,
+    halfW: 4,
+    halfH: 6,
     parentAnchor: { x: 8, y: -6 },
     selfAnchor: { x: -4, y: -6 },
     angleLimits: [-1.0, 1.0],
@@ -313,7 +320,8 @@ const HEAVY_PARTS: RagdollPartDef[] = [
   // left leg → bottom-left of torso
   {
     texture: "heavy_leg",
-    halfW: 4, halfH: 9,
+    halfW: 4,
+    halfH: 9,
     parentAnchor: { x: -4, y: 9 },
     selfAnchor: { x: 0, y: -9 },
     angleLimits: [-0.6, 0.6],
@@ -321,7 +329,8 @@ const HEAVY_PARTS: RagdollPartDef[] = [
   // right leg → bottom-right of torso
   {
     texture: "heavy_leg",
-    halfW: 4, halfH: 9,
+    halfW: 4,
+    halfH: 9,
     parentAnchor: { x: 4, y: 9 },
     selfAnchor: { x: 0, y: -9 },
     angleLimits: [-0.6, 0.6],
@@ -336,7 +345,7 @@ function createRagdollPart(
   halfW: number,
   halfH: number,
   texture: string,
-  density: number,
+  density: number
 ): { sprite: Phaser.GameObjects.Sprite; bodyId: unknown } {
   const sprite = scene.add.sprite(x, y, texture);
   sprite.setDepth(10);
@@ -368,7 +377,7 @@ export function spawnRagdoll(
   x: number,
   y: number,
   type: EnemyType,
-  hitDir: number,
+  hitDir: number
 ): void {
   if (!worldId) return;
 
@@ -409,13 +418,24 @@ export function spawnRagdoll(
     const partX = x + part.parentAnchor.x;
     const partY = y + part.parentAnchor.y;
 
-    const limb = createRagdollPart(scene, partX, partY, part.halfW, part.halfH, part.texture, density * 0.7);
+    const limb = createRagdollPart(
+      scene,
+      partX,
+      partY,
+      part.halfW,
+      part.halfH,
+      part.texture,
+      density * 0.7
+    );
 
     // Small random velocity on each limb
-    b2Body_SetLinearVelocity(limb.bodyId, new b2Vec2(
-      impulseX * 0.5 + (Math.random() - 0.5) * 2,
-      impulseY * 0.5 + (Math.random() - 0.5) * 2,
-    ));
+    b2Body_SetLinearVelocity(
+      limb.bodyId,
+      new b2Vec2(
+        impulseX * 0.5 + (Math.random() - 0.5) * 2,
+        impulseY * 0.5 + (Math.random() - 0.5) * 2
+      )
+    );
     b2Body_ApplyAngularImpulse(limb.bodyId, (Math.random() - 0.5) * 4, true);
 
     // Revolute joint connecting limb to torso
@@ -472,43 +492,91 @@ function destroyRagdollEntry(entry: RagdollEntry): void {
  * Spawn a large boss ragdoll with 8 segments:
  * hull, turret, cannon, 2 treads, 2 armor plates, + bonus debris.
  */
-function spawnBossRagdoll(
-  scene: Phaser.Scene,
-  x: number,
-  y: number,
-  hitDir: number,
-): void {
+function spawnBossRagdoll(scene: Phaser.Scene, x: number, y: number, hitDir: number): void {
   // Boss parts: [texture, halfW, halfH, offsetX, offsetY]
   const bossParts: Array<{
-    tex: string; hw: number; hh: number; ox: number; oy: number;
-    parentIdx: number; parentAnchor: { x: number; y: number };
+    tex: string;
+    hw: number;
+    hh: number;
+    ox: number;
+    oy: number;
+    parentIdx: number;
+    parentAnchor: { x: number; y: number };
     selfAnchor: { x: number; y: number };
     limits: [number, number];
   }> = [
     // turret → hull top
-    { tex: "boss_turret", hw: 10, hh: 6, ox: 0, oy: -15,
-      parentIdx: 0, parentAnchor: { x: 0, y: -10 }, selfAnchor: { x: 0, y: 6 },
-      limits: [-0.4, 0.4] },
+    {
+      tex: "boss_turret",
+      hw: 10,
+      hh: 6,
+      ox: 0,
+      oy: -15,
+      parentIdx: 0,
+      parentAnchor: { x: 0, y: -10 },
+      selfAnchor: { x: 0, y: 6 },
+      limits: [-0.4, 0.4],
+    },
     // cannon → turret right
-    { tex: "boss_cannon", hw: 8, hh: 3, ox: 20, oy: -15,
-      parentIdx: 0, parentAnchor: { x: 15, y: -8 }, selfAnchor: { x: -8, y: 0 },
-      limits: [-0.3, 0.3] },
+    {
+      tex: "boss_cannon",
+      hw: 8,
+      hh: 3,
+      ox: 20,
+      oy: -15,
+      parentIdx: 0,
+      parentAnchor: { x: 15, y: -8 },
+      selfAnchor: { x: -8, y: 0 },
+      limits: [-0.3, 0.3],
+    },
     // left tread → hull bottom-left
-    { tex: "boss_tread", hw: 13, hh: 5, ox: -8, oy: 15,
-      parentIdx: 0, parentAnchor: { x: -8, y: 10 }, selfAnchor: { x: 0, y: -5 },
-      limits: [-0.2, 0.2] },
+    {
+      tex: "boss_tread",
+      hw: 13,
+      hh: 5,
+      ox: -8,
+      oy: 15,
+      parentIdx: 0,
+      parentAnchor: { x: -8, y: 10 },
+      selfAnchor: { x: 0, y: -5 },
+      limits: [-0.2, 0.2],
+    },
     // right tread → hull bottom-right
-    { tex: "boss_tread", hw: 13, hh: 5, ox: 8, oy: 15,
-      parentIdx: 0, parentAnchor: { x: 8, y: 10 }, selfAnchor: { x: 0, y: -5 },
-      limits: [-0.2, 0.2] },
+    {
+      tex: "boss_tread",
+      hw: 13,
+      hh: 5,
+      ox: 8,
+      oy: 15,
+      parentIdx: 0,
+      parentAnchor: { x: 8, y: 10 },
+      selfAnchor: { x: 0, y: -5 },
+      limits: [-0.2, 0.2],
+    },
     // left armor plate → hull left
-    { tex: "boss_armor_plate", hw: 6, hh: 5, ox: -20, oy: -2,
-      parentIdx: 0, parentAnchor: { x: -15, y: 0 }, selfAnchor: { x: 6, y: 0 },
-      limits: [-0.8, 0.8] },
+    {
+      tex: "boss_armor_plate",
+      hw: 6,
+      hh: 5,
+      ox: -20,
+      oy: -2,
+      parentIdx: 0,
+      parentAnchor: { x: -15, y: 0 },
+      selfAnchor: { x: 6, y: 0 },
+      limits: [-0.8, 0.8],
+    },
     // right armor plate → hull right
-    { tex: "boss_armor_plate", hw: 6, hh: 5, ox: 20, oy: -2,
-      parentIdx: 0, parentAnchor: { x: 15, y: 0 }, selfAnchor: { x: -6, y: 0 },
-      limits: [-0.8, 0.8] },
+    {
+      tex: "boss_armor_plate",
+      hw: 6,
+      hh: 5,
+      ox: 20,
+      oy: -2,
+      parentIdx: 0,
+      parentAnchor: { x: 15, y: 0 },
+      selfAnchor: { x: -6, y: 0 },
+      limits: [-0.8, 0.8],
+    },
   ];
 
   // Create hull (root body) — larger and heavier
@@ -529,10 +597,13 @@ function spawnBossRagdoll(
     const partY = y + part.oy;
     const limb = createRagdollPart(scene, partX, partY, part.hw, part.hh, part.tex, 3.0);
 
-    b2Body_SetLinearVelocity(limb.bodyId, new b2Vec2(
-      impulseX * 0.4 + (Math.random() - 0.5) * 3,
-      impulseY * 0.4 + (Math.random() - 0.5) * 3,
-    ));
+    b2Body_SetLinearVelocity(
+      limb.bodyId,
+      new b2Vec2(
+        impulseX * 0.4 + (Math.random() - 0.5) * 3,
+        impulseY * 0.4 + (Math.random() - 0.5) * 3
+      )
+    );
     b2Body_ApplyAngularImpulse(limb.bodyId, (Math.random() - 0.5) * 6, true);
 
     const parentBodyId = bodyIds[part.parentIdx];
@@ -574,7 +645,7 @@ export function spawnShockwave(
   x: number,
   y: number,
   radiusPx: number,
-  forceMagnitude: number,
+  forceMagnitude: number
 ): void {
   if (!worldId) return;
 

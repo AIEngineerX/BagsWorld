@@ -693,7 +693,7 @@ export class ArcadeGameScene extends Phaser.Scene {
       this.player.x + dir * 14,
       this.player.y - 14,
       dir * 200,
-      -200,
+      -200
     );
     this.activeGrenadeSprites.push(grenade);
 
@@ -999,9 +999,7 @@ export class ArcadeGameScene extends Phaser.Scene {
     }
 
     // Score: use scoreBonus if defined (food/bonus items), otherwise default 50
-    const points = info.scoreBonus
-      ? info.scoreBonus * this.getComboMultiplier()
-      : 50;
+    const points = info.scoreBonus ? info.scoreBonus * this.getComboMultiplier() : 50;
     this.score += points;
     this.showScorePopup(p.x, p.y, points);
     p.destroy();
@@ -1056,11 +1054,7 @@ export class ArcadeGameScene extends Phaser.Scene {
     return "bonus_medal";
   }
 
-  private damageEnemy(
-    enemy: Phaser.Physics.Arcade.Sprite,
-    damage: number,
-    isMelee = false
-  ): void {
+  private damageEnemy(enemy: Phaser.Physics.Arcade.Sprite, damage: number, isMelee = false): void {
     if ((enemy as any).isDying) return;
 
     (enemy as any).hp = ((enemy as any).hp ?? 1) - damage;
