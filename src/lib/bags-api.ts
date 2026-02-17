@@ -618,7 +618,7 @@ class BagsApiClient {
       ] as const;
       let configId: string | null = null;
       for (const field of configIdFields) {
-        if (result[field]) {
+        if (result[field] && typeof result[field] === "string") {
           configId = result[field] as string;
           if (field !== "meteoraConfigKey") {
             console.log(`Fee config: configId matched via fallback field "${field}"`);
