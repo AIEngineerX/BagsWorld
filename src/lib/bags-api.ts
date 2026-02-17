@@ -50,15 +50,11 @@ class BagsApiClient {
           errorDetail = errorBody ? ` - ${errorBody}` : "";
           try {
             parsedError = JSON.parse(errorBody);
-          } catch {
-            // Not JSON
-          }
-        } catch {
-          // Can't read body
-        }
+          } catch {}
+        } catch {}
 
         if (response.status >= 500 && retryCount < maxRetries) {
-          const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
+          const delay = Math.pow(2, retryCount) * 1000;
           await new Promise((resolve) => setTimeout(resolve, delay));
           return this.fetch<T>(endpoint, options, retryCount + 1);
         }

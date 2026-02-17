@@ -56,9 +56,6 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
   const connection = new Connection(getWriteRpcUrl());
 
   try {
-    // -----------------------------------------------------------------------
-    // 1. Create token info via API
-    // -----------------------------------------------------------------------
     onStatus("Uploading token metadata to IPFS...");
     const tokenInfoResponse = await fetch("/api/launch-token", {
       method: "POST",
@@ -90,18 +87,12 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
 
     const { tokenMint, tokenMetadata } = await tokenInfoResponse.json();
 
-    // -----------------------------------------------------------------------
-    // 2. Configure fee sharing (always includes ecosystem fee)
-    // -----------------------------------------------------------------------
-    // Build fee claimers array
-    // All usernames should be lowercase (Bags API is case-insensitive but normalized)
     const userFeeClaimers = feeShares.map((f) => ({
       provider: f.provider,
       providerUsername: f.providerUsername.replace(/@/g, "").toLowerCase().trim(),
       bps: f.bps,
     }));
 
-    // Include ecosystem fee if configured
     let allFeeClaimers = [...userFeeClaimers];
     if (ecosystemFee.bps > 0) {
       allFeeClaimers = [
@@ -114,7 +105,6 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
       ];
     }
 
-    // Bags.fm API requires total BPS to equal exactly 10000 (100%)
     const userDefinedBps = userFeeClaimers.reduce((sum, f) => sum + f.bps, 0);
     const totalAllocatedBps = ecosystemFee.bps + userDefinedBps;
     if (totalAllocatedBps !== 10000) {
@@ -143,7 +133,6 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
       const feeResult = await feeConfigResponse.json();
       configKey = feeResult.configId;
 
-      // If the fee share config needs to be created on-chain, sign and submit the transactions
       if (feeResult.needsCreation && feeResult.transactions?.length > 0) {
         onStatus("Creating fee share config on-chain...");
 
@@ -151,12 +140,10 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
           const txData = feeResult.transactions[i];
           onStatus(`Signing fee config transaction ${i + 1}/${feeResult.transactions.length}...`);
 
-          // Decode and sign the transaction (handles both versioned and legacy formats)
           const transaction = deserializeTransaction(txData.transaction, `fee-config-tx-${i + 1}`);
 
           const preSigned = checkExistingSignatures(transaction);
 
-          // Only refresh blockhash if no existing signatures
           let blockhash: string;
           let lastValidBlockHeight: number;
 
@@ -171,7 +158,6 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
               transaction.recentBlockhash = blockhash;
             }
           } else {
-            // Preserve the API's blockhash - changing it would invalidate existing signatures
             if (transaction instanceof VersionedTransaction) {
               blockhash = transaction.message.recentBlockhash;
             } else {
@@ -181,19 +167,14 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
             lastValidBlockHeight = latestBlockhash.lastValidBlockHeight;
           }
 
-          // Pre-simulate with sigVerify:false to catch errors before wallet popup
           try {
             await preSimulateTransaction(connection, transaction);
           } catch (simError) {
             console.warn(`Fee config tx ${i + 1} simulation warning:`, simError);
-            // Non-fatal: partially-signed txs may fail simulation - continue to wallet
           }
 
           let txid: string;
           try {
-            // Use signAndSendTransaction for all cases — Phantom preferred
-            // method that avoids Blowfish "malicious dapp" warning.
-            // Phantom preserves existing signatures on pre-signed transactions.
             txid = await signAndSendTransaction(transaction, {
               maxRetries: 5,
             });
@@ -246,7 +227,6 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
       console.error("Fee config error:", errorMsg);
       console.error("Fee claimers sent:", JSON.stringify(allFeeClaimers, null, 2));
 
-      // Add helpful context to the error
       if (errorMsg.toLowerCase().includes("could not find wallet")) {
         throw new Error(
           `${errorMsg}. The user needs to link their wallet at bags.fm/settings first.`
@@ -259,13 +239,8 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
       throw new Error("Fee configuration failed - no config key received");
     }
 
-    // -----------------------------------------------------------------------
-    // 3. Create launch transaction, sign it, and send to blockchain
-    // -----------------------------------------------------------------------
     {
       onStatus("Creating launch transaction...");
-
-      // Convert SOL to lamports (1 SOL = 1,000,000,000 lamports)
       const initialBuyLamports = Math.floor(parseFloat(initialBuySOL || "0") * 1_000_000_000);
 
       const launchTxResponse = await fetch("/api/launch-token", {
@@ -296,10 +271,8 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
 
       const launchResult = await launchTxResponse.json();
 
-      // Handle various response formats - extract the encoded transaction string
       let txEncoded = launchResult.transaction;
 
-      // If transaction is nested (some API versions return { transaction: { transaction: "..." } })
       if (txEncoded && typeof txEncoded === "object" && "transaction" in txEncoded) {
         txEncoded = txEncoded.transaction;
       }
@@ -311,13 +284,10 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
         );
       }
 
-      // Decode transaction (handles both versioned and legacy formats)
       const transaction = deserializeTransaction(txEncoded, "launch-transaction");
 
       const preSigned = checkExistingSignatures(transaction);
 
-      // Only refresh blockhash if there are no existing signatures
-      // Otherwise we'd invalidate the API's signatures
       let blockhash: string;
       let lastValidBlockHeight: number;
 
@@ -342,21 +312,15 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
         lastValidBlockHeight = latestBlockhash.lastValidBlockHeight;
       }
 
-      // Pre-simulate with sigVerify:false to catch errors before wallet popup
       onStatus("Validating transaction...");
       try {
         await preSimulateTransaction(connection, transaction);
       } catch (simError) {
         console.warn("Launch tx simulation warning:", simError);
-        // Non-fatal for pre-signed txs - Phantom will run its own simulation
       }
 
       onStatus("Please approve the transaction in your wallet...");
 
-      // Use signAndSendTransaction (Phantom preferred) — avoids Blowfish
-      // "malicious dapp" warning that signTransaction triggers.
-      // Phantom preserves existing signatures (API's mint keypair) and
-      // adds the user's signature before sending.
       let txid: string;
       try {
         txid = await signAndSendTransaction(transaction, { maxRetries: 5 });
@@ -390,11 +354,7 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
         throw new Error(`Transaction failed: ${signErrorMsg}`);
       }
 
-      onStatus("Broadcasting to Solana...");
-
       onStatus("Confirming transaction...");
-
-      // Wait for confirmation
       await connection.confirmTransaction(
         {
           signature: txid,
@@ -405,9 +365,6 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
       );
     }
 
-    // -----------------------------------------------------------------------
-    // 4. Save token to registry for the world to display
-    // -----------------------------------------------------------------------
     const validFeeShares = feeShares.filter((f) => f.providerUsername.trim() !== "");
 
     const launchedToken: LaunchedToken = {
@@ -419,7 +376,6 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
       creator: walletPublicKey.toBase58(),
       createdAt: Date.now(),
       feeShares: [
-        // Include ecosystem fee in saved data
         ...(ecosystemFee.bps > 0
           ? [
               {
@@ -437,14 +393,11 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
       ],
     };
 
-    // Save to local storage (fast, offline-capable)
     saveLaunchedToken(launchedToken);
 
-    // Save to global database (so everyone sees it)
     onStatus("Saving to global database...");
     const globalSaveSuccess = await saveTokenGlobally(launchedToken);
 
-    // Dispatch custom event to notify useWorldState hook
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("bagsworld-token-update"));
     }
@@ -455,8 +408,6 @@ export async function executeLaunchFlow(params: LaunchFlowParams): Promise<Launc
     onStatus("");
     const errorMessage = err instanceof Error ? err.message : "Failed to launch token";
 
-    // Provide user-friendly error messages for common issues
-    // Always log the original error for server-side debugging
     const lowerError = errorMessage.toLowerCase();
     if (lowerError.includes("internal server error")) {
       console.error("Launch flow error (API unavailable):", errorMessage);

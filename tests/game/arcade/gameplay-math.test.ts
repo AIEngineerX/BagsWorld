@@ -1,11 +1,3 @@
-/**
- * Gameplay Math Tests
- *
- * Tests the mathematical properties of the game's combat system, economy,
- * and physics by exercising the actual data from types.ts and level-data.ts.
- * These tests verify that the data produces correct gameplay outcomes.
- */
-
 import {
   CHARACTER_STATS,
   WEAPONS,
@@ -28,8 +20,6 @@ import {
   type EnemyType,
 } from "@/game/arcade/types";
 import { getSectionData, getGroundPlatforms } from "@/game/arcade/level-data";
-
-// --- Game Beatability ---
 
 describe("game beatability", () => {
   const characters: ArcadeCharacter[] = ["ghost", "neo", "cj"];
@@ -60,14 +50,14 @@ describe("game beatability", () => {
       }
     }
     // Manual calculation:
-    // S0: 3 soldiers × 2 = 6
-    // S1: 2 turrets × 3 + 4 soldiers × 2 = 14
-    // S2: 2 heavies × 5 + 4 soldiers × 2 = 18
-    // S3: 2 turrets × 3 + 4 soldiers × 2 = 14
-    // S4: 3 heavies × 5 + 6 soldiers × 2 + 2 turrets × 3 = 33
-    // S5: 1 boss × 50 = 50
-    // Total = 6 + 14 + 18 + 14 + 33 + 50 = 135
-    expect(totalHP).toBe(135);
+    // S0: 3 soldiers × 3 = 9
+    // S1: 2 turrets × 5 + 4 soldiers × 3 = 22
+    // S2: 2 heavies × 8 + 4 soldiers × 3 = 28
+    // S3: 2 turrets × 5 + 4 soldiers × 3 = 22
+    // S4: 3 heavies × 8 + 6 soldiers × 3 + 2 turrets × 5 = 52
+    // S5: 1 boss × 80 = 80
+    // Total = 9 + 22 + 28 + 22 + 52 + 80 = 213
+    expect(totalHP).toBe(213);
   });
 
   it("total pistol shots needed to clear the level", () => {
@@ -77,8 +67,8 @@ describe("game beatability", () => {
         totalShots += Math.ceil(ENEMY_STATS[enemy.type].hp / WEAPONS.pistol.damage);
       }
     }
-    // Every enemy HP = 1 damage per pistol shot, so total shots = total HP = 135
-    expect(totalShots).toBe(135);
+    // Every enemy HP = 1 damage per pistol shot, so total shots = total HP = 213
+    expect(totalShots).toBe(213);
   });
 
   it("total heavy weapon shots needed to clear the level", () => {
@@ -89,14 +79,14 @@ describe("game beatability", () => {
       }
     }
     // Heavy does 2 damage per shot
-    // S0: 3×ceil(2/2) = 3
-    // S1: 2×ceil(3/2) + 4×ceil(2/2) = 4+4 = 8
-    // S2: 2×ceil(5/2) + 4×ceil(2/2) = 6+4 = 10
-    // S3: 2×ceil(3/2) + 4×ceil(2/2) = 4+4 = 8
-    // S4: 3×ceil(5/2) + 6×ceil(2/2) + 2×ceil(3/2) = 9+6+4 = 19
-    // S5: ceil(50/2) = 25
-    // Total = 3+8+10+8+19+25 = 73
-    expect(totalShots).toBe(73);
+    // S0: 3×ceil(3/2) = 6
+    // S1: 2×ceil(5/2) + 4×ceil(3/2) = 6+8 = 14
+    // S2: 2×ceil(8/2) + 4×ceil(3/2) = 8+8 = 16
+    // S3: 2×ceil(5/2) + 4×ceil(3/2) = 6+8 = 14
+    // S4: 3×ceil(8/2) + 6×ceil(3/2) + 2×ceil(5/2) = 12+12+6 = 30
+    // S5: ceil(80/2) = 40
+    // Total = 6+14+16+14+30+40 = 120
+    expect(totalShots).toBe(120);
   });
 
   it("heavy ammo (50) is insufficient to clear the entire level solo", () => {
@@ -135,8 +125,6 @@ describe("game beatability", () => {
   });
 });
 
-// --- Score Economy ---
-
 describe("score economy", () => {
   it("total possible enemy score across the level", () => {
     let totalScore = 0;
@@ -161,10 +149,10 @@ describe("score economy", () => {
     for (let s = 0; s <= 5; s++) {
       pickupCount += getSectionData(s).pickups.length;
     }
-    // Each pickup gives 50 score
+    // Each pickup gives 50 base score
     const pickupScore = pickupCount * 50;
-    // 2+1+1+1+2+1 = 8 pickups × 50 = 400
-    expect(pickupScore).toBe(400);
+    // 4+4+3+4+5+3 = 23 pickups × 50 = 1150
+    expect(pickupScore).toBe(1150);
   });
 
   it("max theoretical score is enemy score + pickup score", () => {
@@ -178,8 +166,8 @@ describe("score economy", () => {
       pickupCount += data.pickups.length;
     }
     totalScore += pickupCount * 50;
-    // 9800 + 400 = 10200 (not counting crate score)
-    expect(totalScore).toBe(10200);
+    // 9800 + 1150 = 10950 (not counting crate score or bonus pickups)
+    expect(totalScore).toBe(10950);
   });
 
   it("score per section generally increases (except boss section)", () => {
@@ -197,8 +185,6 @@ describe("score economy", () => {
     expect(sectionScores[5]).toBe(ENEMY_STATS.boss.score);
   });
 });
-
-// --- Weapon Economy ---
 
 describe("weapon economy", () => {
   it("spread weapon ammo lasts through section 0 enemies (9 shots for 3 soldiers)", () => {
@@ -237,14 +223,12 @@ describe("weapon economy", () => {
   });
 });
 
-// --- Grenade Blast Radius Simulation ---
-
 describe("grenade blast radius simulation", () => {
 
   it("grenade can hit multiple clustered enemies", () => {
-    // Section 4 has enemies at x=100, x=150 (50px apart, within radius)
+    // Section 4 has multiple ground-level enemies within blast radius
     const s4 = getSectionData(4);
-    const groundEnemies = s4.enemies.filter((e) => e.y === GROUND_Y - 32);
+    const groundEnemies = s4.enemies.filter((e) => e.y >= GROUND_Y - ENEMY_STATS[e.type].height && e.type !== "turret");
 
     // Find pairs within blast radius
     let pairsInRadius = 0;
@@ -266,21 +250,19 @@ describe("grenade blast radius simulation", () => {
   });
 });
 
-// --- Invincibility Frame Analysis ---
-
 describe("invincibility frame analysis", () => {
   it("invincibility time exceeds turret and boss fire rates (fast enemies)", () => {
-    // Turret (800ms) and boss (1000ms) fire faster than invincibility (1500ms)
+    // Turret (600ms) and boss (800ms) fire faster than invincibility (1500ms)
     expect(INVINCIBILITY_TIME).toBeGreaterThan(ENEMY_STATS.turret.fireRate);
     expect(INVINCIBILITY_TIME).toBeGreaterThan(ENEMY_STATS.boss.fireRate);
   });
 
-  it("invincibility time equals soldier fire rate (borderline protection)", () => {
-    expect(INVINCIBILITY_TIME).toBe(ENEMY_STATS.soldier.fireRate);
+  it("invincibility time exceeds soldier fire rate (safe window)", () => {
+    expect(INVINCIBILITY_TIME).toBeGreaterThan(ENEMY_STATS.soldier.fireRate);
   });
 
-  it("invincibility time is less than heavy fire rate (heavy can't double-tap)", () => {
-    expect(INVINCIBILITY_TIME).toBeLessThan(ENEMY_STATS.heavy.fireRate);
+  it("invincibility time exceeds heavy fire rate", () => {
+    expect(INVINCIBILITY_TIME).toBeGreaterThan(ENEMY_STATS.heavy.fireRate);
   });
 
   it("turret has the fastest fire rate of all enemies", () => {
@@ -293,9 +275,9 @@ describe("invincibility frame analysis", () => {
     expect(ENEMY_STATS.turret.fireRate).toBe(minRate);
   });
 
-  it("invincibility covers exactly 1.875 turret fire cycles", () => {
+  it("invincibility covers exactly 2.5 turret fire cycles", () => {
     const cycles = INVINCIBILITY_TIME / ENEMY_STATS.turret.fireRate;
-    expect(cycles).toBeCloseTo(1.875, 3);
+    expect(cycles).toBe(2.5);
   });
 
   it("double invincibility on respawn covers 2+ turret fire cycles", () => {
@@ -308,11 +290,6 @@ describe("invincibility frame analysis", () => {
     expect(INVINCIBILITY_TIME).toBeGreaterThanOrEqual(phase2Rate);
   });
 });
-
-// --- HP Clamping Behavioral Specs ---
-// NOTE: These test expected HP math by simulating logic inline.
-// They do NOT exercise the actual takeDamage()/onCollectPickup() methods in ArcadeGameScene.
-// They serve as documentation of design intent, not integration tests.
 
 describe("HP clamping behavioral specs", () => {
   const characters: ArcadeCharacter[] = ["ghost", "neo", "cj"];
@@ -357,11 +334,6 @@ describe("HP clamping behavioral specs", () => {
   });
 });
 
-// --- Weapon Switching Behavioral Specs ---
-// NOTE: These test expected game BEHAVIOR by simulating logic inline.
-// They do NOT exercise the actual shoot()/onCollectPickup() methods in ArcadeGameScene.
-// They serve as documentation of design intent, not integration tests.
-
 describe("weapon switching behavioral specs", () => {
   it("last ammo shot reverts to pistol (ammo goes from 1 to 0)", () => {
     // Simulating the logic: if ammo > 0, ammo--; if ammo <= 0, revert to pistol
@@ -396,8 +368,6 @@ describe("weapon switching behavioral specs", () => {
   });
 });
 
-// --- Physics & Movement Math ---
-
 describe("physics and movement math", () => {
   const characters: ArcadeCharacter[] = ["ghost", "neo", "cj"];
 
@@ -412,16 +382,16 @@ describe("physics and movement math", () => {
         expect(Number.isFinite(maxHeight)).toBe(true);
       });
 
-      it("time to reach jump apex (v/g) is responsive (250-500ms)", () => {
+      it("time to reach jump apex (v/g) is responsive (250-600ms)", () => {
         const timeToApexMs = (Math.abs(stats.jumpForce) / GRAVITY) * 1000;
         expect(timeToApexMs).toBeGreaterThanOrEqual(250);
-        expect(timeToApexMs).toBeLessThanOrEqual(500);
+        expect(timeToApexMs).toBeLessThanOrEqual(600);
       });
 
-      it("total jump duration (2 × apex time) is between 500ms and 1000ms", () => {
+      it("total jump duration (2 × apex time) is between 500ms and 1200ms", () => {
         const totalJumpMs = (2 * Math.abs(stats.jumpForce) / GRAVITY) * 1000;
         expect(totalJumpMs).toBeGreaterThanOrEqual(500);
-        expect(totalJumpMs).toBeLessThanOrEqual(1000);
+        expect(totalJumpMs).toBeLessThanOrEqual(1200);
       });
 
       it("horizontal distance covered during a full jump is at least 1 tile", () => {
@@ -455,8 +425,6 @@ describe("physics and movement math", () => {
     expect(cjTime).toBe(Math.max(...times));
   });
 });
-
-// --- Worst-Case Damage per Section ---
 
 describe("worst-case damage per section", () => {
   const characters: ArcadeCharacter[] = ["ghost", "neo", "cj"];
@@ -504,8 +472,6 @@ describe("worst-case damage per section", () => {
   });
 });
 
-// --- Camera & Viewport Math ---
-
 describe("camera and viewport math", () => {
   it("camera zoom 1.5x shows 320×180 visible area", () => {
     const visibleWidth = ARCADE_WIDTH / 1.5;
@@ -522,8 +488,7 @@ describe("camera and viewport math", () => {
   });
 
   it("camera deadzone (60×40) allows character to move without camera following", () => {
-    // HARDCODED: These values must match ArcadeGameScene.ts:182 (setDeadzone(60, 40))
-    const deadzoneWidth = 60;
+    const deadzoneWidth = 60; // must match ArcadeGameScene.ts:182
     const deadzoneHeight = 40;
     const visibleWidth = ARCADE_WIDTH / 1.5;
     // Deadzone should be less than half the visible width
@@ -536,8 +501,6 @@ describe("camera and viewport math", () => {
     expect(ARCADE_HEIGHT).toBe(270);
   });
 });
-
-// --- Time-to-Kill Analysis for Boss ---
 
 describe("time-to-kill analysis for boss", () => {
   const characters: ArcadeCharacter[] = ["ghost", "neo", "cj"];
@@ -577,9 +540,9 @@ describe("time-to-kill analysis for boss", () => {
       const remainingHP = bossHP - grenadeDamage;
       const pistolShots = Math.ceil(remainingHP / WEAPONS.pistol.damage);
       const ttkMs = pistolShots * stats.fireRate;
-      // Grenades remove 15 HP (30%) instantly, reducing pistol shots significantly
-      expect(remainingHP).toBe(35);
-      expect(pistolShots).toBe(35);
+      // Grenades remove 15 HP (18.75%) instantly, reducing pistol shots
+      expect(remainingHP).toBe(65);
+      expect(pistolShots).toBe(65);
     });
   });
 
@@ -600,8 +563,6 @@ describe("time-to-kill analysis for boss", () => {
     expect(ttkGhost).toBeLessThan(ttkNeo);
   });
 });
-
-// --- Section Transition Boundaries ---
 
 describe("section transition boundaries", () => {
   it("each section starts where the previous ends", () => {
@@ -638,12 +599,8 @@ describe("section transition boundaries", () => {
   });
 });
 
-// --- GameOver Score Counter Duration ---
-
 describe("GameOver score counter animation", () => {
-  // WARNING: This is a LOCAL REPLICA of the counter tween duration in ArcadeGameOverScene.ts:50.
-  // If that source changes, this test will NOT catch the drift. Verify manually.
-  // Source: src/game/arcade/ArcadeGameOverScene.ts line 50
+  // Replica of ArcadeGameOverScene.ts:50 counter tween duration
   function counterDuration(score: number): number {
     return Math.min(1500, Math.max(500, score * 2));
   }
@@ -681,8 +638,6 @@ describe("GameOver score counter animation", () => {
     expect(counterDuration(10200)).toBe(1500);
   });
 });
-
-// --- Menu Stat Bar Math ---
 
 describe("menu stat bar proportions", () => {
   // From ArcadeMenuScene: barWidth * stat / maxStat

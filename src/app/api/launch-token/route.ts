@@ -102,12 +102,10 @@ async function handleCreateTokenInfo(
   }
 
   try {
-    // Convert base64 image to Blob if provided
     let imageBlob: Blob | undefined;
     let imageName = "token-image.png";
 
-    // Reject images larger than 5MB (base64 is ~37% larger than binary)
-    const MAX_IMAGE_BASE64_LENGTH = 7 * 1024 * 1024; // ~5MB decoded
+    const MAX_IMAGE_BASE64_LENGTH = 7 * 1024 * 1024;
     if (data.image && data.image.length > MAX_IMAGE_BASE64_LENGTH) {
       return NextResponse.json({ error: "Image too large. Maximum size is 5MB." }, { status: 400 });
     }
@@ -190,17 +188,14 @@ async function handleConfigureFees(
     );
   }
 
-  // Validate mint address
   if (!isValidSolanaAddress(data.mint)) {
     return NextResponse.json({ error: "Invalid token mint address" }, { status: 400 });
   }
 
-  // Validate payer address
   if (!isValidSolanaAddress(data.payer)) {
     return NextResponse.json({ error: "Invalid payer wallet address" }, { status: 400 });
   }
 
-  // Validate each fee claimer's BPS value
   for (const claimer of data.feeClaimers) {
     if (!isValidBps(claimer.bps, 1, 10000)) {
       return NextResponse.json(
@@ -211,7 +206,6 @@ async function handleConfigureFees(
       );
     }
 
-    // Validate provider is a supported type (per Bags.fm API SocialProvider enum)
     const validProviders = [
       "twitter",
       "github",
@@ -234,13 +228,11 @@ async function handleConfigureFees(
       );
     }
 
-    // Sanitize username
     if (!claimer.providerUsername || claimer.providerUsername.length > 100) {
       return NextResponse.json({ error: "Invalid provider username" }, { status: 400 });
     }
   }
 
-  // Validate total bps equals exactly 100%
   const totalBps = data.feeClaimers.reduce((sum, c) => sum + c.bps, 0);
   if (totalBps !== 10000) {
     return NextResponse.json(
@@ -251,11 +243,9 @@ async function handleConfigureFees(
     );
   }
 
-  // Get partner config from ecosystem settings
   const partnerWallet = ECOSYSTEM_CONFIG.ecosystem.wallet;
   const partnerConfigPda = ECOSYSTEM_CONFIG.ecosystem.partnerConfigPda;
 
-  // Debug log
   console.log("Configure fees request:", {
     mint: data.mint,
     payer: data.payer,
@@ -293,7 +283,6 @@ async function handleCreateLaunchTx(
   api: BagsApiClient,
   data: LaunchRequestBody["data"]
 ): Promise<NextResponse> {
-  // Validate required fields for new API format
   if (!data.ipfs || !data.tokenMint || !data.wallet || !data.configKey) {
     return NextResponse.json(
       { error: "Missing required fields: ipfs, tokenMint, wallet, configKey" },
@@ -301,7 +290,6 @@ async function handleCreateLaunchTx(
     );
   }
 
-  // Validate Solana addresses
   if (!isValidSolanaAddress(data.tokenMint)) {
     return NextResponse.json({ error: "Invalid token mint address" }, { status: 400 });
   }
@@ -314,12 +302,10 @@ async function handleCreateLaunchTx(
     return NextResponse.json({ error: "Invalid tip wallet address" }, { status: 400 });
   }
 
-  // Validate IPFS URL format
   if (!data.ipfs.startsWith("ipfs://") && !data.ipfs.startsWith("https://")) {
     return NextResponse.json({ error: "Invalid IPFS URL format" }, { status: 400 });
   }
 
-  // Debug log the request data
   console.log("Create launch tx request:", {
     ipfs: data.ipfs,
     tokenMint: data.tokenMint,
@@ -333,16 +319,15 @@ async function handleCreateLaunchTx(
       ipfs: data.ipfs,
       tokenMint: data.tokenMint,
       wallet: data.wallet,
-      initialBuyLamports: data.initialBuyLamports || 0, // 0 = no initial buy (intentional default)
+      initialBuyLamports: data.initialBuyLamports || 0,
       configKey: data.configKey,
       tipWallet: data.tipWallet,
       tipLamports: data.tipLamports,
     });
 
-    // result is now { transaction: string, lastValidBlockHeight?: number }
     return NextResponse.json({
       success: true,
-      transaction: result.transaction, // Extract the transaction string
+      transaction: result.transaction,
       lastValidBlockHeight: result.lastValidBlockHeight,
     });
   } catch (error) {
