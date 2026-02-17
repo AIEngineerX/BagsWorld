@@ -353,15 +353,10 @@ export default function Home() {
     return () => window.removeEventListener("bagsworld-encounter-start", onEncounterStart);
   }, []);
 
-  const handleEncounterClose = useCallback(
-    (result: "win" | "lose" | "flee") => {
-      setEncounterCreature(null);
-      window.dispatchEvent(
-        new CustomEvent("bagsworld-encounter-end", { detail: { result } })
-      );
-    },
-    []
-  );
+  const handleEncounterClose = useCallback((result: "win" | "lose" | "flee") => {
+    setEncounterCreature(null);
+    window.dispatchEvent(new CustomEvent("bagsworld-encounter-end", { detail: { result } }));
+  }, []);
 
   // Listen for player enter/exit to toggle immersive mode
   useEffect(() => {
@@ -497,7 +492,9 @@ export default function Home() {
         <DeepLinkHandler />
       </Suspense>
       {/* Header - responsive, collapses in immersive mode */}
-      <header className={`h-14 md:h-16 bg-bags-dark hud-border-bottom hud-panel flex items-center justify-between px-1.5 md:px-4 relative z-50 safe-area-top shrink-0 transition-transform duration-500 ease-in-out ${isImmersive ? "-translate-y-full" : ""}`}>
+      <header
+        className={`h-14 md:h-16 bg-bags-dark hud-border-bottom hud-panel flex items-center justify-between px-1.5 md:px-4 relative z-50 safe-area-top shrink-0 transition-transform duration-500 ease-in-out ${isImmersive ? "-translate-y-full" : ""}`}
+      >
         {/* Left side - Logo and health */}
         <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
           <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2">
@@ -768,7 +765,9 @@ export default function Home() {
       </div>
 
       {/* Footer status bar - simplified on mobile, collapses in immersive mode */}
-      <footer className={`min-h-[36px] sm:min-h-[36px] hud-panel hud-border-top flex items-center justify-between px-2 md:px-4 font-pixel text-[10px] sm:text-[9px] md:text-[10px] safe-area-bottom shrink-0 overflow-hidden transition-transform duration-500 ease-in-out ${isImmersive ? "translate-y-full" : ""}`}>
+      <footer
+        className={`min-h-[36px] sm:min-h-[36px] hud-panel hud-border-top flex items-center justify-between px-2 md:px-4 font-pixel text-[10px] sm:text-[9px] md:text-[10px] safe-area-bottom shrink-0 overflow-hidden transition-transform duration-500 ease-in-out ${isImmersive ? "translate-y-full" : ""}`}
+      >
         <div className="flex items-center gap-2 md:gap-4">
           <span className="text-gray-400">
             [POP:<span className="text-white ml-1">{worldState?.population?.length ?? 0}</span>]

@@ -5,7 +5,16 @@ export type BattleAction = "fight" | "defend" | "flee";
 export type BattlePhase = "intro" | "player_turn" | "creature_turn" | "animating" | "result";
 export type BattleResult = "win" | "lose" | "flee";
 export type CreatureZone = "main_city" | "founders" | "moltbook";
-export type MoveType = "normal" | "fire" | "water" | "grass" | "bug" | "flying" | "aquatic" | "buff" | "debuff";
+export type MoveType =
+  | "normal"
+  | "fire"
+  | "water"
+  | "grass"
+  | "bug"
+  | "flying"
+  | "aquatic"
+  | "buff"
+  | "debuff";
 export type StatusEffect = "burn" | null;
 
 export interface Move {
@@ -57,7 +66,17 @@ export interface PlayerBattleStats {
 
 export interface BattleLogEntry {
   message: string;
-  type: "info" | "player_attack" | "creature_attack" | "player_defend" | "creature_defend" | "flee" | "result" | "stat_change" | "status_damage" | "effectiveness";
+  type:
+    | "info"
+    | "player_attack"
+    | "creature_attack"
+    | "player_defend"
+    | "creature_defend"
+    | "flee"
+    | "result"
+    | "stat_change"
+    | "status_damage"
+    | "effectiveness";
   damage?: number;
   moveAnimation?: Move["animation"];
   timestamp: number;
@@ -92,7 +111,10 @@ export interface PlayerProgress {
 }
 
 // Player stats per level
-export const PLAYER_LEVEL_STATS: Record<number, { hp: number; attack: number; defense: number; speed: number; xpNeeded: number }> = {
+export const PLAYER_LEVEL_STATS: Record<
+  number,
+  { hp: number; attack: number; defense: number; speed: number; xpNeeded: number }
+> = {
   1: { hp: 100, attack: 15, defense: 12, speed: 14, xpNeeded: 0 },
   2: { hp: 130, attack: 18, defense: 15, speed: 16, xpNeeded: 100 },
   3: { hp: 165, attack: 22, defense: 18, speed: 19, xpNeeded: 300 },
@@ -111,15 +133,57 @@ export const ZONE_DIFFICULTY: Record<CreatureZone, { minLevel: number; maxLevel:
 
 // Struggle — used when all moves are at 0 PP
 export const STRUGGLE_MOVE: Move = {
-  name: "Struggle", type: "normal", power: 50, accuracy: 100, pp: 999, maxPp: 999, animation: "slash",
+  name: "Struggle",
+  type: "normal",
+  power: 50,
+  accuracy: 100,
+  pp: 999,
+  maxPp: 999,
+  animation: "slash",
 };
 
 // Player starter moves
 export const PLAYER_MOVES: Move[] = [
-  { name: "Tackle", type: "normal", power: 40, accuracy: 100, pp: 35, maxPp: 35, animation: "slash" },
-  { name: "Ember", type: "fire", power: 40, accuracy: 100, pp: 25, maxPp: 25, effect: "burn", effectChance: 10, animation: "ember" },
-  { name: "Harden", type: "buff", power: 0, accuracy: 100, pp: 30, maxPp: 30, effect: "def_up", animation: "shimmer" },
-  { name: "Quick Strike", type: "normal", power: 30, accuracy: 100, pp: 30, maxPp: 30, effect: "priority", animation: "quick" },
+  {
+    name: "Tackle",
+    type: "normal",
+    power: 40,
+    accuracy: 100,
+    pp: 35,
+    maxPp: 35,
+    animation: "slash",
+  },
+  {
+    name: "Ember",
+    type: "fire",
+    power: 40,
+    accuracy: 100,
+    pp: 25,
+    maxPp: 25,
+    effect: "burn",
+    effectChance: 10,
+    animation: "ember",
+  },
+  {
+    name: "Harden",
+    type: "buff",
+    power: 0,
+    accuracy: 100,
+    pp: 30,
+    maxPp: 30,
+    effect: "def_up",
+    animation: "shimmer",
+  },
+  {
+    name: "Quick Strike",
+    type: "normal",
+    power: 30,
+    accuracy: 100,
+    pp: 30,
+    maxPp: 30,
+    effect: "priority",
+    animation: "quick",
+  },
 ];
 
 // Stat stage multiplier (Pokemon standard)
@@ -138,11 +202,11 @@ type OffensiveType = "normal" | "fire" | "water" | "grass" | "bug" | "flying" | 
 type DefensiveType = string; // creature.type
 
 const TYPE_CHART: Partial<Record<OffensiveType, Partial<Record<DefensiveType, number>>>> = {
-  fire:    { grass: 2, water: 0.5, fire: 0.5, bug: 2, aquatic: 0.5 },
-  water:   { fire: 2, grass: 0.5, water: 0.5, aquatic: 0.5 },
-  grass:   { water: 2, fire: 0.5, grass: 0.5, bug: 0.5, aquatic: 2 },
-  bug:     { grass: 2, fire: 0.5, flying: 0.5 },
-  flying:  { bug: 2, grass: 2, beast: 1 },
+  fire: { grass: 2, water: 0.5, fire: 0.5, bug: 2, aquatic: 0.5 },
+  water: { fire: 2, grass: 0.5, water: 0.5, aquatic: 0.5 },
+  grass: { water: 2, fire: 0.5, grass: 0.5, bug: 0.5, aquatic: 2 },
+  bug: { grass: 2, fire: 0.5, flying: 0.5 },
+  flying: { bug: 2, grass: 2, beast: 1 },
   aquatic: { fire: 2, grass: 0.5, aquatic: 0.5 },
   // normal: no super-effective or not-very-effective matchups
 };

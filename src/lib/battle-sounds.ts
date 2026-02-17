@@ -9,7 +9,12 @@ export function ensureAudioReady(): void {
   if (audioReady) return;
   const ctx = getCtx();
   if (ctx && ctx.state === "suspended") {
-    ctx.resume().then(() => { audioReady = true; }).catch(() => {});
+    ctx
+      .resume()
+      .then(() => {
+        audioReady = true;
+      })
+      .catch(() => {});
   } else if (ctx) {
     audioReady = true;
   }
@@ -30,7 +35,12 @@ function getCtx(): AudioContext | null {
   return audioCtx;
 }
 
-function playTone(freq: number, duration: number, type: OscillatorType = "square", vol = 0.08): void {
+function playTone(
+  freq: number,
+  duration: number,
+  type: OscillatorType = "square",
+  vol = 0.08
+): void {
   const ctx = getCtx();
   if (!ctx) return;
   const osc = ctx.createOscillator();

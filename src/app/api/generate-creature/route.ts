@@ -90,9 +90,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json(
-      { error: "Failed to generate creature sprite." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to generate creature sprite." }, { status: 500 });
   }
 }
