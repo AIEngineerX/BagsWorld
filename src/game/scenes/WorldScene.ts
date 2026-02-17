@@ -245,7 +245,11 @@ export class WorldScene extends Phaser.Scene {
   // NPC Awareness — NPCs greet the player when approached
   private previousNearbyNPC: GameCharacter | null = null;
   private npcGreetCooldowns: Map<string, number> = new Map();
-  private readonly NPC_GREET_COOLDOWN_MS = 30000; // 30s per NPC
+  private readonly NPC_GREET_COOLDOWN_MS = 60000; // 60s per NPC
+  private lastNpcGreetTime = 0;
+  private readonly GLOBAL_NPC_GREET_COOLDOWN_MS = 12000; // 12s between any greetings
+  private npcGreetZoneEntryTime = 0; // suppress greetings for 5s after zone entry
+  private readonly NPC_GREET_ZONE_GRACE_MS = 5000;
 
   // Wild Encounter system
   private encounterCooldowns: Map<string, number> = new Map();
@@ -286,6 +290,9 @@ export class WorldScene extends Phaser.Scene {
 
   create(): void {
     this.isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    // Suppress NPC greetings for 5s on initial load
+    this.npcGreetZoneEntryTime = Date.now();
 
     // Create layered ground
     this.createGround();
@@ -1784,6 +1791,10 @@ export class WorldScene extends Phaser.Scene {
 
       // Update zone and set up new content
       this.currentZone = newZone;
+
+      // Reset NPC greeting state on zone change
+      this.previousNearbyNPC = null;
+      this.npcGreetZoneEntryTime = Date.now();
 
       // Sync zone to Zustand store (used by ImmersiveHUD)
       window.dispatchEvent(
@@ -9332,12 +9343,20 @@ export class WorldScene extends Phaser.Scene {
   // === NPC AWARENESS ===
 
   private triggerNPCGreeting(character: GameCharacter): void {
+    const now = Date.now();
+
+    // Suppress greetings shortly after zone entry
+    if (now - this.npcGreetZoneEntryTime < this.NPC_GREET_ZONE_GRACE_MS) return;
+
+    // Global cooldown: only one NPC greeting at a time
+    if (now - this.lastNpcGreetTime < this.GLOBAL_NPC_GREET_COOLDOWN_MS) return;
+
     const behaviorId = this.getCharacterBehaviorId(character);
     if (!behaviorId) return;
 
-    // Check cooldown
+    // Per-NPC cooldown
     const lastGreet = this.npcGreetCooldowns.get(behaviorId) ?? 0;
-    if (Date.now() - lastGreet < this.NPC_GREET_COOLDOWN_MS) return;
+    if (now - lastGreet < this.NPC_GREET_COOLDOWN_MS) return;
 
     const sprite = this.findCharacterSprite(behaviorId);
     if (!sprite || !sprite.active) return;
@@ -9345,8 +9364,9 @@ export class WorldScene extends Phaser.Scene {
     // Skip if already doing something
     if ((sprite as any).isDoingActivity || (sprite as any).isWalking) return;
 
-    // Set cooldown
-    this.npcGreetCooldowns.set(behaviorId, Date.now());
+    // Set cooldowns
+    this.npcGreetCooldowns.set(behaviorId, now);
+    this.lastNpcGreetTime = now;
 
     // Face the player
     if (this.localPlayer) {
@@ -9382,12 +9402,24 @@ export class WorldScene extends Phaser.Scene {
 
   private getNPCGreeting(characterId: string): string {
     const greetings: Record<string, string[]> = {
-      finn: ["Hey! Welcome to BagsWorld!", "Yo, nice to see you here!", "The vibes are immaculate today!"],
+      finn: [
+        "Hey! Welcome to BagsWorld!",
+        "Yo, nice to see you here!",
+        "The vibes are immaculate today!",
+      ],
       ghost: ["Sup, legend. Stay ghostly.", "Welcome back, fren.", "Bags up, always."],
-      neo: ["*scanning*... New launch detected: YOU!", "Tracking your moves... impressive.", "Welcome, builder."],
+      neo: [
+        "*scanning*... New launch detected: YOU!",
+        "Tracking your moves... impressive.",
+        "Welcome, builder.",
+      ],
       ash: ["A new trainer approaches!", "Gotta catch 'em all, right?", "Ready for an adventure?"],
       toly: ["Building on Solana? Based.", "Welcome, anon. Ship fast.", "The future is onchain."],
-      shaw: ["Agents are the future.", "Welcome to the swarm.", "Let's build something autonomous."],
+      shaw: [
+        "Agents are the future.",
+        "Welcome to the swarm.",
+        "Let's build something autonomous.",
+      ],
       cj: ["Yo, what's good homie!", "Welcome to the block!", "Big things happening, stay sharp!"],
       ramo: ["The smart contracts are ready.", "Welcome, developer.", "Let's ship some code."],
       sincara: ["The UI is looking clean!", "Hey there, pixel friend!", "Welcome to the frontend!"],
@@ -9395,8 +9427,16 @@ export class WorldScene extends Phaser.Scene {
       sam: ["Let's grow this thing!", "Hey, welcome!", "Spreading the word!"],
       alaa: ["Research lab is open!", "Something experimental today?", "Welcome to Skunk Works!"],
       carlo: ["Welcome, ambassador!", "Great to have you here!", "Community first, always!"],
-      bnn: ["Breaking: New visitor spotted!", "Welcome! News at 11.", "Reporting live from BagsWorld!"],
-      professorOak: ["Ah, a new trainer!", "Ready to launch your first token?", "The world awaits, young one!"],
+      bnn: [
+        "Breaking: New visitor spotted!",
+        "Welcome! News at 11.",
+        "Reporting live from BagsWorld!",
+      ],
+      professorOak: [
+        "Ah, a new trainer!",
+        "Ready to launch your first token?",
+        "The world awaits, young one!",
+      ],
       bagsy: ["HYPE! Welcome fren!", "LFG! Bags are pumping!", "The vibes are IMMACULATE!"],
     };
 
@@ -9418,7 +9458,11 @@ export class WorldScene extends Phaser.Scene {
     const py = this.localPlayer.y;
 
     // Determine which creature arrays to check based on current zone
-    type EncounterTarget = { sprite: Phaser.GameObjects.Sprite; id: string; zone: "main_city" | "founders" | "moltbook" };
+    type EncounterTarget = {
+      sprite: Phaser.GameObjects.Sprite;
+      id: string;
+      zone: "main_city" | "founders" | "moltbook";
+    };
     const targets: EncounterTarget[] = [];
 
     if (this.currentZone === "main_city") {
