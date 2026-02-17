@@ -143,15 +143,46 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
     });
   }, []);
 
-  // === TRANSITION ===
+  // Intro wipe state
+  const [wipePhase, setWipePhase] = useState(0); // 0=hidden, 1=bars closing, 2=solid, 3=bars opening
+  const [wipeDir, setWipeDir] = useState<"close" | "open">("close");
+  const [introShake, setIntroShake] = useState(0);
+
+  // === TRANSITION — Pokemon Crystal venetian-blind wipe + flash storm ===
   useEffect(() => {
     if (vp !== "transition") return;
     sfx.battleStartSound();
     const run = async () => {
-      for (let i = 0; i < 3; i++) { setFlashOpacity(0.9); await sleep(80); setFlashOpacity(0); await sleep(80); }
-      await sleep(300);
+      // Phase 1: Rapid alternating black/white flashes (increasing intensity)
+      for (let i = 0; i < 4; i++) {
+        setFlashOpacity(0.6 + i * 0.1);
+        setIntroShake(3 + i);
+        await sleep(60 - i * 8);
+        setFlashOpacity(0);
+        await sleep(60 - i * 8);
+      }
+      setIntroShake(0);
+
+      // Phase 2: Venetian blind bars sweep down
+      setWipeDir("close");
+      setWipePhase(1);
+      await sleep(350);
+      setWipePhase(2); // Fully solid black
+      await sleep(200);
+
+      // Phase 3: Reveal the battle scene — bars sweep open
       setBlackOverlay(0);
+      setWipeDir("open");
+      setWipePhase(3);
       await sleep(400);
+      setWipePhase(0);
+
+      // Final bright flash as scene is revealed
+      setFlashOpacity(0.7);
+      await sleep(60);
+      setFlashOpacity(0);
+      await sleep(150);
+
       setVp("slide_in");
     };
     run();
@@ -441,18 +472,78 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
       <div className="absolute inset-0 flex items-center justify-center bg-black">
         <div className="relative w-full max-w-[640px] max-h-[576px] aspect-[10/9] overflow-hidden" style={{ imageRendering: "pixelated" }}>
 
-          {/* Battle background — tiled grass pattern */}
-          <div className="absolute inset-x-0 top-0 bottom-[33.3%]">
-            <div className="absolute inset-0" style={{
-              background: `
-                linear-gradient(180deg, #88c070 0%, #88c070 55%, #a8d088 56%, #78b060 57%, #78b060 100%),
-                repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(0,0,0,0.03) 8px, rgba(0,0,0,0.03) 16px)`,
+          {/* Battle background — Pokemon Crystal style with sky, terrain, platforms */}
+          <div className="absolute inset-x-0 top-0 bottom-[33.3%]" style={{
+            transform: introShake ? `translate(${(Math.random() - 0.5) * introShake * 2}px, ${(Math.random() - 0.5) * introShake}px)` : undefined,
+          }}>
+            {/* Sky gradient */}
+            <div className="absolute inset-x-0 top-0 h-[45%]" style={{
+              background: "linear-gradient(180deg, #90d8f8 0%, #b8e8c8 70%, #d0f0d0 100%)",
             }} />
-            {/* Horizon line */}
-            <div className="absolute top-[55%] left-0 right-0 h-[3px] bg-[#68a050]" />
-            {/* Ground texture lines */}
-            <div className="absolute bottom-[20%] left-0 right-0 h-[1px] bg-[#70a858] opacity-50" />
-            <div className="absolute bottom-[10%] left-0 right-0 h-[1px] bg-[#70a858] opacity-30" />
+
+            {/* Distant hills / treeline silhouette */}
+            <div className="absolute left-0 right-0 top-[32%] h-[16%]" style={{
+              background: `
+                radial-gradient(ellipse 30% 100% at 15% 100%, #5a9858 0%, transparent 70%),
+                radial-gradient(ellipse 25% 100% at 40% 100%, #4a8848 0%, transparent 70%),
+                radial-gradient(ellipse 35% 100% at 65% 100%, #5a9858 0%, transparent 70%),
+                radial-gradient(ellipse 20% 100% at 85% 100%, #4a8848 0%, transparent 70%)
+              `,
+            }} />
+
+            {/* Main ground plane — perspective green field */}
+            <div className="absolute inset-x-0 top-[45%] bottom-0" style={{
+              background: "linear-gradient(180deg, #78b860 0%, #88c868 15%, #68a850 40%, #58a040 70%, #489838 100%)",
+            }} />
+
+            {/* Ground texture — pixel grass lines for depth */}
+            {[...Array(8)].map((_, i) => (
+              <div key={`gl-${i}`} className="absolute left-0 right-0" style={{
+                top: `${48 + i * 6.5}%`,
+                height: "2px",
+                background: i % 2 === 0
+                  ? "repeating-linear-gradient(90deg, transparent 0px, transparent 12px, #70b050 12px, #70b050 16px, transparent 16px, transparent 28px)"
+                  : "repeating-linear-gradient(90deg, transparent 0px, transparent 6px, #60a040 6px, #60a040 10px, transparent 10px, transparent 22px)",
+                opacity: 0.4 + (i * 0.06),
+              }} />
+            ))}
+
+            {/* Grass tufts scattered across field */}
+            {[...Array(12)].map((_, i) => (
+              <div key={`gt-${i}`} className="absolute" style={{
+                left: `${5 + ((i * 37 + 13) % 90)}%`,
+                top: `${52 + ((i * 23 + 7) % 42)}%`,
+                width: `${4 + (i % 3) * 2}px`,
+                height: `${3 + (i % 2) * 2}px`,
+                backgroundColor: i % 3 === 0 ? "#60a848" : i % 3 === 1 ? "#80c868" : "#50a038",
+                borderRadius: "1px 1px 0 0",
+                opacity: 0.6,
+              }} />
+            ))}
+
+            {/* Enemy raised platform (top-right) — angled hill */}
+            <div className="absolute right-[2%] top-[38%] w-[45%] h-[22%]" style={{
+              background: "linear-gradient(180deg, #88c868 0%, #78b858 30%, #68a848 100%)",
+              clipPath: "polygon(10% 45%, 90% 35%, 100% 100%, 0% 100%)",
+            }} />
+            {/* Platform edge highlight */}
+            <div className="absolute right-[2%] top-[38%] w-[45%] h-[22%]" style={{
+              background: "linear-gradient(180deg, #a0d880 0%, transparent 40%)",
+              clipPath: "polygon(10% 45%, 90% 35%, 90% 42%, 10% 52%)",
+              opacity: 0.7,
+            }} />
+
+            {/* Player raised platform (bottom-left) — angled hill */}
+            <div className="absolute left-[-5%] bottom-0 w-[50%] h-[35%]" style={{
+              background: "linear-gradient(180deg, #78b858 0%, #68a848 40%, #589838 100%)",
+              clipPath: "polygon(0% 30%, 85% 20%, 100% 100%, 0% 100%)",
+            }} />
+            {/* Player platform edge highlight */}
+            <div className="absolute left-[-5%] bottom-0 w-[50%] h-[35%]" style={{
+              background: "linear-gradient(180deg, #98d070 0%, transparent 35%)",
+              clipPath: "polygon(0% 30%, 85% 20%, 85% 27%, 0% 37%)",
+              opacity: 0.6,
+            }} />
 
             {/* --- ENEMY HUD (top-left) --- */}
             <div className="absolute left-[2%] top-[4%] w-[48%] z-10">
@@ -603,12 +694,32 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
           {screenFlash && <div className="absolute inset-0 bg-white/80 pointer-events-none z-20" />}
           {flashOpacity > 0 && <div className="absolute inset-0 bg-white pointer-events-none z-20" style={{ opacity: flashOpacity }} />}
           {blackOverlay > 0 && <div className="absolute inset-0 bg-black pointer-events-none z-20 transition-opacity duration-400" style={{ opacity: blackOverlay }} />}
+
+          {/* Venetian blind wipe overlay */}
+          {wipePhase > 0 && (
+            <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden">
+              {[...Array(10)].map((_, i) => (
+                <div key={`wipe-${i}`} className="absolute left-0 right-0" style={{
+                  top: `${i * 10}%`,
+                  height: "10%",
+                  backgroundColor: "#000",
+                  transform: wipePhase === 1 ? `scaleY(0)` : wipePhase === 2 ? `scaleY(1)` : `scaleY(0)`,
+                  transformOrigin: wipeDir === "close" ? "top" : "bottom",
+                  animation:
+                    wipePhase === 1 ? `wipe-bar-close 0.35s ease-out ${i * 0.025}s forwards` :
+                    wipePhase === 3 ? `wipe-bar-open 0.4s ease-in ${i * 0.03}s forwards` : undefined,
+                }} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       <style jsx global>{`
         @keyframes pkmn-idle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
         @keyframes pkmn-shake { 0% { transform: translateX(0); } 25% { transform: translateX(-3px); } 50% { transform: translateX(3px); } 75% { transform: translateX(-2px); } 100% { transform: translateX(0); } }
+        @keyframes wipe-bar-close { 0% { transform: scaleY(0); } 100% { transform: scaleY(1); } }
+        @keyframes wipe-bar-open { 0% { transform: scaleY(1); } 100% { transform: scaleY(0); } }
         @keyframes pkmn-dmg-float { 0% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -24px); } }
         .pkmn-dmg-float { animation: pkmn-dmg-float 0.9s ease-out forwards; }
         @keyframes pkmn-lunge-r { 0% { transform: translateX(0); opacity: 1; } 100% { transform: translateX(40px); opacity: 0; } }
