@@ -1669,23 +1669,53 @@ function generateUFOs(scene: Phaser.Scene): void {
     g.fillStyle(ALIEN.hullGunmetal);
     g.fillRect(cx - Math.round(12 * s), cy, Math.round(24 * s), Math.round(5 * s));
     g.fillStyle(ALIEN.hullLight);
-    g.fillRect(cx - Math.round(10 * s), cy - Math.round(2 * s), Math.round(20 * s), Math.round(3 * s));
+    g.fillRect(
+      cx - Math.round(10 * s),
+      cy - Math.round(2 * s),
+      Math.round(20 * s),
+      Math.round(3 * s)
+    );
 
     // Dome
     g.fillStyle(lighten(ALIEN.hullGunmetal, 0.2));
-    g.fillRect(cx - Math.round(5 * s), cy - Math.round(5 * s), Math.round(10 * s), Math.round(4 * s));
+    g.fillRect(
+      cx - Math.round(5 * s),
+      cy - Math.round(5 * s),
+      Math.round(10 * s),
+      Math.round(4 * s)
+    );
     g.fillStyle(ALIEN.teal, 0.5);
-    g.fillRect(cx - Math.round(3 * s), cy - Math.round(4 * s), Math.round(6 * s), Math.round(2 * s));
+    g.fillRect(
+      cx - Math.round(3 * s),
+      cy - Math.round(4 * s),
+      Math.round(6 * s),
+      Math.round(2 * s)
+    );
 
     // Running lights
     g.fillStyle(ALIEN.teal, 0.8);
-    g.fillRect(cx - Math.round(10 * s), cy + Math.round(2 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(
+      cx - Math.round(10 * s),
+      cy + Math.round(2 * s),
+      Math.round(2 * s),
+      Math.round(2 * s)
+    );
     g.fillRect(cx, cy + Math.round(2 * s), Math.round(2 * s), Math.round(2 * s));
-    g.fillRect(cx + Math.round(8 * s), cy + Math.round(2 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(
+      cx + Math.round(8 * s),
+      cy + Math.round(2 * s),
+      Math.round(2 * s),
+      Math.round(2 * s)
+    );
 
     // Tractor beam (thin line below)
     g.fillStyle(ALIEN.teal, 0.15);
-    g.fillRect(cx - Math.round(4 * s), cy + Math.round(5 * s), Math.round(8 * s), Math.round(3 * s));
+    g.fillRect(
+      cx - Math.round(4 * s),
+      cy + Math.round(5 * s),
+      Math.round(8 * s),
+      Math.round(3 * s)
+    );
 
     g.generateTexture("disclosure_ufo_0", w, h);
     g.destroy();
@@ -1707,30 +1737,70 @@ function generateUFOs(scene: Phaser.Scene): void {
     g.fillStyle(ALIEN.hullDark);
     g.fillRect(cx - Math.round(22 * s), cy, Math.round(44 * s), Math.round(6 * s));
     g.fillStyle(ALIEN.hullGunmetal);
-    g.fillRect(cx - Math.round(18 * s), cy - Math.round(3 * s), Math.round(36 * s), Math.round(4 * s));
+    g.fillRect(
+      cx - Math.round(18 * s),
+      cy - Math.round(3 * s),
+      Math.round(36 * s),
+      Math.round(4 * s)
+    );
     g.fillStyle(ALIEN.hullLight);
-    g.fillRect(cx - Math.round(14 * s), cy - Math.round(6 * s), Math.round(28 * s), Math.round(4 * s));
+    g.fillRect(
+      cx - Math.round(14 * s),
+      cy - Math.round(6 * s),
+      Math.round(28 * s),
+      Math.round(4 * s)
+    );
 
     // Dome (command bridge)
     g.fillStyle(lighten(ALIEN.hullGunmetal, 0.15));
-    g.fillRect(cx - Math.round(8 * s), cy - Math.round(10 * s), Math.round(16 * s), Math.round(5 * s));
+    g.fillRect(
+      cx - Math.round(8 * s),
+      cy - Math.round(10 * s),
+      Math.round(16 * s),
+      Math.round(5 * s)
+    );
     g.fillStyle(ALIEN.teal, 0.4);
-    g.fillRect(cx - Math.round(6 * s), cy - Math.round(9 * s), Math.round(12 * s), Math.round(3 * s));
+    g.fillRect(
+      cx - Math.round(6 * s),
+      cy - Math.round(9 * s),
+      Math.round(12 * s),
+      Math.round(3 * s)
+    );
 
     // Seam lines
     g.fillStyle(ALIEN.teal, 0.5);
-    g.fillRect(cx - Math.round(20 * s), cy - Math.round(1 * s), Math.round(40 * s), Math.round(1 * s));
-    g.fillRect(cx - Math.round(16 * s), cy - Math.round(4 * s), Math.round(32 * s), Math.round(1 * s));
+    g.fillRect(
+      cx - Math.round(20 * s),
+      cy - Math.round(1 * s),
+      Math.round(40 * s),
+      Math.round(1 * s)
+    );
+    g.fillRect(
+      cx - Math.round(16 * s),
+      cy - Math.round(4 * s),
+      Math.round(32 * s),
+      Math.round(1 * s)
+    );
 
     // Running lights (row of dots along underside)
     g.fillStyle(ALIEN.plasmaGreen, 0.7);
     for (let i = -4; i <= 4; i++) {
-      g.fillRect(cx + i * Math.round(4 * s), cy + Math.round(4 * s), Math.round(2 * s), Math.round(2 * s));
+      g.fillRect(
+        cx + i * Math.round(4 * s),
+        cy + Math.round(4 * s),
+        Math.round(2 * s),
+        Math.round(2 * s)
+      );
     }
 
     // Tractor beam
     g.fillStyle(ALIEN.teal, 0.1);
-    g.fillRect(cx - Math.round(8 * s), cy + Math.round(6 * s), Math.round(16 * s), Math.round(6 * s));
+    g.fillRect(
+      cx - Math.round(8 * s),
+      cy + Math.round(6 * s),
+      Math.round(16 * s),
+      Math.round(6 * s)
+    );
 
     g.generateTexture("disclosure_ufo_1", w, h);
     g.destroy();
@@ -1746,9 +1816,12 @@ function generateUFOs(scene: Phaser.Scene): void {
     // Triangle body
     g.fillStyle(0x0a0a12);
     g.fillTriangle(
-      cx, Math.round(2 * s),
-      Math.round(2 * s), h - Math.round(2 * s),
-      w - Math.round(2 * s), h - Math.round(2 * s)
+      cx,
+      Math.round(2 * s),
+      Math.round(2 * s),
+      h - Math.round(2 * s),
+      w - Math.round(2 * s),
+      h - Math.round(2 * s)
     );
 
     // Edge lights (3 corners)
@@ -1778,17 +1851,37 @@ function generateUFOs(scene: Phaser.Scene): void {
 
     // Pill-shaped body
     g.fillStyle(ALIEN.hullGunmetal);
-    g.fillRect(cx - Math.round(5 * s), cy - Math.round(2 * s), Math.round(10 * s), Math.round(4 * s));
+    g.fillRect(
+      cx - Math.round(5 * s),
+      cy - Math.round(2 * s),
+      Math.round(10 * s),
+      Math.round(4 * s)
+    );
     g.fillStyle(ALIEN.hullLight);
-    g.fillRect(cx - Math.round(4 * s), cy - Math.round(1 * s), Math.round(8 * s), Math.round(2 * s));
+    g.fillRect(
+      cx - Math.round(4 * s),
+      cy - Math.round(1 * s),
+      Math.round(8 * s),
+      Math.round(2 * s)
+    );
 
     // Single bright light
     g.fillStyle(ALIEN.teal);
-    g.fillRect(cx - Math.round(1 * s), cy + Math.round(1 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(
+      cx - Math.round(1 * s),
+      cy + Math.round(1 * s),
+      Math.round(2 * s),
+      Math.round(2 * s)
+    );
 
     // Glow
     g.fillStyle(ALIEN.teal, 0.25);
-    g.fillRect(cx - Math.round(3 * s), cy + Math.round(1 * s), Math.round(6 * s), Math.round(3 * s));
+    g.fillRect(
+      cx - Math.round(3 * s),
+      cy + Math.round(1 * s),
+      Math.round(6 * s),
+      Math.round(3 * s)
+    );
 
     g.generateTexture("disclosure_ufo_3", w, h);
     g.destroy();
@@ -1804,32 +1897,63 @@ function generateUFOs(scene: Phaser.Scene): void {
 
     // Fuselage
     g.fillStyle(ALIEN.hullDark);
-    g.fillRect(cx - Math.round(3 * s), cy - Math.round(3 * s), Math.round(12 * s), Math.round(6 * s));
+    g.fillRect(
+      cx - Math.round(3 * s),
+      cy - Math.round(3 * s),
+      Math.round(12 * s),
+      Math.round(6 * s)
+    );
     g.fillStyle(ALIEN.hullGunmetal);
-    g.fillRect(cx - Math.round(2 * s), cy - Math.round(2 * s), Math.round(10 * s), Math.round(4 * s));
+    g.fillRect(
+      cx - Math.round(2 * s),
+      cy - Math.round(2 * s),
+      Math.round(10 * s),
+      Math.round(4 * s)
+    );
 
     // Wings (swept back)
     g.fillStyle(ALIEN.hullDark);
     g.fillTriangle(
-      cx - Math.round(2 * s), cy,
-      cx - Math.round(10 * s), cy + Math.round(5 * s),
-      cx + Math.round(2 * s), cy
+      cx - Math.round(2 * s),
+      cy,
+      cx - Math.round(10 * s),
+      cy + Math.round(5 * s),
+      cx + Math.round(2 * s),
+      cy
     );
     g.fillTriangle(
-      cx - Math.round(2 * s), cy,
-      cx - Math.round(10 * s), cy - Math.round(5 * s),
-      cx + Math.round(2 * s), cy
+      cx - Math.round(2 * s),
+      cy,
+      cx - Math.round(10 * s),
+      cy - Math.round(5 * s),
+      cx + Math.round(2 * s),
+      cy
     );
 
     // Engine glow (rear)
     g.fillStyle(ALIEN.plasmaGreen, 0.7);
-    g.fillRect(cx - Math.round(4 * s), cy - Math.round(1 * s), Math.round(3 * s), Math.round(2 * s));
+    g.fillRect(
+      cx - Math.round(4 * s),
+      cy - Math.round(1 * s),
+      Math.round(3 * s),
+      Math.round(2 * s)
+    );
     g.fillStyle(ALIEN.plasmaGreen, 0.3);
-    g.fillRect(cx - Math.round(7 * s), cy - Math.round(2 * s), Math.round(4 * s), Math.round(4 * s));
+    g.fillRect(
+      cx - Math.round(7 * s),
+      cy - Math.round(2 * s),
+      Math.round(4 * s),
+      Math.round(4 * s)
+    );
 
     // Cockpit glow
     g.fillStyle(ALIEN.teal, 0.6);
-    g.fillRect(cx + Math.round(5 * s), cy - Math.round(1 * s), Math.round(3 * s), Math.round(2 * s));
+    g.fillRect(
+      cx + Math.round(5 * s),
+      cy - Math.round(1 * s),
+      Math.round(3 * s),
+      Math.round(2 * s)
+    );
 
     g.generateTexture("disclosure_fighter", w, h);
     g.destroy();

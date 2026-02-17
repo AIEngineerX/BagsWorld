@@ -352,11 +352,23 @@ function createDisclosureDecorations(scene: WorldScene): void {
   });
   wreckageSprite.on("pointerover", () => {
     wreckageSprite.setTint(0xdddddd);
-    scene.tweens.add({ targets: wreckageSprite, scaleX: 1.02, scaleY: 1.02, duration: 100, ease: "Power2" });
+    scene.tweens.add({
+      targets: wreckageSprite,
+      scaleX: 1.02,
+      scaleY: 1.02,
+      duration: 100,
+      ease: "Power2",
+    });
   });
   wreckageSprite.on("pointerout", () => {
     wreckageSprite.clearTint();
-    scene.tweens.add({ targets: wreckageSprite, scaleX: 1, scaleY: 1, duration: 100, ease: "Power2" });
+    scene.tweens.add({
+      targets: wreckageSprite,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 100,
+      ease: "Power2",
+    });
   });
 
   // Energy particles rising from the wreckage breach
@@ -396,7 +408,13 @@ function createDisclosureDecorations(scene: WorldScene): void {
   });
   aaroSprite.on("pointerover", () => {
     aaroSprite.setTint(0xdddddd);
-    scene.tweens.add({ targets: aaroSprite, scaleX: 1.02, scaleY: 1.02, duration: 100, ease: "Power2" });
+    scene.tweens.add({
+      targets: aaroSprite,
+      scaleX: 1.02,
+      scaleY: 1.02,
+      duration: 100,
+      ease: "Power2",
+    });
   });
   aaroSprite.on("pointerout", () => {
     aaroSprite.clearTint();
@@ -418,11 +436,23 @@ function createDisclosureDecorations(scene: WorldScene): void {
   });
   bazaarSprite.on("pointerover", () => {
     bazaarSprite.setTint(0xdddddd);
-    scene.tweens.add({ targets: bazaarSprite, scaleX: 1.02, scaleY: 1.02, duration: 100, ease: "Power2" });
+    scene.tweens.add({
+      targets: bazaarSprite,
+      scaleX: 1.02,
+      scaleY: 1.02,
+      duration: 100,
+      ease: "Power2",
+    });
   });
   bazaarSprite.on("pointerout", () => {
     bazaarSprite.clearTint();
-    scene.tweens.add({ targets: bazaarSprite, scaleX: 1, scaleY: 1, duration: 100, ease: "Power2" });
+    scene.tweens.add({
+      targets: bazaarSprite,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 100,
+      ease: "Power2",
+    });
   });
 
   // --- 4. SIGNAL TOWER ---
@@ -440,7 +470,13 @@ function createDisclosureDecorations(scene: WorldScene): void {
   });
   towerSprite.on("pointerover", () => {
     towerSprite.setTint(0xdddddd);
-    scene.tweens.add({ targets: towerSprite, scaleX: 1.02, scaleY: 1.02, duration: 100, ease: "Power2" });
+    scene.tweens.add({
+      targets: towerSprite,
+      scaleX: 1.02,
+      scaleY: 1.02,
+      duration: 100,
+      ease: "Power2",
+    });
   });
   towerSprite.on("pointerout", () => {
     towerSprite.clearTint();
@@ -494,11 +530,23 @@ function createDisclosureDecorations(scene: WorldScene): void {
   });
   hangarSprite.on("pointerover", () => {
     hangarSprite.setTint(0xdddddd);
-    scene.tweens.add({ targets: hangarSprite, scaleX: 1.02, scaleY: 1.02, duration: 100, ease: "Power2" });
+    scene.tweens.add({
+      targets: hangarSprite,
+      scaleX: 1.02,
+      scaleY: 1.02,
+      duration: 100,
+      ease: "Power2",
+    });
   });
   hangarSprite.on("pointerout", () => {
     hangarSprite.clearTint();
-    scene.tweens.add({ targets: hangarSprite, scaleX: 1, scaleY: 1, duration: 100, ease: "Power2" });
+    scene.tweens.add({
+      targets: hangarSprite,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 100,
+      ease: "Power2",
+    });
   });
 
   // --- 6. CROP CIRCLE CANTINA ---
@@ -516,11 +564,23 @@ function createDisclosureDecorations(scene: WorldScene): void {
   });
   cantinaSprite.on("pointerover", () => {
     cantinaSprite.setTint(0xdddddd);
-    scene.tweens.add({ targets: cantinaSprite, scaleX: 1.02, scaleY: 1.02, duration: 100, ease: "Power2" });
+    scene.tweens.add({
+      targets: cantinaSprite,
+      scaleX: 1.02,
+      scaleY: 1.02,
+      duration: 100,
+      ease: "Power2",
+    });
   });
   cantinaSprite.on("pointerout", () => {
     cantinaSprite.clearTint();
-    scene.tweens.add({ targets: cantinaSprite, scaleX: 1, scaleY: 1, duration: 100, ease: "Power2" });
+    scene.tweens.add({
+      targets: cantinaSprite,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 100,
+      ease: "Power2",
+    });
   });
 
   // ========================================================================
@@ -536,7 +596,11 @@ function createDisclosureDecorations(scene: WorldScene): void {
     { startX: -150, y: 170, speed: 20000, variant: 0, scale: 0.9 },
   ];
   saucerConfigs.forEach((cfg, i) => {
-    const ufo = scene.add.sprite(Math.round(cfg.startX * s), Math.round(cfg.y * s), `disclosure_ufo_${cfg.variant}`);
+    const ufo = scene.add.sprite(
+      Math.round(cfg.startX * s),
+      Math.round(cfg.y * s),
+      `disclosure_ufo_${cfg.variant}`
+    );
     ufo.setOrigin(0.5, 0.5);
     ufo.setDepth(DEPTH.FLYING);
     ufo.setScale(cfg.scale);
@@ -628,7 +692,11 @@ function createDisclosureDecorations(scene: WorldScene): void {
     { startX: 850, y: 130, speed: 30000 },
   ];
   triangleConfigs.forEach((cfg, i) => {
-    const tri = scene.add.sprite(Math.round(cfg.startX * s), Math.round(cfg.y * s), "disclosure_ufo_2");
+    const tri = scene.add.sprite(
+      Math.round(cfg.startX * s),
+      Math.round(cfg.y * s),
+      "disclosure_ufo_2"
+    );
     tri.setOrigin(0.5, 0.5);
     tri.setDepth(DEPTH.FLYING);
     tri.setScale(0.9 + Math.random() * 0.3);
@@ -678,7 +746,9 @@ function createDisclosureDecorations(scene: WorldScene): void {
       delay: i * 1500,
       repeat: -1,
       onRepeat: () => {
-        drone.x = goingRight ? Math.round((-50 - Math.random() * 80) * s) : GAME_WIDTH + Math.round((30 + Math.random() * 60) * s);
+        drone.x = goingRight
+          ? Math.round((-50 - Math.random() * 80) * s)
+          : GAME_WIDTH + Math.round((30 + Math.random() * 60) * s);
         drone.y = Math.round((25 + Math.random() * 170) * s);
       },
     });
@@ -702,14 +772,20 @@ function createDisclosureDecorations(scene: WorldScene): void {
     { startX: 950, y: 85, speed: 14500, flipX: true },
   ];
   fighterConfigs.forEach((cfg, i) => {
-    const fighter = scene.add.sprite(Math.round(cfg.startX * s), Math.round(cfg.y * s), "disclosure_fighter");
+    const fighter = scene.add.sprite(
+      Math.round(cfg.startX * s),
+      Math.round(cfg.y * s),
+      "disclosure_fighter"
+    );
     fighter.setOrigin(0.5, 0.5);
     fighter.setDepth(DEPTH.FLYING);
     fighter.setFlipX(cfg.flipX);
     scene.disclosureElements.push(fighter);
 
     const targetX = cfg.flipX ? Math.round(-80 * s) : GAME_WIDTH + Math.round(80 * s);
-    const resetX = cfg.flipX ? Math.round((900 + Math.random() * 100) * s) : Math.round((-40 - Math.random() * 60) * s);
+    const resetX = cfg.flipX
+      ? Math.round((900 + Math.random() * 100) * s)
+      : Math.round((-40 - Math.random() * 60) * s);
 
     scene.tweens.add({
       targets: fighter,
@@ -878,7 +954,8 @@ function createDisclosureDecorations(scene: WorldScene): void {
     scene.time.addEvent({
       delay: 50,
       callback: () => {
-        if (!sprite.active || scene.currentZone !== "disclosure" || grey.isIdle || grey.isStaring) return;
+        if (!sprite.active || scene.currentZone !== "disclosure" || grey.isIdle || grey.isStaring)
+          return;
         const dx = grey.targetX - sprite.x;
         if (Math.abs(dx) < Math.round(3 * s)) {
           grey.isIdle = true;
@@ -903,11 +980,25 @@ function createDisclosureDecorations(scene: WorldScene): void {
     const lx = Math.round(pos.x * s);
     const ly = pathLevel + Math.round(pos.y * s);
 
-    const luminite = scene.add.rectangle(lx, ly, Math.round(8 * s), Math.round(8 * s), 0x00ffd4, 0.5);
+    const luminite = scene.add.rectangle(
+      lx,
+      ly,
+      Math.round(8 * s),
+      Math.round(8 * s),
+      0x00ffd4,
+      0.5
+    );
     luminite.setDepth(DEPTH.FLYING);
     scene.disclosureElements.push(luminite);
 
-    const aura = scene.add.rectangle(lx, ly, Math.round(14 * s), Math.round(14 * s), 0x00ffd4, 0.15);
+    const aura = scene.add.rectangle(
+      lx,
+      ly,
+      Math.round(14 * s),
+      Math.round(14 * s),
+      0x00ffd4,
+      0.15
+    );
     aura.setDepth(DEPTH.FLYING - 0.1);
     scene.disclosureElements.push(aura);
 
@@ -957,8 +1048,22 @@ function createDisclosureDecorations(scene: WorldScene): void {
 
     const moth = scene.add.graphics();
     moth.fillStyle(0x1a1a2e, 0.8);
-    moth.fillTriangle(0, 0, -Math.round(10 * s), Math.round(4 * s), -Math.round(6 * s), Math.round(1 * s));
-    moth.fillTriangle(0, 0, Math.round(10 * s), Math.round(4 * s), Math.round(6 * s), Math.round(1 * s));
+    moth.fillTriangle(
+      0,
+      0,
+      -Math.round(10 * s),
+      Math.round(4 * s),
+      -Math.round(6 * s),
+      Math.round(1 * s)
+    );
+    moth.fillTriangle(
+      0,
+      0,
+      Math.round(10 * s),
+      Math.round(4 * s),
+      Math.round(6 * s),
+      Math.round(1 * s)
+    );
     moth.fillStyle(0x0a0a0f);
     moth.fillRect(-Math.round(1 * s), -Math.round(1 * s), Math.round(2 * s), Math.round(4 * s));
     moth.fillStyle(0xff0000, 0.8);
@@ -1005,7 +1110,14 @@ function createDisclosureDecorations(scene: WorldScene): void {
     const cy = grassTop + Math.round(spot.yOff * s);
 
     // Outer ring
-    const outerRing = scene.add.ellipse(cx, cy, Math.round(40 * s), Math.round(12 * s), 0x00ffd4, 0);
+    const outerRing = scene.add.ellipse(
+      cx,
+      cy,
+      Math.round(40 * s),
+      Math.round(12 * s),
+      0x00ffd4,
+      0
+    );
     outerRing.setStrokeStyle(Math.round(1.5 * s), 0x00ffd4, 0.3);
     outerRing.setDepth(DEPTH.PATH + 0.1);
     outerRing.setFillStyle(0x00ffd4, 0);
@@ -1129,9 +1241,12 @@ function createDisclosureDecorations(scene: WorldScene): void {
         const dustX = dx + Math.round((Math.random() - 0.5) * 60 * s);
         const dustY = grassTop + Math.round(45 * s);
         const dust = scene.add.ellipse(
-          dustX, dustY,
-          Math.round(12 * s), Math.round(4 * s),
-          0xd4a76a, 0.3
+          dustX,
+          dustY,
+          Math.round(12 * s),
+          Math.round(4 * s),
+          0xd4a76a,
+          0.3
         );
         dust.setDepth(DEPTH.PROPS_LOW + 0.5);
         scene.disclosureElements.push(dust);
@@ -1163,12 +1278,26 @@ function createDisclosureDecorations(scene: WorldScene): void {
       const portalY = grassTop + Math.round((42 + Math.random() * 12) * s);
 
       // Outer glow
-      const portalGlow = scene.add.ellipse(portalX, portalY, Math.round(4 * s), Math.round(2 * s), 0x2d0a4e, 0.6);
+      const portalGlow = scene.add.ellipse(
+        portalX,
+        portalY,
+        Math.round(4 * s),
+        Math.round(2 * s),
+        0x2d0a4e,
+        0.6
+      );
       portalGlow.setDepth(DEPTH.PATH + 0.2);
       scene.disclosureElements.push(portalGlow);
 
       // Inner vortex
-      const portalCore = scene.add.ellipse(portalX, portalY, Math.round(2 * s), Math.round(1 * s), 0x00ffd4, 0.8);
+      const portalCore = scene.add.ellipse(
+        portalX,
+        portalY,
+        Math.round(2 * s),
+        Math.round(1 * s),
+        0x00ffd4,
+        0.8
+      );
       portalCore.setDepth(DEPTH.PATH + 0.3);
       scene.disclosureElements.push(portalCore);
 
@@ -1302,9 +1431,12 @@ function createDisclosureDecorations(scene: WorldScene): void {
 
     // Static dim vein line
     const veinLine = scene.add.rectangle(
-      (startX + endX) / 2, vy,
-      veinW, Math.round(1.5 * s),
-      0x00ffd4, 0.08
+      (startX + endX) / 2,
+      vy,
+      veinW,
+      Math.round(1.5 * s),
+      0x00ffd4,
+      0.08
     );
     veinLine.setDepth(DEPTH.PATH + 0.05);
     scene.disclosureElements.push(veinLine);
@@ -1348,7 +1480,8 @@ function createDisclosureDecorations(scene: WorldScene): void {
       const isCrate = Math.random() > 0.5;
 
       const floating = scene.add.rectangle(
-        objX, objY,
+        objX,
+        objY,
         Math.round((isCrate ? 8 : 5) * s),
         Math.round((isCrate ? 6 : 4) * s),
         isCrate ? 0x4a5534 : 0xb49a6a,
@@ -1359,9 +1492,12 @@ function createDisclosureDecorations(scene: WorldScene): void {
 
       // Teal glow under it
       const liftGlow = scene.add.ellipse(
-        objX, objY + Math.round(2 * s),
-        Math.round(12 * s), Math.round(4 * s),
-        0x00ffd4, 0.2
+        objX,
+        objY + Math.round(2 * s),
+        Math.round(12 * s),
+        Math.round(4 * s),
+        0x00ffd4,
+        0.2
       );
       liftGlow.setDepth(DEPTH.PATH + 0.2);
       scene.disclosureElements.push(liftGlow);
@@ -1442,7 +1578,8 @@ function createDisclosureDecorations(scene: WorldScene): void {
       const flashX = Math.round((100 + Math.random() * 600) * s);
       const flashY = Math.round((30 + Math.random() * 120) * s);
       const flash = scene.add.rectangle(
-        flashX, flashY,
+        flashX,
+        flashY,
         Math.round((20 + Math.random() * 40) * s),
         Math.round(2 * s),
         0x00ffd4,
