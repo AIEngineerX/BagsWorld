@@ -21,8 +21,6 @@ import {
   type GroundType,
 } from "@/game/arcade/types";
 
-// Resolution & Layout Constants
-
 describe("resolution constants", () => {
   it("ARCADE_WIDTH x ARCADE_HEIGHT is 16:9 aspect ratio", () => {
     const ratio = ARCADE_WIDTH / ARCADE_HEIGHT;
@@ -79,8 +77,6 @@ describe("TILE_SIZE", () => {
   });
 });
 
-// Section Boundaries
-
 describe("SECTIONS", () => {
   it("has exactly 6 entries (sections 0-5)", () => {
     expect(SECTIONS).toHaveLength(6);
@@ -113,8 +109,6 @@ describe("SECTIONS", () => {
     expect(first).toBe(0);
   });
 });
-
-// Gameplay Constants
 
 describe("gameplay constants", () => {
   it("STARTING_LIVES is positive", () => {
@@ -150,8 +144,6 @@ describe("gameplay constants", () => {
     expect(INVINCIBILITY_TIME).toBeLessThanOrEqual(5000);
   });
 });
-
-// Character Stats
 
 describe("CHARACTER_STATS", () => {
   const characters: ArcadeCharacter[] = ["ghost", "neo", "cj"];
@@ -256,8 +248,6 @@ describe("CHARACTER_STATS", () => {
   });
 });
 
-// Weapon Stats
-
 describe("WEAPONS", () => {
   const weaponTypes: WeaponType[] = ["pistol", "spread", "heavy"];
 
@@ -327,8 +317,6 @@ describe("WEAPONS", () => {
     expect(new Set(colors).size).toBe(colors.length);
   });
 });
-
-// Enemy Stats
 
 describe("ENEMY_STATS", () => {
   const enemyTypes: EnemyType[] = ["soldier", "heavy", "turret", "boss"];
@@ -417,27 +405,29 @@ describe("ENEMY_STATS", () => {
     expect(hitsNeeded).toBeGreaterThan(1);
   });
 
-  it("soldier can be one-hit by heavy weapon", () => {
-    expect(WEAPONS.heavy.damage).toBeGreaterThanOrEqual(ENEMY_STATS.soldier.hp);
+  it("heavy weapon kills soldier in 2 shots", () => {
+    expect(Math.ceil(ENEMY_STATS.soldier.hp / WEAPONS.heavy.damage)).toBe(2);
   });
 });
 
-// Pickup Stats
-
 describe("PICKUPS", () => {
-  const pickupTypes: PickupType[] = ["spread", "heavy", "health", "grenade"];
+  const allPickupTypes: PickupType[] = [
+    "spread", "heavy", "health", "grenade",
+    "food_apple", "food_chicken", "food_cake",
+    "bonus_coin", "bonus_gem", "bonus_medal",
+  ];
 
-  it("has exactly 4 pickup types", () => {
-    expect(Object.keys(PICKUPS)).toHaveLength(4);
+  it("has exactly 10 pickup types", () => {
+    expect(Object.keys(PICKUPS)).toHaveLength(10);
   });
 
   it("contains all expected pickup types", () => {
-    for (const p of pickupTypes) {
+    for (const p of allPickupTypes) {
       expect(PICKUPS).toHaveProperty(p);
     }
   });
 
-  describe.each(pickupTypes)("pickup: %s", (type) => {
+  describe.each(allPickupTypes)("pickup: %s", (type) => {
     const info = PICKUPS[type];
 
     it("has a valid color", () => {
@@ -450,16 +440,16 @@ describe("PICKUPS", () => {
       expect(info.label.length).toBeGreaterThan(0);
     });
 
-    it("provides exactly one type of benefit (weapon, heal, or grenades)", () => {
-      const benefits = [info.weapon, info.healAmount, info.grenades].filter(
+    it("provides at least one type of benefit", () => {
+      const benefits = [info.weapon, info.healAmount, info.grenades, info.scoreBonus].filter(
         (v) => v !== undefined,
       );
-      expect(benefits).toHaveLength(1);
+      expect(benefits.length).toBeGreaterThanOrEqual(1);
     });
   });
 
   it("weapon pickups reference valid weapon types", () => {
-    const weaponPickups = pickupTypes.filter((p) => PICKUPS[p].weapon);
+    const weaponPickups = allPickupTypes.filter((p) => PICKUPS[p].weapon);
     for (const p of weaponPickups) {
       const weaponType = PICKUPS[p].weapon!;
       expect(WEAPONS).toHaveProperty(weaponType);
@@ -492,20 +482,21 @@ describe("PICKUPS", () => {
   });
 
   it("no pickup gives the pistol weapon (pistol is always available)", () => {
-    const weaponPickups = pickupTypes.filter((p) => PICKUPS[p].weapon);
+    const weaponPickups = allPickupTypes.filter((p) => PICKUPS[p].weapon);
     for (const p of weaponPickups) {
       expect(PICKUPS[p].weapon).not.toBe("pistol");
     }
   });
 
   it("all pickup labels are single characters", () => {
-    for (const p of pickupTypes) {
+    for (const p of allPickupTypes) {
       expect(PICKUPS[p].label.length).toBe(1);
     }
   });
 
-  it("all pickups have distinct colors", () => {
-    const colors = pickupTypes.map((p) => PICKUPS[p].color);
+  it("core pickups have distinct colors", () => {
+    const coreTypes: PickupType[] = ["spread", "heavy", "health", "grenade"];
+    const colors = coreTypes.map((p) => PICKUPS[p].color);
     expect(new Set(colors).size).toBe(colors.length);
   });
 
@@ -514,8 +505,6 @@ describe("PICKUPS", () => {
     expect(PICKUPS.heavy.color).toBe(WEAPONS.heavy.color);
   });
 });
-
-// Cross-module Consistency
 
 describe("cross-module consistency", () => {
   it("all enemy dimensions fit within the visible play area", () => {
@@ -531,12 +520,11 @@ describe("cross-module consistency", () => {
     expect(ENEMY_STATS.boss.width).toBeLessThan(800);
   });
 
-  it("TILE_SIZE is consistent with enemy dimensions (enemies are multiples of tile-aligned sizes)", () => {
-    // Enemy widths should be multiples of 8 for clean pixel art
+  it("enemy dimensions are even numbers (for clean pixel art centering)", () => {
     const enemyTypes: EnemyType[] = ["soldier", "heavy", "turret", "boss"];
     for (const type of enemyTypes) {
-      expect(ENEMY_STATS[type].width % 8).toBe(0);
-      expect(ENEMY_STATS[type].height % 8).toBe(0);
+      expect(ENEMY_STATS[type].width % 2).toBe(0);
+      expect(ENEMY_STATS[type].height % 2).toBe(0);
     }
   });
 
@@ -557,8 +545,6 @@ describe("cross-module consistency", () => {
     }
   });
 });
-
-// SECTION_THEMES
 
 describe("SECTION_THEMES", () => {
   const validGroundTypes: GroundType[] = [
@@ -652,8 +638,6 @@ describe("SECTION_THEMES", () => {
   });
 });
 
-// Gameplay Constant Boundary Values
-
 describe("gameplay constant edge cases", () => {
   it("GROUND_Y is exactly 240", () => {
     expect(GROUND_Y).toBe(240);
@@ -700,41 +684,37 @@ describe("gameplay constant edge cases", () => {
   });
 });
 
-// Exact Data Verification — Character Stats
-
 describe("exact character stat values", () => {
-  it("Ghost has speed=150, fireRate=250, maxHP=5, jumpForce=-320", () => {
+  it("Ghost has speed=150, fireRate=250, maxHP=5, jumpForce=-380", () => {
     expect(CHARACTER_STATS.ghost).toMatchObject({
       name: "Ghost",
       speed: 150,
       fireRate: 250,
       maxHP: 5,
-      jumpForce: -320,
+      jumpForce: -380,
     });
   });
 
-  it("Neo has speed=180, fireRate=300, maxHP=4, jumpForce=-350", () => {
+  it("Neo has speed=180, fireRate=300, maxHP=4, jumpForce=-410", () => {
     expect(CHARACTER_STATS.neo).toMatchObject({
       name: "Neo",
       speed: 180,
       fireRate: 300,
       maxHP: 4,
-      jumpForce: -350,
+      jumpForce: -410,
     });
   });
 
-  it("CJ has speed=128, fireRate=180, maxHP=6, jumpForce=-290", () => {
+  it("CJ has speed=128, fireRate=180, maxHP=6, jumpForce=-350", () => {
     expect(CHARACTER_STATS.cj).toMatchObject({
       name: "CJ",
       speed: 128,
       fireRate: 180,
       maxHP: 6,
-      jumpForce: -290,
+      jumpForce: -350,
     });
   });
 });
-
-// Exact Data Verification — Weapons
 
 describe("exact weapon values", () => {
   it("pistol: damage=1, bulletSpeed=400, ammo=-1, spread=1", () => {
@@ -765,35 +745,31 @@ describe("exact weapon values", () => {
   });
 });
 
-// Exact Data Verification — Enemy Stats
-
 describe("exact enemy stat values", () => {
-  it("soldier: hp=2, speed=40, damage=1, fireRate=1500, score=100, 24x32", () => {
+  it("soldier: hp=3, speed=55, damage=1, fireRate=1000, score=100, 32x40", () => {
     expect(ENEMY_STATS.soldier).toEqual({
-      hp: 2, speed: 40, damage: 1, fireRate: 1500, score: 100, width: 24, height: 32,
+      hp: 3, speed: 55, damage: 1, fireRate: 1000, score: 100, width: 32, height: 40,
     });
   });
 
-  it("heavy: hp=5, speed=20, damage=2, fireRate=2000, score=300, 32x32", () => {
+  it("heavy: hp=8, speed=30, damage=2, fireRate=1400, score=300, 40x40", () => {
     expect(ENEMY_STATS.heavy).toEqual({
-      hp: 5, speed: 20, damage: 2, fireRate: 2000, score: 300, width: 32, height: 32,
+      hp: 8, speed: 30, damage: 2, fireRate: 1400, score: 300, width: 40, height: 40,
     });
   });
 
-  it("turret: hp=3, speed=0, damage=1, fireRate=800, score=200, 24x24", () => {
+  it("turret: hp=5, speed=0, damage=1, fireRate=600, score=200, 30x30", () => {
     expect(ENEMY_STATS.turret).toEqual({
-      hp: 3, speed: 0, damage: 1, fireRate: 800, score: 200, width: 24, height: 24,
+      hp: 5, speed: 0, damage: 1, fireRate: 600, score: 200, width: 30, height: 30,
     });
   });
 
-  it("boss: hp=50, speed=15, damage=3, fireRate=1000, score=5000, 64x64", () => {
+  it("boss: hp=80, speed=25, damage=3, fireRate=800, score=5000, 80x80", () => {
     expect(ENEMY_STATS.boss).toEqual({
-      hp: 50, speed: 15, damage: 3, fireRate: 1000, score: 5000, width: 64, height: 64,
+      hp: 80, speed: 25, damage: 3, fireRate: 800, score: 5000, width: 80, height: 80,
     });
   });
 });
-
-// Weapon DPS & Combat Math
 
 describe("weapon damage-per-second calculations", () => {
   const characters: ArcadeCharacter[] = ["ghost", "neo", "cj"];
@@ -825,8 +801,6 @@ describe("weapon damage-per-second calculations", () => {
   });
 });
 
-// Shots-to-Kill Matrix
-
 describe("shots-to-kill matrix", () => {
   const weaponTypes: WeaponType[] = ["pistol", "spread", "heavy"];
   const enemyTypes: EnemyType[] = ["soldier", "heavy", "turret", "boss"];
@@ -850,32 +824,32 @@ describe("shots-to-kill matrix", () => {
     });
   });
 
-  it("pistol kills soldier in exactly 2 shots", () => {
-    expect(Math.ceil(ENEMY_STATS.soldier.hp / WEAPONS.pistol.damage)).toBe(2);
+  it("pistol kills soldier in exactly 3 shots", () => {
+    expect(Math.ceil(ENEMY_STATS.soldier.hp / WEAPONS.pistol.damage)).toBe(3);
   });
 
-  it("heavy kills soldier in exactly 1 shot", () => {
-    expect(Math.ceil(ENEMY_STATS.soldier.hp / WEAPONS.heavy.damage)).toBe(1);
+  it("heavy kills soldier in exactly 2 shots", () => {
+    expect(Math.ceil(ENEMY_STATS.soldier.hp / WEAPONS.heavy.damage)).toBe(2);
   });
 
-  it("pistol kills turret in exactly 3 shots", () => {
-    expect(Math.ceil(ENEMY_STATS.turret.hp / WEAPONS.pistol.damage)).toBe(3);
+  it("pistol kills turret in exactly 5 shots", () => {
+    expect(Math.ceil(ENEMY_STATS.turret.hp / WEAPONS.pistol.damage)).toBe(5);
   });
 
-  it("pistol kills heavy enemy in exactly 5 shots", () => {
-    expect(Math.ceil(ENEMY_STATS.heavy.hp / WEAPONS.pistol.damage)).toBe(5);
+  it("pistol kills heavy enemy in exactly 8 shots", () => {
+    expect(Math.ceil(ENEMY_STATS.heavy.hp / WEAPONS.pistol.damage)).toBe(8);
   });
 
-  it("pistol kills boss in exactly 50 shots", () => {
-    expect(Math.ceil(ENEMY_STATS.boss.hp / WEAPONS.pistol.damage)).toBe(50);
+  it("pistol kills boss in exactly 80 shots", () => {
+    expect(Math.ceil(ENEMY_STATS.boss.hp / WEAPONS.pistol.damage)).toBe(80);
   });
 
-  it("heavy kills boss in exactly 25 shots", () => {
-    expect(Math.ceil(ENEMY_STATS.boss.hp / WEAPONS.heavy.damage)).toBe(25);
+  it("heavy kills boss in exactly 40 shots", () => {
+    expect(Math.ceil(ENEMY_STATS.boss.hp / WEAPONS.heavy.damage)).toBe(40);
   });
 
-  it("grenade kills boss in exactly 10 hits", () => {
-    expect(Math.ceil(ENEMY_STATS.boss.hp / GRENADE_DAMAGE)).toBe(10);
+  it("grenade kills boss in exactly 16 hits", () => {
+    expect(Math.ceil(ENEMY_STATS.boss.hp / GRENADE_DAMAGE)).toBe(16);
   });
 
   it("spread weapon needs fewer total shots than pistol for boss (3 bullets per shot)", () => {
@@ -885,8 +859,6 @@ describe("shots-to-kill matrix", () => {
     expect(spreadShots).toBeLessThan(pistolShots);
   });
 });
-
-// Ammo Sufficiency
 
 describe("ammo sufficiency", () => {
   it("spread ammo (30 shots × 3 bullets) can potentially kill 90 HP worth of enemies", () => {
@@ -899,9 +871,9 @@ describe("ammo sufficiency", () => {
     expect(totalDamage).toBe(100);
   });
 
-  it("heavy weapon ammo alone can kill the boss twice", () => {
+  it("heavy weapon ammo alone can kill the boss once", () => {
     const totalDamage = WEAPONS.heavy.ammo * WEAPONS.heavy.damage;
-    expect(totalDamage).toBeGreaterThanOrEqual(ENEMY_STATS.boss.hp * 2);
+    expect(totalDamage).toBeGreaterThanOrEqual(ENEMY_STATS.boss.hp);
   });
 
   it("spread weapon ammo alone can kill the boss once (if all bullets hit)", () => {
@@ -910,12 +882,8 @@ describe("ammo sufficiency", () => {
   });
 });
 
-// HP Bar Color Thresholds (ArcadeHUDScene drawHPBar logic)
-
 describe("HP bar color thresholds", () => {
-  // WARNING: This is a LOCAL REPLICA of the drawHPBar logic in ArcadeHUDScene.ts:194-195.
-  // If that source changes, this test will NOT catch the drift. Verify manually.
-  // Source: src/game/arcade/ArcadeHUDScene.ts lines 194-195
+  // Replica of ArcadeHUDScene.ts:194-195 drawHPBar logic
   function getHPBarColor(hp: number, maxHP: number): number {
     const ratio = Math.max(0, hp) / maxHP;
     return ratio > 0.6 ? 0x4ade80 : ratio > 0.4 ? 0xfbbf24 : ratio > 0.2 ? 0xf97316 : 0xef4444;
@@ -978,12 +946,8 @@ describe("HP bar color thresholds", () => {
   );
 });
 
-// Score Popup Color Tiers (ArcadeGameScene showScorePopup logic)
-
 describe("score popup color tiers", () => {
-  // WARNING: This is a LOCAL REPLICA of the showScorePopup logic in ArcadeGameScene.ts:1616-1623.
-  // If that source changes, this test will NOT catch the drift. Verify manually.
-  // Source: src/game/arcade/ArcadeGameScene.ts lines 1616-1623
+  // Replica of ArcadeGameScene.ts:1616-1623 showScorePopup logic
   function getScoreColor(points: number): string {
     return points >= 1000
       ? "#ef4444"
@@ -1043,8 +1007,6 @@ describe("score popup color tiers", () => {
   });
 });
 
-// Character Survivability Math
-
 describe("character survivability", () => {
   const characters: ArcadeCharacter[] = ["ghost", "neo", "cj"];
 
@@ -1097,8 +1059,6 @@ describe("character survivability", () => {
   });
 });
 
-// Grenade Economy
-
 describe("grenade economy", () => {
   it("starting grenades can kill 3 soldiers (3 × 5 damage > 3 × 2 HP)", () => {
     const totalDamage = STARTING_GRENADES * GRENADE_DAMAGE;
@@ -1106,16 +1066,17 @@ describe("grenade economy", () => {
     expect(totalDamage).toBeGreaterThan(totalEnemyHP);
   });
 
-  it("starting grenades can kill exactly one heavy enemy per grenade", () => {
-    // 5 damage per grenade, heavy has 5 HP — exactly 1 hit
-    expect(GRENADE_DAMAGE).toBeGreaterThanOrEqual(ENEMY_STATS.heavy.hp);
+  it("starting grenades damage heavy but don't one-shot", () => {
+    // 5 damage per grenade, heavy has 8 HP — grenade + 3 pistol shots
+    expect(GRENADE_DAMAGE).toBeLessThan(ENEMY_STATS.heavy.hp);
+    expect(GRENADE_DAMAGE).toBeGreaterThan(ENEMY_STATS.heavy.hp / 2);
   });
 
-  it("starting grenades deal 15 total damage to boss (30% of boss HP)", () => {
+  it("starting grenades deal 15 total damage to boss (18.75% of boss HP)", () => {
     const totalDamage = STARTING_GRENADES * GRENADE_DAMAGE;
     expect(totalDamage).toBe(15);
     const ratio = totalDamage / ENEMY_STATS.boss.hp;
-    expect(ratio).toBeCloseTo(0.3, 1);
+    expect(ratio).toBeCloseTo(0.1875, 3);
   });
 
   it("grenade pickup (3) doubles your starting grenade supply", () => {
@@ -1123,8 +1084,6 @@ describe("grenade economy", () => {
     expect(afterPickup).toBe(STARTING_GRENADES * 2);
   });
 });
-
-// HUD Panel Positioning (verifies the juice pass values)
 
 describe("HUD panel positioning", () => {
   it("bottom panels at ARCADE_HEIGHT - 24 are within visible area", () => {

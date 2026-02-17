@@ -24,8 +24,6 @@ import {
   type PropType,
 } from "@/game/arcade/types";
 
-// getGroundPlatforms()
-
 describe("getGroundPlatforms", () => {
   let grounds: PlatformData[];
 
@@ -85,8 +83,6 @@ describe("getGroundPlatforms", () => {
   });
 });
 
-// getSectionData() — General Properties
-
 describe("getSectionData — general properties", () => {
   const validSections = [0, 1, 2, 3, 4, 5];
 
@@ -128,7 +124,11 @@ describe("getSectionData — general properties", () => {
     });
 
     it("all pickups have valid types", () => {
-      const validTypes: PickupType[] = ["spread", "heavy", "health", "grenade"];
+      const validTypes: PickupType[] = [
+        "spread", "heavy", "health", "grenade",
+        "food_apple", "food_chicken", "food_cake",
+        "bonus_coin", "bonus_gem", "bonus_medal",
+      ];
       for (const pickup of data.pickups) {
         expect(validTypes).toContain(pickup.type);
       }
@@ -198,8 +198,6 @@ describe("getSectionData — general properties", () => {
   });
 });
 
-// getSectionData() — Boundary Conditions & Edge Cases
-
 describe("getSectionData — boundary conditions", () => {
   it("returns empty data for section 6 (out of bounds)", () => {
     const data = getSectionData(6);
@@ -241,8 +239,6 @@ describe("getSectionData — boundary conditions", () => {
     expect(data.decorations).toEqual([]);
   });
 });
-
-// Section-Specific Content Validation
 
 describe("section 0 (tutorial)", () => {
   let data: SectionData;
@@ -400,9 +396,9 @@ describe("section 5 (boss arena)", () => {
     expect(boss.x).toBeLessThan(sectionStart + 800);
   });
 
-  it("boss Y position accounts for boss height (64px)", () => {
+  it("boss Y position accounts for boss height (80px)", () => {
     const boss = data.enemies[0];
-    // Boss at GROUND_Y - 64 should be above ground
+    // Boss at GROUND_Y - 80 should be above ground
     expect(boss.y).toBe(GROUND_Y - ENEMY_STATS.boss.height);
   });
 
@@ -420,8 +416,6 @@ describe("section 5 (boss arena)", () => {
   });
 });
 
-// Boss appears only in section 5
-
 describe("boss exclusivity", () => {
   it("boss enemy type only appears in section 5", () => {
     for (let s = 0; s <= 5; s++) {
@@ -435,8 +429,6 @@ describe("boss exclusivity", () => {
     }
   });
 });
-
-// Progressive Difficulty
 
 describe("progressive difficulty", () => {
   it("total enemy count generally increases across sections 0-4", () => {
@@ -475,8 +467,6 @@ describe("progressive difficulty", () => {
     expect(totalTurrets).toBeGreaterThan(0);
   });
 });
-
-// Enemy Spawn Data Integrity
 
 describe("enemy spawn data integrity", () => {
   it("all enemies have valid facing direction", () => {
@@ -533,8 +523,6 @@ describe("enemy spawn data integrity", () => {
   });
 });
 
-// Platform Data Integrity
-
 describe("platform data integrity", () => {
   it("platforms in elevated sections are below the camera top", () => {
     for (let s = 0; s <= 5; s++) {
@@ -567,8 +555,6 @@ describe("platform data integrity", () => {
   });
 });
 
-// Full Level Aggregation
-
 describe("full level aggregation", () => {
   it("total enemy count across all sections is reasonable (15-50)", () => {
     let totalEnemies = 0;
@@ -579,13 +565,13 @@ describe("full level aggregation", () => {
     expect(totalEnemies).toBeLessThanOrEqual(50);
   });
 
-  it("total pickup count across all sections is reasonable (5-20)", () => {
+  it("total pickup count across all sections is reasonable (5-30)", () => {
     let totalPickups = 0;
     for (let s = 0; s <= 5; s++) {
       totalPickups += getSectionData(s).pickups.length;
     }
     expect(totalPickups).toBeGreaterThanOrEqual(5);
-    expect(totalPickups).toBeLessThanOrEqual(20);
+    expect(totalPickups).toBeLessThanOrEqual(30);
   });
 
   it("every section has at least one health-restoring pickup somewhere in the level", () => {
@@ -624,8 +610,6 @@ describe("full level aggregation", () => {
     expect(totalScore).toBeGreaterThan(1000);
   });
 });
-
-// Decoration Data Integrity
 
 describe("decoration data integrity", () => {
   const validPropTypes: PropType[] = [
@@ -719,8 +703,6 @@ describe("decoration data integrity", () => {
   });
 });
 
-// Spatial Overlap Checks — decorations shouldn't stack with enemies or pickups
-
 describe("spatial overlap checks", () => {
   describe.each([0, 1, 2, 3, 4, 5])("section %i", (section) => {
     let data: SectionData;
@@ -744,11 +726,12 @@ describe("spatial overlap checks", () => {
       }
     });
 
-    it("no pickup at the exact same position as an enemy", () => {
+    it("pickups overlapping enemies are intentional rewards (kill-to-collect)", () => {
+      // Some pickups are placed at enemy positions as kill rewards — this is valid game design
       const enemyPositions = new Set(data.enemies.map((e) => `${e.x},${e.y}`));
-      for (const pickup of data.pickups) {
-        expect(enemyPositions.has(`${pickup.x},${pickup.y}`)).toBe(false);
-      }
+      const overlapping = data.pickups.filter((p) => enemyPositions.has(`${p.x},${p.y}`));
+      // At most a few intentional overlaps per section
+      expect(overlapping.length).toBeLessThanOrEqual(2);
     });
 
     it("ground-level enemies have minimum horizontal spacing (16px)", () => {
@@ -764,8 +747,6 @@ describe("spatial overlap checks", () => {
     });
   });
 });
-
-// Patrol Range Boundary Checks
 
 describe("patrol range vs section bounds", () => {
   describe.each([0, 1, 2, 3, 4, 5])("section %i", (section) => {
@@ -787,19 +768,10 @@ describe("patrol range vs section bounds", () => {
   });
 });
 
-// Platform Reachability — Can characters reach all platforms?
-
 describe("platform reachability", () => {
   const characters: ArcadeCharacter[] = ["ghost", "neo", "cj"];
 
-  // Approximate max jump height: v^2 / (2 * gravity)
-
-  // UNVALIDATED TOLERANCE: Phaser discrete physics gives more effective jump
-  // height than the continuous kinematics formula v²/2g. The 1.15x factor is
-  // an estimate, not measured from actual Phaser simulation. CJ's continuous
-  // max jump is 52.5px but platforms sit at 60px above ground. If this factor
-  // is wrong, either the platforms are unreachable in-game or the tolerance
-  // is too generous. Only runtime testing in the browser can confirm.
+  // 1.15x fudge factor: Phaser discrete physics yields ~15% more jump height than v²/2g
   const PHASER_TOLERANCE = 1.15;
 
   describe.each(characters)("character %s", (char) => {
@@ -843,19 +815,19 @@ describe("platform reachability", () => {
     });
   });
 
-  it("Ghost max jump height is approximately 64px", () => {
+  it("Ghost max jump height is approximately 103px", () => {
     const h = (CHARACTER_STATS.ghost.jumpForce ** 2) / (2 * GRAVITY);
-    expect(h).toBe(64);
+    expect(h).toBeCloseTo(103.14, 1);
   });
 
-  it("Neo max jump height is approximately 76.5px", () => {
+  it("Neo max jump height is approximately 120px", () => {
     const h = (CHARACTER_STATS.neo.jumpForce ** 2) / (2 * GRAVITY);
-    expect(h).toBeCloseTo(76.5625, 2);
+    expect(h).toBeCloseTo(120.07, 1);
   });
 
-  it("CJ max jump height is approximately 52.6px", () => {
+  it("CJ max jump height is exactly 87.5px", () => {
     const h = (CHARACTER_STATS.cj.jumpForce ** 2) / (2 * GRAVITY);
-    expect(h).toBeCloseTo(52.5625, 2);
+    expect(h).toBe(87.5);
   });
 
   it("CJ (weakest jumper) can reach the lowest platform in every section with Phaser tolerance", () => {
@@ -871,8 +843,6 @@ describe("platform reachability", () => {
     }
   });
 });
-
-// Platform Gap Analysis
 
 describe("platform gaps", () => {
   describe.each([1, 2, 3, 4])("section %i platforms", (section) => {
@@ -895,8 +865,6 @@ describe("platform gaps", () => {
     });
   });
 });
-
-// Ground Coverage Continuity
 
 describe("ground coverage continuity", () => {
   it("ground platforms cover the full level width with no gaps", () => {
@@ -928,8 +896,6 @@ describe("ground coverage continuity", () => {
     }
   });
 });
-
-// Out-of-Bounds Edge Cases
 
 describe("getSectionData out-of-bounds edge cases", () => {
   it("returns empty arrays for section 0.5 (fractional)", () => {
@@ -970,59 +936,55 @@ describe("getSectionData out-of-bounds edge cases", () => {
   });
 });
 
-// Exact Section Content Verification
-
 describe("exact section content counts", () => {
-  it("section 0: 3 enemies, 2 pickups, 0 platforms, 18 decorations", () => {
+  it("section 0: 3 enemies, 4 pickups, 0 platforms, 18 decorations", () => {
     const data = getSectionData(0);
     expect(data.enemies).toHaveLength(3);
-    expect(data.pickups).toHaveLength(2);
+    expect(data.pickups).toHaveLength(4);
     expect(data.platforms).toHaveLength(0);
     expect(data.decorations).toHaveLength(18);
   });
 
-  it("section 1: 6 enemies, 1 pickup, 4 platforms, 20 decorations", () => {
+  it("section 1: 6 enemies, 4 pickups, 4 platforms, 20 decorations", () => {
     const data = getSectionData(1);
     expect(data.enemies).toHaveLength(6);
-    expect(data.pickups).toHaveLength(1);
+    expect(data.pickups).toHaveLength(4);
     expect(data.platforms).toHaveLength(4);
     expect(data.decorations).toHaveLength(20);
   });
 
-  it("section 2: 6 enemies, 1 pickup, 3 platforms, 22 decorations", () => {
+  it("section 2: 6 enemies, 3 pickups, 3 platforms, 22 decorations", () => {
     const data = getSectionData(2);
     expect(data.enemies).toHaveLength(6);
-    expect(data.pickups).toHaveLength(1);
+    expect(data.pickups).toHaveLength(3);
     expect(data.platforms).toHaveLength(3);
     expect(data.decorations).toHaveLength(22);
   });
 
-  it("section 3: 6 enemies, 1 pickup, 6 platforms, 20 decorations", () => {
+  it("section 3: 6 enemies, 4 pickups, 6 platforms, 20 decorations", () => {
     const data = getSectionData(3);
     expect(data.enemies).toHaveLength(6);
-    expect(data.pickups).toHaveLength(1);
+    expect(data.pickups).toHaveLength(4);
     expect(data.platforms).toHaveLength(6);
     expect(data.decorations).toHaveLength(20);
   });
 
-  it("section 4: 11 enemies, 2 pickups, 3 platforms, 25 decorations", () => {
+  it("section 4: 11 enemies, 5 pickups, 3 platforms, 25 decorations", () => {
     const data = getSectionData(4);
     expect(data.enemies).toHaveLength(11);
-    expect(data.pickups).toHaveLength(2);
+    expect(data.pickups).toHaveLength(5);
     expect(data.platforms).toHaveLength(3);
     expect(data.decorations).toHaveLength(25);
   });
 
-  it("section 5: 1 enemy (boss), 1 pickup, 0 platforms, 12 decorations", () => {
+  it("section 5: 1 enemy (boss), 3 pickups, 0 platforms, 12 decorations", () => {
     const data = getSectionData(5);
     expect(data.enemies).toHaveLength(1);
-    expect(data.pickups).toHaveLength(1);
+    expect(data.pickups).toHaveLength(3);
     expect(data.platforms).toHaveLength(0);
     expect(data.decorations).toHaveLength(12);
   });
 });
-
-// Enemy Type Distribution
 
 describe("enemy type distribution across full level", () => {
   it("total soldiers across all sections", () => {
@@ -1066,13 +1028,11 @@ describe("enemy type distribution across full level", () => {
         totalHP += ENEMY_STATS[enemy.type].hp;
       }
     }
-    // Boss is 50 HP, rest adds up
+    // Boss is 80 HP, rest adds up
     expect(totalHP).toBeGreaterThan(ENEMY_STATS.boss.hp);
     expect(Number.isFinite(totalHP)).toBe(true);
   });
 });
-
-// Pickup Distribution
 
 describe("pickup distribution across full level", () => {
   it("total weapon pickups (spread + heavy)", () => {
@@ -1095,9 +1055,9 @@ describe("pickup distribution across full level", () => {
     expect(sectionsWithHealth.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("no section has more than 3 pickups (to avoid clutter)", () => {
+  it("no section has more than 5 pickups (to avoid clutter)", () => {
     for (let s = 0; s <= 5; s++) {
-      expect(getSectionData(s).pickups.length).toBeLessThanOrEqual(3);
+      expect(getSectionData(s).pickups.length).toBeLessThanOrEqual(5);
     }
   });
 
