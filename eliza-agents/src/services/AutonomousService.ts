@@ -316,21 +316,21 @@ export class AutonomousService extends Service {
       },
     });
 
-    // Ghost: Check positions for take-profit/stop-loss every 2 minutes
+    // Ghost: Check positions for take-profit/stop-loss every 5 minutes
     this.registerTask({
       name: "ghost_position_check",
       agentId: "ghost",
-      interval: 2 * 60 * 1000,
+      interval: 5 * 60 * 1000,
       handler: async () => {
         await this.checkGhostPositions();
       },
     });
 
-    // Ghost: Poll smart money wallets on-chain every 3 minutes
+    // Ghost: Poll smart money wallets on-chain every 10 minutes
     this.registerTask({
       name: "ghost_smart_money_poll",
       agentId: "ghost",
-      interval: 3 * 60 * 1000,
+      interval: 10 * 60 * 1000,
       handler: async () => {
         await this.pollSmartMoney();
       },

@@ -54,6 +54,7 @@ export class HeliusService {
 
   // Wallets to track for alerts
   private trackedWallets: Map<string, string> = new Map(); // address -> label
+  private static readonly MAX_TRACKED_WALLETS = 30; // Cap to limit RPC usage per poll cycle
 
   // Dedup: track processed transaction signatures to avoid double-counting across polls
   private processedSignatures: Set<string> = new Set();
@@ -94,10 +95,23 @@ export class HeliusService {
     return this.apiKey;
   }
 
-  // Add wallet to tracking list
+  // Add wallet to tracking list (capped to limit RPC calls per poll)
   trackWallet(address: string, label?: string): void {
+    // If already tracked, just update the label
+    if (this.trackedWallets.has(address)) {
+      this.trackedWallets.set(address, label || address.slice(0, 8));
+      return;
+    }
+
+    if (this.trackedWallets.size >= HeliusService.MAX_TRACKED_WALLETS) {
+      console.warn(
+        `[HeliusService] Tracked wallet cap reached (${HeliusService.MAX_TRACKED_WALLETS}), ignoring ${label || address.slice(0, 8)}`
+      );
+      return;
+    }
+
     this.trackedWallets.set(address, label || address.slice(0, 8));
-    console.log(`[HeliusService] Now tracking wallet: ${label || address.slice(0, 8)}...`);
+    console.log(`[HeliusService] Now tracking wallet: ${label || address.slice(0, 8)}... (${this.trackedWallets.size}/${HeliusService.MAX_TRACKED_WALLETS})`);
   }
 
   // Remove wallet from tracking
