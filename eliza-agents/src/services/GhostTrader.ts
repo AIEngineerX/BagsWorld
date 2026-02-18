@@ -1286,15 +1286,22 @@ export class GhostTrader {
       // IMPORTANT: Never kill a position that's currently in profit — only dead if losing
       const isInProfit = currentMultiplier > 1.05; // 5% buffer above breakeven
       const isHeldTooLong = holdTimeMinutes > this.config.maxHoldTimeMinutes;
-      const isVolumeDead = volume24hUsd < this.config.minVolumeToHoldUsd;
+      // liquidityUsd === 0 means DexScreener hasn't indexed the token yet (data latency),
+      // NOT that liquidity is actually gone. Only treat as drained when we have a confirmed
+      // non-zero reading that has since fallen below $200.
+      const isLiquidityDrained = liquidityUsd > 0 && liquidityUsd < 200;
+      // volume24hUsd === 0 similarly means no data yet — don't treat as dead volume
+      const isVolumeDead = volume24hUsd > 0 && volume24hUsd < this.config.minVolumeToHoldUsd;
       const isDecaying =
         priceChangePercent <= -this.config.deadPositionDecayPercent &&
         priceChangePercent > -(this.config.stopLossPercent * 2); // Above hard stop (2x stopLoss)
-      const isLiquidityDrained = liquidityUsd < 200; // Less than $200 liquidity (including $0)
+      // Minimum 10-minute hold before any dead-position check fires — DexScreener takes
+      // several minutes to index a new token; zero-data reads must not trigger exits.
+      const isOldEnoughForDeadCheck = holdTimeMinutes >= 10;
 
       // Dead if: liquidity drained (always exit — can't sell at any price)
       // OR NOT in profit AND: (held too long AND low volume) OR (decaying AND no volume)
-      if (isLiquidityDrained || (!isInProfit && ((isHeldTooLong && isVolumeDead) || (isDecaying && isVolumeDead)))) {
+      if (isOldEnoughForDeadCheck && (isLiquidityDrained || (!isInProfit && ((isHeldTooLong && isVolumeDead) || (isDecaying && isVolumeDead))))) {
         const reasons: string[] = [];
         if (isHeldTooLong) reasons.push(`held ${holdTimeMinutes.toFixed(0)}min`);
         if (isVolumeDead) reasons.push(`vol $${volume24hUsd.toFixed(0)}`);
