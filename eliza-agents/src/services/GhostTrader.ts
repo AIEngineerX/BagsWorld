@@ -1551,15 +1551,23 @@ export class GhostTrader {
     // If concentration is null (RPC error/timeout), continue without penalty
 
     // === FAKE VOLUME DETECTION (BagBot pattern) ===
-    // Detect wash trading: high avg transaction size + low transaction count = likely fake volume
+    // Detect wash trading: high avg transaction size + low transaction count = likely fake volume.
+    // Only escalate to a RED FLAG (hard block) for extreme cases. Borderline patterns get a score
+    // penalty only — Bags.fm micro-caps frequently have $1500-$3K volume with just a handful of
+    // transactions ($500 avg tx with < 50 txns was triggering on legitimate low-activity tokens).
     const totalTxns24h = buys24h + sells24h;
     const avgTxSizeUsd = totalTxns24h > 0 ? volume24hUsd / totalTxns24h : 0;
-    if (avgTxSizeUsd > 500 && totalTxns24h < 50) {
+    if (avgTxSizeUsd > 1000 && totalTxns24h < 20) {
+      // Extreme: $1K+ avg tx with almost no transactions — almost certainly wash trading
       score -= 25;
-      redFlags.push(`fake volume (avg tx $${avgTxSizeUsd.toFixed(0)}, only ${totalTxns24h} txns)`);
+      redFlags.push(`likely wash trading (avg tx $${avgTxSizeUsd.toFixed(0)}, only ${totalTxns24h} txns)`);
+    } else if (avgTxSizeUsd > 500 && totalTxns24h < 50) {
+      // Borderline: score penalty only, don't hard-block — could be a few large legitimate buys
+      score -= 15;
+      reasons.push(`suspicious volume pattern (avg tx $${avgTxSizeUsd.toFixed(0)}, ${totalTxns24h} txns)`);
     } else if (avgTxSizeUsd > 200 && totalTxns24h < 100) {
       score -= 10;
-      reasons.push(`suspicious volume pattern (avg tx $${avgTxSizeUsd.toFixed(0)}, ${totalTxns24h} txns)`);
+      reasons.push(`low tx count (avg tx $${avgTxSizeUsd.toFixed(0)}, ${totalTxns24h} txns)`);
     }
 
     // === SCORING SYSTEM (BagBot-aligned weights) ===
