@@ -215,37 +215,66 @@ export class SolanaService extends Service {
   }
 
   /**
-   * Sign a transaction using tweetnacl
+   * Sign a transaction using tweetnacl.
+   *
+   * Solana wire transaction format (both legacy and versioned v0):
+   *   [compact-u16 numSignatures] [sig_0: 64 bytes] ... [sig_n: 64 bytes] [serialized message]
+   *
+   * compact-u16 encoding:
+   *   - Values 0-127:   1 byte  (byte[0] = value, high bit clear)
+   *   - Values 128+:    2 bytes (byte[0] = low 7 bits | 0x80, byte[1] = high bits)
+   *
+   * For versioned v0 transactions the serialized message starts with 0x80 (version prefix).
+   * The message bytes are signed exactly as-is (no extra prefixing required by Solana).
    */
   private signTransaction(transactionBytes: Uint8Array): Uint8Array {
     if (!this.keypair) {
       throw new Error("Wallet not initialized");
     }
 
-    // Solana transaction format:
-    // - First byte: number of signatures required
-    // - Next 64*n bytes: signatures (initially empty)
-    // - Rest: message to sign
+    // Parse compact-u16 signature count
+    const firstByte = transactionBytes[0];
+    let numSignatures: number;
+    let sigCountBytes: number;
+    if ((firstByte & 0x80) === 0) {
+      // Single-byte compact-u16 (values 0-127)
+      numSignatures = firstByte;
+      sigCountBytes = 1;
+    } else if (transactionBytes.length > 1) {
+      // Two-byte compact-u16 (values 128-16383)
+      numSignatures = (firstByte & 0x7f) | (transactionBytes[1] << 7);
+      sigCountBytes = 2;
+    } else {
+      throw new Error("Transaction too short to parse signature count");
+    }
 
-    const numSignatures = transactionBytes[0];
-    const signatureOffset = 1;
-    const messageOffset = 1 + numSignatures * 64;
+    if (numSignatures === 0) {
+      throw new Error("Transaction has 0 required signatures");
+    }
 
-    // Extract the message portion to sign
+    const signatureOffset = sigCountBytes;
+    const messageOffset = sigCountBytes + numSignatures * 64;
+
+    if (messageOffset >= transactionBytes.length) {
+      throw new Error(
+        `Transaction too short: messageOffset=${messageOffset} >= length=${transactionBytes.length} ` +
+          `(numSignatures=${numSignatures}, sigCountBytes=${sigCountBytes})`
+      );
+    }
+
+    // Extract serialized message (includes 0x80 version prefix for v0 transactions)
     const message = transactionBytes.slice(messageOffset);
 
-    // Sign the message using tweetnacl
+    // Sign with tweetnacl Ed25519
     const signature = nacl.sign.detached(message, this.keypair.secretKey);
 
-    // Create new transaction with signature inserted
+    // Insert signature at first signature slot
     const signedTx = new Uint8Array(transactionBytes.length);
     signedTx.set(transactionBytes);
-
-    // Insert signature at first signature slot
     signedTx.set(signature, signatureOffset);
 
     console.log(
-      `[SolanaService] Transaction signed (sig: ${base58Encode(signature).slice(0, 16)}...)`
+      `[SolanaService] Signed (numSigs=${numSignatures}, msgOffset=${messageOffset}, sig=${base58Encode(signature).slice(0, 16)}...)`
     );
 
     return signedTx;
