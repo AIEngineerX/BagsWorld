@@ -1098,6 +1098,7 @@ export class GhostTrader {
       let liquidityUsd = 0;
       let buySellRatioM5 = 1.0; // Default neutral — used for compound stop-loss
       let usedBondingCurve = false;
+      let noM5Activity = false; // Only true when DexScreener CONFIRMS both buysM5 and sellsM5 are 0
 
       // 1. Try bags.fm bonding curve sell quote first (BagBot approach — most accurate)
       // This tells us what we'd ACTUALLY get for selling, not theoretical spot price
@@ -1137,10 +1138,15 @@ export class GhostTrader {
           // Capture m5 buy/sell ratio for compound stop-loss (BagBot pattern)
           if (dexData.sellsM5 > 0) {
             buySellRatioM5 = dexData.buysM5 / dexData.sellsM5;
+            noM5Activity = false;
           } else if (dexData.buysM5 > 0) {
             buySellRatioM5 = 10.0; // All buys, no sells = very bullish
+            noM5Activity = false;
+          } else {
+            // DexScreener responded but both m5 counts are 0 — token has gone quiet.
+            // Fire compound stop unconditionally at -stopLossPercent.
+            noM5Activity = true;
           }
-          // else stays at 1.0 (no activity)
           volume24hUsd = dexData.volume24hUsd || volume24hUsd;
           liquidityUsd = dexData.liquidityUsd || 0;
         }
@@ -1203,12 +1209,20 @@ export class GhostTrader {
       // BagBot requires BOTH conditions: price drop AND active sell pressure.
       // This prevents stopping out on normal volatility where price dips but buys resume.
       // Condition: price <= -stopLossPercent AND m5 buy/sell ratio < 0.5 (sellers dominating)
+      //
+      // No-m5 fallback: if the token has gone quiet (buysM5 = sellsM5 = 0), treat the stop
+      // as unconditional. A position at -15%+ with zero 5-minute activity is not recovering —
+      // without this fallback, buySellRatioM5 stays at 1.0 and the compound stop NEVER fires,
+      // creating zombie positions that occupy slots indefinitely.
       const stopLossHit = priceChangePercent <= -this.config.stopLossPercent;
       const sellPressureConfirmed = buySellRatioM5 < 0.5;
-      if (stopLossHit && sellPressureConfirmed) {
+      if (stopLossHit && (sellPressureConfirmed || noM5Activity)) {
+        const stopReason = sellPressureConfirmed
+          ? `m5 buy/sell: ${buySellRatioM5.toFixed(2)}`
+          : `no m5 activity (token gone quiet)`;
         console.log(
           `[GhostTrader] Compound stop loss triggered for ${position.tokenSymbol} ` +
-            `(price: ${priceChangePercent.toFixed(1)}%, m5 buy/sell: ${buySellRatioM5.toFixed(2)})`
+            `(price: ${priceChangePercent.toFixed(1)}%, ${stopReason})`
         );
         await this.executeClose(position, "stop_loss", currentPriceSol);
         continue;
@@ -1229,6 +1243,29 @@ export class GhostTrader {
       // a fake peakMultiplier. When the price naturally reverts, the breakeven stop fires
       // and the bot sells at a ~5% loss from round-trip slippage. Every. Single. Trade.
       // The trailing stop at 2x handles real winners; no need for premature breakeven exits.
+
+      // === NEAR-ENTRY POSITION TIMEOUT ===
+      // Catches buy-impact zombies: positions that peaked from bonding curve buy impact
+      // (~1.3x fake) then reverted to near-entry. Since the first TP tier is at 1.5x,
+      // these positions never trigger a TP. Without this check they'd sit open for up to
+      // 48h (maxHoldTimeMinutes), occupying a slot and blocking new entries.
+      // Fires after 6h when: below +5% AND at least -2% down (not bouncing around 0).
+      // Guard: NOT in profit — genuine runners above +5% are left to run.
+      const isInProfitForTimeout = currentMultiplier > 1.05;
+      const isFlatTooLong =
+        !isInProfitForTimeout &&
+        holdTimeMinutes > 360 && // 6 hours
+        priceChangePercent <= -2; // at least -2% below entry
+      if (isFlatTooLong) {
+        console.log(
+          `[GhostTrader] Near-entry timeout for ${position.tokenSymbol} ` +
+            `(${priceChangePercent.toFixed(1)}% after ${holdTimeMinutes.toFixed(0)}min, ` +
+            `peak was ${position.peakMultiplier.toFixed(2)}x)`
+        );
+        this.chatter(`cutting $${position.tokenSymbol} flat — not moving after 6h`, "concerned");
+        await this.executeClose(position, "stop_loss", currentPriceSol);
+        continue;
+      }
 
       // === DEAD POSITION CHECK ===
       // Detect tokens that are slowly dying: held too long + no volume + decaying price
