@@ -8,6 +8,8 @@ interface CachedPair {
   volume24hUsd: number;
   buys24h: number;
   sells24h: number;
+  buysM5: number;   // 5-minute buy count — used for compound stop-loss (BagBot pattern)
+  sellsM5: number;  // 5-minute sell count — sell pressure confirmation
   priceChange24h: number;
   marketCap: number;
   fdv: number;
@@ -105,6 +107,8 @@ class DexScreenerCache {
         volume24hUsd: pair.volume?.h24 || 0,
         buys24h: pair.txns?.h24?.buys || 0,
         sells24h: pair.txns?.h24?.sells || 0,
+        buysM5: pair.txns?.m5?.buys || 0,
+        sellsM5: pair.txns?.m5?.sells || 0,
         priceChange24h: pair.priceChange?.h24 || 0,
         marketCap: pair.marketCap || 0,
         fdv: pair.fdv || 0,

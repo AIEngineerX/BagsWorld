@@ -48,9 +48,8 @@ const DEFAULT_TOKEN_DECIMALS = 6;
 // Update periodically or replace with a live feed if SOL moves significantly from this range.
 const APPROX_SOL_PRICE_USD = 170;
 
-// Default trading configuration (BagBot-inspired, tuned for Bags.fm reality)
-// Reference: https://github.com/BagBotX/bagbot + DexScreener Bags runner analysis
-// Updated Jan 2025: Relaxed filters based on GAS token success patterns
+// Default trading configuration — realigned with BagBot (https://github.com/BagBotX/bagbot)
+// Key differences from previous config: tighter slippage, compound stop-loss, no breakeven trap
 const DEFAULT_CONFIG = {
   enabled: false, // Must be explicitly enabled
   // Position sizing (BagBot uses 1 SOL max)
@@ -58,29 +57,29 @@ const DEFAULT_CONFIG = {
   maxPositionSol: 1.0, // Match BagBot
   maxTotalExposureSol: 3.0, // Allow 3 full positions
   maxOpenPositions: 3, // Conservative position limit
-  // Profit taking - BagBot style: partial sell at each tier, trailing stop for rest
-  takeProfitTiers: [1.3, 2.0, 3.0], // Take partialSellPercent% at each tier (1.3x secures early profit)
+  // Profit taking - BagBot style: 33% at +50%, 33% at +100%, 33% at +200%
+  takeProfitTiers: [1.5, 2.0, 3.0], // BagBot: first tier at +50% (was 1.3x — too close to buy impact)
   partialSellPercent: 33, // Sell 33% of remaining tokens at each take-profit tier
   trailingStopPercent: 25, // After 2x, trail by 25% — micro-caps routinely retrace 20-30%
-  // Risk management
-  stopLossPercent: 30, // 30% — micro-caps need room for normal volatility (Ghost character uses -30%)
+  // Risk management — BagBot compound stop: price drop AND sell pressure required
+  stopLossPercent: 15, // BagBot: -15% (was -30% — too loose, and breakeven fired first anyway)
   // Dead position detection
   maxHoldTimeMinutes: 2880, // 48 hours - Bags runners need days, not hours
   minVolumeToHoldUsd: 500, // Need some volume to keep holding
   deadPositionDecayPercent: 25, // If down 25%+ and stale, consider dead
   // Liquidity requirements - TUNED FOR BAGS.FM (most tokens have $400-$4K liquidity)
-  minLiquidityUsd: 1200, // $1.2K minimum — aligns with 3% impact cap (0.2 SOL needs ~$1134 liq)
+  minLiquidityUsd: 1200, // $1.2K minimum — aligns with impact cap
   minMarketCapUsd: 2000, // $2K minimum (runners can start small)
   // Quality filters - aligned with BagBot patterns
   maxCreatorFeeBps: 500, // 5% max (some Bags creators set higher)
   minBuySellRatio: 1.05, // Light bullish pressure (relaxed from 1.15 — sideways markets need room)
   minHolders: 5, // New tokens start with few holders
   minVolume24hUsd: 1500, // $1.5K volume - lowered for Bags.fm market reality
-  maxPriceImpactPercent: 10.0, // 10% max - Bags.fm micro-caps need wider tolerance
+  maxPriceImpactPercent: 5.0, // 5% max (BagBot uses 1%, we allow a bit more for Bags.fm bonding curves)
   // Timing - EXPANDED (Bags runners are days old, not minutes)
   minLaunchAgeSec: 300, // 5 minutes minimum (avoid instant rugs)
   maxLaunchAgeSec: 604800, // 7 DAYS max
-  slippageBps: 300, // 3% slippage - tighter to match price impact limit
+  slippageBps: 100, // 1% slippage — BagBot uses 50-100 bps (was 300 — way too loose)
   // Bags-specific signals
   requireTokenClaimed: false, // Not required - many good tokens don't have claims yet
   minLifetimeFeesSol: 0.0, // Don't require fees (volume is better indicator)
@@ -1092,18 +1091,41 @@ export class GhostTrader {
     const openPositions = Array.from(this.positions.values()).filter((p) => p.status === "open");
 
     for (const position of openPositions) {
-      // Get current price and market data - try Bags API first, then DexScreener
+      // Get current price and market data
+      // Priority: bags.fm bonding curve quote (ground truth) > DexScreener > Bags API
       let currentPriceSol = 0;
       let volume24hUsd = 0;
       let liquidityUsd = 0;
+      let buySellRatioM5 = 1.0; // Default neutral — used for compound stop-loss
+      let usedBondingCurve = false;
 
-      const token = await this.bagsApi.getToken(position.tokenMint).catch(() => null);
-      if (token?.price) {
-        currentPriceSol = token.price;
-        volume24hUsd = token.volume24h || 0;
+      // 1. Try bags.fm bonding curve sell quote first (BagBot approach — most accurate)
+      // This tells us what we'd ACTUALLY get for selling, not theoretical spot price
+      try {
+        const sellQuote = await this.bagsApi.getBondingCurveSellQuote(
+          position.tokenMint,
+          position.amountTokens
+        );
+        if (sellQuote && sellQuote.outSol > 0) {
+          const decimals = await this.getTokenDecimals(position.tokenMint);
+          const wholeTokens = position.amountTokens / (10 ** decimals);
+          currentPriceSol = sellQuote.outSol / wholeTokens;
+          usedBondingCurve = true;
+        }
+      } catch {
+        // Non-fatal, fall through to spot price sources
       }
 
-      // Always check DexScreener for more accurate volume/liquidity data (via shared cache)
+      // 2. Fall back to Bags API spot price
+      if (!usedBondingCurve) {
+        const token = await this.bagsApi.getToken(position.tokenMint).catch(() => null);
+        if (token?.price) {
+          currentPriceSol = token.price;
+          volume24hUsd = token.volume24h || 0;
+        }
+      }
+
+      // 3. Always check DexScreener for volume/liquidity/m5 data (needed for compound stop-loss)
       let dexPriceSol = 0;
       try {
         const dexData = await getDexScreenerCache().getTokenData(position.tokenMint);
@@ -1112,6 +1134,13 @@ export class GhostTrader {
           if (dexPriceSol && !currentPriceSol) {
             currentPriceSol = dexPriceSol;
           }
+          // Capture m5 buy/sell ratio for compound stop-loss (BagBot pattern)
+          if (dexData.sellsM5 > 0) {
+            buySellRatioM5 = dexData.buysM5 / dexData.sellsM5;
+          } else if (dexData.buysM5 > 0) {
+            buySellRatioM5 = 10.0; // All buys, no sells = very bullish
+          }
+          // else stays at 1.0 (no activity)
           volume24hUsd = dexData.volume24hUsd || volume24hUsd;
           liquidityUsd = dexData.liquidityUsd || 0;
         }
@@ -1119,10 +1148,8 @@ export class GhostTrader {
         console.warn(`[GhostTrader] Failed to get DexScreener data for ${position.tokenSymbol}`);
       }
 
-      // Cross-validate price sources: if Bags API and DexScreener both have a price
-      // but they differ by >10x, one is likely in wrong units. Prefer DexScreener
-      // (priceNative is well-documented as SOL per whole token).
-      if (currentPriceSol > 0 && dexPriceSol > 0) {
+      // Cross-validate: if NOT using bonding curve and both APIs have prices that differ >10x
+      if (!usedBondingCurve && currentPriceSol > 0 && dexPriceSol > 0) {
         const ratio = currentPriceSol / dexPriceSol;
         if (ratio > 10 || ratio < 0.1) {
           console.warn(
@@ -1172,27 +1199,36 @@ export class GhostTrader {
       // Calculate hold time
       const holdTimeMinutes = (Date.now() - position.createdAt.getTime()) / 60000;
 
-      // === STOP LOSS CHECK ===
-      if (priceChangePercent <= -this.config.stopLossPercent) {
+      // === COMPOUND STOP LOSS (BagBot pattern) ===
+      // BagBot requires BOTH conditions: price drop AND active sell pressure.
+      // This prevents stopping out on normal volatility where price dips but buys resume.
+      // Condition: price <= -stopLossPercent AND m5 buy/sell ratio < 0.5 (sellers dominating)
+      const stopLossHit = priceChangePercent <= -this.config.stopLossPercent;
+      const sellPressureConfirmed = buySellRatioM5 < 0.5;
+      if (stopLossHit && sellPressureConfirmed) {
         console.log(
-          `[GhostTrader] Stop loss triggered for ${position.tokenSymbol} (${priceChangePercent.toFixed(1)}%)`
+          `[GhostTrader] Compound stop loss triggered for ${position.tokenSymbol} ` +
+            `(price: ${priceChangePercent.toFixed(1)}%, m5 buy/sell: ${buySellRatioM5.toFixed(2)})`
+        );
+        await this.executeClose(position, "stop_loss", currentPriceSol);
+        continue;
+      }
+      // Hard stop at 2x the configured stop-loss — unconditional safety net
+      // Even if buy pressure is present, a -30% drop (at default 15% config) means exit
+      if (priceChangePercent <= -(this.config.stopLossPercent * 2)) {
+        console.log(
+          `[GhostTrader] Hard stop loss triggered for ${position.tokenSymbol} (${priceChangePercent.toFixed(1)}%)`
         );
         await this.executeClose(position, "stop_loss", currentPriceSol);
         continue;
       }
 
-      // === BREAKEVEN PROTECTION (after reaching 1.3x) ===
-      // Once a position has been up 30%+, never let it bleed back to entry.
-      // Threshold at 1.04x (not 1.0x) to absorb swap slippage + fees on exit.
-      if (position.peakMultiplier >= 1.3 && currentMultiplier <= 1.04) {
-        console.log(
-          `[GhostTrader] Breakeven stop triggered for ${position.tokenSymbol} ` +
-            `(peak: ${position.peakMultiplier.toFixed(2)}x, now back to ${currentMultiplier.toFixed(2)}x)`
-        );
-        this.chatter(`closing $${position.tokenSymbol} at breakeven — was up ${((position.peakMultiplier - 1) * 100).toFixed(0)}%`, "concerned");
-        await this.executeClose(position, "trailing_stop", currentPriceSol);
-        continue;
-      }
+      // BREAKEVEN PROTECTION: REMOVED
+      // BagBot never had breakeven stops. On thin-liquidity bonding curves, the bot's
+      // own buy impact inflates the post-trade spot price (e.g., to 1.3-1.6x), setting
+      // a fake peakMultiplier. When the price naturally reverts, the breakeven stop fires
+      // and the bot sells at a ~5% loss from round-trip slippage. Every. Single. Trade.
+      // The trailing stop at 2x handles real winners; no need for premature breakeven exits.
 
       // === DEAD POSITION CHECK ===
       // Detect tokens that are slowly dying: held too long + no volume + decaying price
@@ -1202,7 +1238,7 @@ export class GhostTrader {
       const isVolumeDead = volume24hUsd < this.config.minVolumeToHoldUsd;
       const isDecaying =
         priceChangePercent <= -this.config.deadPositionDecayPercent &&
-        priceChangePercent > -this.config.stopLossPercent;
+        priceChangePercent > -(this.config.stopLossPercent * 2); // Above hard stop (2x stopLoss)
       const isLiquidityDrained = liquidityUsd < 200; // Less than $200 liquidity (including $0)
 
       // Dead if: liquidity drained (always exit — can't sell at any price)
@@ -1476,6 +1512,18 @@ export class GhostTrader {
       }
     }
     // If concentration is null (RPC error/timeout), continue without penalty
+
+    // === FAKE VOLUME DETECTION (BagBot pattern) ===
+    // Detect wash trading: high avg transaction size + low transaction count = likely fake volume
+    const totalTxns24h = buys24h + sells24h;
+    const avgTxSizeUsd = totalTxns24h > 0 ? volume24hUsd / totalTxns24h : 0;
+    if (avgTxSizeUsd > 500 && totalTxns24h < 50) {
+      score -= 25;
+      redFlags.push(`fake volume (avg tx $${avgTxSizeUsd.toFixed(0)}, only ${totalTxns24h} txns)`);
+    } else if (avgTxSizeUsd > 200 && totalTxns24h < 100) {
+      score -= 10;
+      reasons.push(`suspicious volume pattern (avg tx $${avgTxSizeUsd.toFixed(0)}, ${totalTxns24h} txns)`);
+    }
 
     // === SCORING SYSTEM (BagBot-aligned weights) ===
     // Weights: Vol/MCap 25%, Buy/Sell 25%, Momentum 20%, Liquidity 15%, Age 15%

@@ -792,7 +792,7 @@ export class BagsApiService extends Service {
       inputMint,
       outputMint,
       amount: amount.toString(),
-      slippageBps: (slippageBps || 300).toString(),
+      slippageBps: (slippageBps || 100).toString(),
       restrictIntermediateTokens: "true", // More stable routes
     });
 
@@ -818,6 +818,56 @@ export class BagsApiService extends Service {
       routePlan: quote.routePlan ?? [],
       _jupiterQuote: quote,
     } as TradeQuote;
+  }
+
+  /**
+   * Get a sell quote directly from the bags.fm bonding curve.
+   * This returns the ACTUAL SOL you'd receive for selling tokens — more accurate
+   * than spot price for P&L calculation on bonding curve tokens.
+   * Reference: BagBot position-value.ts
+   */
+  async getBondingCurveSellQuote(
+    tokenMint: string,
+    tokenAmountRaw: number
+  ): Promise<{ outSol: number; priceImpactPct: number } | null> {
+    const SOL_MINT = "So11111111111111111111111111111111111111112";
+    const LAMPORTS_PER_SOL = 1_000_000_000;
+
+    try {
+      const params = new URLSearchParams({
+        inputMint: tokenMint,
+        outputMint: SOL_MINT,
+        amount: Math.floor(tokenAmountRaw).toString(),
+        slippageBps: "100",
+      });
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+
+      const headers: Record<string, string> = { Accept: "application/json" };
+      if (this.apiKey) {
+        headers["x-api-key"] = this.apiKey;
+      }
+
+      const response = await fetch(
+        `${this.baseUrl}/trade/quote?${params}`,
+        { headers, signal: controller.signal }
+      );
+      clearTimeout(timeout);
+
+      if (!response.ok) return null;
+
+      const data = await response.json();
+      if (data.success && data.response) {
+        return {
+          outSol: Number(data.response.outAmount) / LAMPORTS_PER_SOL,
+          priceImpactPct: parseFloat(data.response.priceImpactPct || "0"),
+        };
+      }
+      return null;
+    } catch {
+      return null; // Non-fatal — fall back to spot price
+    }
   }
 
   /**
