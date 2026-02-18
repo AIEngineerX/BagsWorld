@@ -16,11 +16,6 @@ export function isProduction(): boolean {
   return false;
 }
 
-/** Inverse of isProduction — true during local dev and CI builds. */
-export function isDevelopment(): boolean {
-  return !isProduction();
-}
-
 /**
  * Get a required secret. Throws in production if missing,
  * uses devFallback otherwise.
@@ -32,7 +27,7 @@ export function getRequiredSecret(name: string, devFallback: string): string {
     return value;
   }
 
-  if (isDevelopment()) {
+  if (!isProduction()) {
     console.warn(`[Env] ${name} not set - using development fallback`);
     return devFallback;
   }
@@ -98,10 +93,6 @@ export function isValidBps(bps: unknown, min: number = 0, max: number = 10000): 
     return false;
   }
   return bps >= min && bps <= max;
-}
-
-export function getEnvVar(name: string, defaultValue: string): string {
-  return process.env[name] || defaultValue;
 }
 
 export function getEnvList(name: string): string[] {

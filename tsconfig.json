@@ -30,5 +30,5 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "tests", "eliza-agents", "server.ts", "dungeon", "UsersfootbAppDataLocalTempclaudekaetram-analysis", "src/**/__tests__"]
+  "exclude": ["node_modules", "tests", "eliza-agents", "server.ts", "dungeon", "tmp-bagbot", "UsersfootbAppDataLocalTempclaudekaetram-analysis", "src/**/__tests__"]
 }

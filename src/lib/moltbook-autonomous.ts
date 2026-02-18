@@ -1,15 +1,3 @@
-/**
- * MoltBook Autonomous Service
- * Schedules Bagsy's posts to MoltBook with appropriate timing and variety
- *
- * This service manages:
- * - Daily GM posts (morning EST)
- * - Arena invitations (2-3 per day)
- * - Feature/Character spotlights (1-2 per day)
- * - Hype posts (event-driven)
- * - FinnBags engagement
- */
-
 import {
   postGM,
   postHype,
@@ -26,10 +14,6 @@ import {
 } from "./moltbook-agent";
 import { getMoltbookOrNull } from "./moltbook-client";
 import { getRecentEvents, subscribe, type AgentEvent } from "./agent-coordinator";
-
-// ============================================================================
-// CONFIGURATION
-// ============================================================================
 
 const CONFIG = {
   // Timezone offset for EST (UTC-5, or UTC-4 during DST)
@@ -58,10 +42,6 @@ const CONFIG = {
   // Finn engagement
   FINN_ENGAGEMENT_INTERVAL_MS: 4 * 60 * 60 * 1000, // 4 hours
 };
-
-// ============================================================================
-// TYPES
-// ============================================================================
 
 type PostType =
   | "gm"
@@ -101,10 +81,6 @@ interface ServiceStatus {
   nextScheduledActions: string[];
   moltbookConfigured: boolean;
 }
-
-// ============================================================================
-// STATE
-// ============================================================================
 
 const state: ServiceState = {
   isRunning: false,
@@ -194,15 +170,6 @@ function getPostCountToday(type: PostType): number {
   return state.postsToday.filter((p) => p.type === type).length;
 }
 
-function randomDelay(minMs: number, maxMs: number): Promise<void> {
-  const delay = Math.floor(Math.random() * (maxMs - minMs) + minMs);
-  return new Promise((resolve) => setTimeout(resolve, delay));
-}
-
-// ============================================================================
-// WORLD HEALTH INTEGRATION
-// ============================================================================
-
 // Pending game event for reactive posting
 let pendingGameEvent: AgentEvent | null = null;
 let gameEventUnsubscribe: (() => void) | null = null;
@@ -216,7 +183,7 @@ function getWorldHealthMultiplier(): number {
   const healthEvents = getRecentEvents(1, "world_health");
   if (healthEvents.length === 0) return 1.0;
 
-  const health = (healthEvents[0].data as any)?.health ?? 50;
+  const health = (healthEvents[0].data as { health?: number }).health ?? 50;
   if (health >= 80) return 1.5;
   if (health >= 60) return 1.0;
   if (health >= 40) return 0.7;
@@ -551,8 +518,7 @@ async function tick(): Promise<void> {
   // Check for pending game events (reactive posting)
   if (await checkAndPostGameEvent()) return;
 
-  // Add small random delay to feel more natural
-  await randomDelay(1000, 3000);
+  await new Promise((r) => setTimeout(r, Math.random() * 2000 + 1000));
 
   // Other posts in random order to vary content
   const checks = [
@@ -577,13 +543,6 @@ async function tick(): Promise<void> {
   }
 }
 
-// ============================================================================
-// PUBLIC API
-// ============================================================================
-
-/**
- * Start the MoltBook autonomous posting service
- */
 export function startMoltbookAutonomous(): void {
   if (state.isRunning) {
     console.log("[MoltbookAutonomous] Already running");
@@ -624,9 +583,6 @@ export function startMoltbookAutonomous(): void {
   console.log("[MoltbookAutonomous] Service started successfully");
 }
 
-/**
- * Stop the MoltBook autonomous posting service
- */
 export function stopMoltbookAutonomous(): void {
   if (!state.isRunning) {
     console.log("[MoltbookAutonomous] Not running");
@@ -654,9 +610,6 @@ export function stopMoltbookAutonomous(): void {
   console.log("[MoltbookAutonomous] Service stopped");
 }
 
-/**
- * Get the current service status
- */
 export function getMoltbookAutonomousStatus(): ServiceStatus {
   resetDailyCountsIfNeeded();
 
@@ -700,9 +653,6 @@ export function getMoltbookAutonomousStatus(): ServiceStatus {
   };
 }
 
-/**
- * Manually trigger a specific post type (for testing/admin)
- */
 export async function triggerPost(
   type: "gm" | "hype" | "invite" | "arena_invite" | "feature_spotlight" | "character_spotlight"
 ): Promise<{ success: boolean; message: string }> {
@@ -744,11 +694,4 @@ export async function triggerPost(
 
   recordPost(type);
   return { success: true, message: `Queued ${type} post` };
-}
-
-/**
- * Check if the service is running
- */
-export function isMoltbookAutonomousRunning(): boolean {
-  return state.isRunning;
 }

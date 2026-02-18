@@ -1,19 +1,3 @@
-/**
- * Agent Learning System
- * Self-learning module that tracks what works and adapts behavior
- *
- * Tracks:
- * - Which post types get the most karma
- * - Which reply styles get upvoted
- * - Best times to post
- * - Which submolts perform best
- * - What content resonates
- */
-
-// ============================================================================
-// LEARNING STATE (in-memory, persists during runtime)
-// ============================================================================
-
 interface PostPerformance {
   id: string;
   type: string;
@@ -90,13 +74,6 @@ const learningState: LearningState = {
   lastAnalysis: 0,
 };
 
-// ============================================================================
-// TRACKING FUNCTIONS
-// ============================================================================
-
-/**
- * Track a new post for performance analysis
- */
 export function trackPost(post: {
   id: string;
   type: string;
@@ -123,9 +100,6 @@ export function trackPost(post: {
   console.log(`[Learning] Tracking post: ${post.type} in ${post.submolt}`);
 }
 
-/**
- * Update post performance (call periodically to check karma)
- */
 export function updatePostPerformance(postId: string, upvotes: number, comments: number): void {
   const post = learningState.posts.find((p) => p.id === postId);
   if (post) {
@@ -135,9 +109,6 @@ export function updatePostPerformance(postId: string, upvotes: number, comments:
   }
 }
 
-/**
- * Track an engagement action
- */
 export function trackEngagement(engagement: {
   type: "comment" | "reply" | "upvote";
   targetPostKarma: number;
@@ -156,13 +127,6 @@ export function trackEngagement(engagement: {
   }
 }
 
-// ============================================================================
-// ANALYSIS FUNCTIONS
-// ============================================================================
-
-/**
- * Analyze performance and update insights
- */
 export function analyzePerformance(): void {
   const now = Date.now();
 
@@ -260,13 +224,6 @@ export function analyzePerformance(): void {
   });
 }
 
-// ============================================================================
-// DECISION HELPERS
-// ============================================================================
-
-/**
- * Get the best submolt to post to right now
- */
 export function getBestSubmolt(options: string[]): string {
   analyzePerformance();
 
@@ -287,9 +244,6 @@ export function getBestSubmolt(options: string[]): string {
   return bestSubmolt;
 }
 
-/**
- * Check if now is a good time to post
- */
 export function isGoodTimeToPost(): { good: boolean; reason: string } {
   const hour = new Date().getHours();
   const weight = learningState.adaptiveConfig.preferredHours[hour] || 1.0;
@@ -306,16 +260,10 @@ export function isGoodTimeToPost(): { good: boolean; reason: string } {
   return { good: false, reason: `Hour ${hour} historically lower engagement` };
 }
 
-/**
- * Get weight for a post type (for prioritization)
- */
 export function getPostTypeWeight(type: string): number {
   return learningState.adaptiveConfig.preferredPostTypes[type] || 1.0;
 }
 
-/**
- * Should we cross-post to general?
- */
 export function shouldCrossPost(postType: string, priority: string): boolean {
   // Always consider cross-posting high priority
   if (priority === "high") {
@@ -332,13 +280,6 @@ export function shouldCrossPost(postType: string, priority: string): boolean {
   return Math.random() < 0.15; // 15% baseline
 }
 
-// ============================================================================
-// KARMA OPTIMIZATION STRATEGIES
-// ============================================================================
-
-/**
- * Get karma-optimized engagement strategy for this tick
- */
 export function getEngagementStrategy(): {
   focusOnReplies: boolean;
   focusOnTrending: boolean;
@@ -366,9 +307,6 @@ export function getEngagementStrategy(): {
   };
 }
 
-/**
- * Content tips based on learning
- */
 export function getContentTips(): string[] {
   const tips: string[] = [];
 
@@ -388,10 +326,6 @@ export function getContentTips(): string[] {
 
   return tips;
 }
-
-// ============================================================================
-// EXPORTS
-// ============================================================================
 
 export function getLearningState(): LearningState {
   return { ...learningState };

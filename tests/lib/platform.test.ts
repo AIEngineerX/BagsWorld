@@ -16,8 +16,6 @@ import {
   isMobile,
   isPhantomInstalled,
   shouldUseDeepLink,
-  getPhantomDeepLinkBase,
-  getCallbackScheme,
   buildCallbackUrl,
 } from "@/lib/platform";
 
@@ -235,18 +233,6 @@ describe("shouldUseDeepLink", () => {
   it("returns false when web (not native) and Phantom installed", () => {
     (window as unknown as Record<string, unknown>).solana = { isPhantom: true };
     expect(shouldUseDeepLink()).toBe(false);
-  });
-});
-
-describe("getPhantomDeepLinkBase", () => {
-  it("returns the correct Phantom universal link", () => {
-    expect(getPhantomDeepLinkBase()).toBe("https://phantom.app/ul/v1");
-  });
-});
-
-describe("getCallbackScheme", () => {
-  it("returns 'bagsworld'", () => {
-    expect(getCallbackScheme()).toBe("bagsworld");
   });
 });
 

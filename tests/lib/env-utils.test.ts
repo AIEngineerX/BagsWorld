@@ -13,10 +13,8 @@
 
 import {
   isProduction,
-  isDevelopment,
   getRequiredSecret,
   validateSecretStrength,
-  getEnvVar,
   getEnvList,
   isValidSolanaAddress,
   isValidMintAddress,
@@ -112,34 +110,6 @@ describe("env-utils", () => {
     it("returns false when NETLIFY is set to a value other than 'true'", () => {
       process.env.NETLIFY = "false";
       expect(isProduction()).toBe(false);
-    });
-  });
-
-  describe("isDevelopment", () => {
-    it("returns true when not on Netlify", () => {
-      expect(isDevelopment()).toBe(true);
-    });
-
-    it("returns true when NODE_ENV=production but NETLIFY is not set", () => {
-      process.env.NODE_ENV = "production";
-      expect(isDevelopment()).toBe(true);
-    });
-
-    it("returns false when NETLIFY=true", () => {
-      process.env.NETLIFY = "true";
-      expect(isDevelopment()).toBe(false);
-    });
-
-    it("returns false when NETLIFY_DATABASE_URL is set", () => {
-      process.env.NETLIFY_DATABASE_URL = "postgres://host/db";
-      expect(isDevelopment()).toBe(false);
-    });
-
-    it("is always the inverse of isProduction", () => {
-      expect(isDevelopment()).toBe(!isProduction());
-
-      process.env.NETLIFY = "true";
-      expect(isDevelopment()).toBe(!isProduction());
     });
   });
 
@@ -240,25 +210,6 @@ describe("env-utils", () => {
     });
   });
 
-  // =========================================================================
-  // getEnvVar
-  // =========================================================================
-
-  describe("getEnvVar", () => {
-    it("returns the env value when set", () => {
-      process.env.MY_VAR = "hello";
-      expect(getEnvVar("MY_VAR", "default")).toBe("hello");
-    });
-
-    it("returns the default value when env var is not set", () => {
-      expect(getEnvVar("MY_VAR", "default")).toBe("default");
-    });
-
-    it("returns the default value when env var is empty string", () => {
-      process.env.MY_VAR = "";
-      expect(getEnvVar("MY_VAR", "default")).toBe("default");
-    });
-  });
 
   // =========================================================================
   // getEnvList

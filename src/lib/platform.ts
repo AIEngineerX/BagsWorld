@@ -16,8 +16,7 @@ export function isAndroid(): boolean {
 }
 
 export function isMobile(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  return isIOS() || isAndroid();
 }
 
 export function isPhantomInstalled(): boolean {
@@ -34,16 +33,6 @@ export function shouldUseDeepLink(): boolean {
 
 export const PHANTOM_DEEP_LINK_BASE = "https://phantom.app/ul/v1";
 export const CALLBACK_SCHEME = "bagsworld";
-
-/** @deprecated Use PHANTOM_DEEP_LINK_BASE constant directly */
-export function getPhantomDeepLinkBase(): string {
-  return PHANTOM_DEEP_LINK_BASE;
-}
-
-/** @deprecated Use CALLBACK_SCHEME constant directly */
-export function getCallbackScheme(): string {
-  return CALLBACK_SCHEME;
-}
 
 export function buildCallbackUrl(path: string): string {
   return `${CALLBACK_SCHEME}://${path}`;

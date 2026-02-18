@@ -35,7 +35,6 @@ export function initAgentWallet(): Keypair | null {
   }
 
   try {
-    // Decode base58 private key
     const secretKey = bs58.decode(privateKey);
     agentKeypair = Keypair.fromSecretKey(secretKey);
     connection = new Connection(rpcUrl, "confirmed");
@@ -48,7 +47,6 @@ export function initAgentWallet(): Keypair | null {
   }
 }
 
-// Get the agent wallet (lazy init)
 export function getAgentWallet(): Keypair | null {
   if (!agentKeypair) {
     return initAgentWallet();
@@ -56,7 +54,6 @@ export function getAgentWallet(): Keypair | null {
   return agentKeypair;
 }
 
-// Get the connection
 export function getAgentConnection(): Connection {
   if (!connection) {
     const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana";
@@ -65,18 +62,15 @@ export function getAgentConnection(): Connection {
   return connection;
 }
 
-// Check if agent wallet is configured
 export function isAgentWalletConfigured(): boolean {
   return !!process.env.AGENT_WALLET_PRIVATE_KEY;
 }
 
-// Get agent wallet public key (without exposing private key)
 export function getAgentPublicKey(): string | null {
   const wallet = getAgentWallet();
   return wallet?.publicKey.toBase58() || null;
 }
 
-// Get agent wallet balance
 export async function getAgentBalance(): Promise<number> {
   const wallet = getAgentWallet();
   if (!wallet) return 0;
@@ -91,7 +85,6 @@ export async function getAgentBalance(): Promise<number> {
   }
 }
 
-// Get full wallet status
 export async function getAgentWalletStatus(): Promise<AgentWalletStatus> {
   const wallet = getAgentWallet();
   const balance = await getAgentBalance();
@@ -104,7 +97,6 @@ export async function getAgentWalletStatus(): Promise<AgentWalletStatus> {
   };
 }
 
-// Sign a legacy transaction
 export async function signTransaction(transaction: Transaction): Promise<Transaction> {
   const wallet = getAgentWallet();
   if (!wallet) {
@@ -113,13 +105,11 @@ export async function signTransaction(transaction: Transaction): Promise<Transac
 
   const conn = getAgentConnection();
 
-  // Get recent blockhash if not set
   if (!transaction.recentBlockhash) {
     const { blockhash } = await conn.getLatestBlockhash();
     transaction.recentBlockhash = blockhash;
   }
 
-  // Set fee payer if not set
   if (!transaction.feePayer) {
     transaction.feePayer = wallet.publicKey;
   }
@@ -128,7 +118,6 @@ export async function signTransaction(transaction: Transaction): Promise<Transac
   return transaction;
 }
 
-// Sign and send a legacy transaction
 export async function signAndSendTransaction(
   transaction: Transaction,
   options?: { skipPreflight?: boolean; maxRetries?: number }
@@ -140,21 +129,17 @@ export async function signAndSendTransaction(
 
   const conn = getAgentConnection();
 
-  // Get recent blockhash
   const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash();
   transaction.recentBlockhash = blockhash;
   transaction.feePayer = wallet.publicKey;
 
-  // Sign
   transaction.sign(wallet);
 
-  // Send
   const signature = await conn.sendRawTransaction(transaction.serialize(), {
     skipPreflight: options?.skipPreflight ?? false,
     maxRetries: options?.maxRetries ?? 3,
   });
 
-  // Confirm
   await conn.confirmTransaction({
     signature,
     blockhash,
@@ -164,7 +149,6 @@ export async function signAndSendTransaction(
   return signature;
 }
 
-// Sign and send from base64 encoded transaction
 export async function signAndSendBase64Transaction(
   txBase64: string,
   options?: { skipPreflight?: boolean; maxRetries?: number }
@@ -176,26 +160,21 @@ export async function signAndSendBase64Transaction(
 
   const conn = getAgentConnection();
 
-  // Decode transaction
   const txBuffer = Buffer.from(txBase64, "base64");
   const transaction = Transaction.from(txBuffer);
 
-  // Get fresh blockhash and update
   const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash();
   transaction.recentBlockhash = blockhash;
 
-  // Clear existing signatures and re-sign with agent wallet
   transaction.signatures = [];
   transaction.feePayer = wallet.publicKey;
   transaction.sign(wallet);
 
-  // Send
   const signature = await conn.sendRawTransaction(transaction.serialize(), {
     skipPreflight: options?.skipPreflight ?? false,
     maxRetries: options?.maxRetries ?? 3,
   });
 
-  // Confirm
   await conn.confirmTransaction({
     signature,
     blockhash,

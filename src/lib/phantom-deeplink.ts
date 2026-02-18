@@ -14,7 +14,7 @@
 
 import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
 import bs58 from "bs58";
-import { getPhantomDeepLinkBase, buildCallbackUrl } from "./platform";
+import { PHANTOM_DEEP_LINK_BASE, buildCallbackUrl } from "./platform";
 
 // -------------------------------------------------------------------
 // Types
@@ -73,7 +73,7 @@ export function connect(): Promise<PhantomConnectResult> {
       cluster: "mainnet-beta",
     });
 
-    const url = `${getPhantomDeepLinkBase()}/connect?${params.toString()}`;
+    const url = `${PHANTOM_DEEP_LINK_BASE}/connect?${params.toString()}`;
     window.open(url, "_system");
   });
 }
@@ -112,7 +112,7 @@ export function signAndSendTransaction(
       redirect_link: buildCallbackUrl("phantom/signAndSendTransaction"),
     });
 
-    const url = `${getPhantomDeepLinkBase()}/signAndSendTransaction?${params.toString()}`;
+    const url = `${PHANTOM_DEEP_LINK_BASE}/signAndSendTransaction?${params.toString()}`;
     window.open(url, "_system");
   });
 }
@@ -142,7 +142,7 @@ export function signTransaction(
       redirect_link: buildCallbackUrl("phantom/signTransaction"),
     });
 
-    const url = `${getPhantomDeepLinkBase()}/signTransaction?${params.toString()}`;
+    const url = `${PHANTOM_DEEP_LINK_BASE}/signTransaction?${params.toString()}`;
     window.open(url, "_system");
   });
 }
