@@ -19,16 +19,12 @@ export async function GET() {
     const directDbExists =
       envVars.DATABASE_URL || envVars.NEON_DATABASE_URL || envVars.POSTGRES_URL;
 
-    // Mask the URLs for security
     const netlifyDbPreview = process.env.NETLIFY_DATABASE_URL
       ? process.env.NETLIFY_DATABASE_URL.substring(0, 50) + "..."
       : "not set";
-    const directDbPreview =
-      process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL
-        ? (process.env.DATABASE_URL ||
-            process.env.NEON_DATABASE_URL ||
-            process.env.POSTGRES_URL)!.substring(0, 50) + "..."
-        : "not set";
+    const directUrl =
+      process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL;
+    const directDbPreview = directUrl ? directUrl.substring(0, 50) + "..." : "not set";
 
     if (!configured) {
       return NextResponse.json({

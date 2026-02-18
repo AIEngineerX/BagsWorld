@@ -14,10 +14,6 @@ import {
   getEmittedEventIds,
 } from "./neon";
 
-// ============================================================================
-// EVENT TYPES
-// ============================================================================
-
 export type AgentEventType =
   | "token_launch" // New token detected by Scout
   | "token_pump" // Significant price increase
@@ -174,20 +170,10 @@ async function initializeDatabase(): Promise<void> {
   return dbInitPromise;
 }
 
-// ============================================================================
-// CORE FUNCTIONS
-// ============================================================================
-
-/**
- * Generate a unique event ID
- */
 function generateEventId(): string {
   return `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
-/**
- * Start the coordinator
- */
 export function startCoordinator(): void {
   if (state.isRunning) return;
   state.isRunning = true;
@@ -207,9 +193,6 @@ export function startCoordinator(): void {
   }
 }
 
-/**
- * Stop the coordinator
- */
 export function stopCoordinator(): void {
   state.isRunning = false;
 
@@ -220,10 +203,7 @@ export function stopCoordinator(): void {
   }
 }
 
-/**
- * Emit an event to the coordinator
- * Returns null if event was deduplicated (already emitted)
- */
+// Returns null if deduplicated.
 export async function emitEvent(
   type: AgentEventType,
   source: AgentSource,
@@ -231,15 +211,12 @@ export async function emitEvent(
   priority: EventPriority = "medium",
   eventId?: string // Optional custom event ID for deduplication
 ): Promise<AgentEvent | null> {
-  // Use custom ID if provided, otherwise generate one
   const id = eventId || generateEventId();
 
-  // Check in-memory cache first (fast path)
   if (emittedEventIdsCache.has(id)) {
     return null; // Already emitted
   }
 
-  // Check database for duplicates (if configured and ID was provided)
   if (eventId && isNeonConfigured()) {
     const alreadyEmitted = await hasEventBeenEmitted(id);
     if (alreadyEmitted) {
@@ -261,13 +238,11 @@ export async function emitEvent(
   // Generate announcement text for the event
   event.announcement = generateAnnouncement(event);
 
-  // Add to in-memory cache
   emittedEventIdsCache.add(id);
 
-  // Limit cache size
   if (emittedEventIdsCache.size > 2000) {
-    const toRemove = Array.from(emittedEventIdsCache).slice(0, 1000);
-    toRemove.forEach((eventId) => emittedEventIdsCache.delete(eventId));
+    const iter = emittedEventIdsCache.keys();
+    for (let i = 0; i < 1000; i++) emittedEventIdsCache.delete(iter.next().value!);
   }
 
   // Record to database (fire and forget for performance)
@@ -283,19 +258,16 @@ export async function emitEvent(
     });
   }
 
-  // Add to queue
   state.eventQueue.push(event);
   if (state.eventQueue.length > MAX_QUEUE_SIZE) {
     state.eventQueue.shift();
   }
 
-  // Update stats
   state.stats.totalEvents++;
   state.stats.eventsByType[type] = (state.stats.eventsByType[type] || 0) + 1;
   state.stats.eventsBySource[source] = (state.stats.eventsBySource[source] || 0) + 1;
   state.stats.lastEventTime = Date.now();
 
-  // Process immediately if running
   if (state.isRunning) {
     await processEvent(event);
   }
@@ -303,19 +275,13 @@ export async function emitEvent(
   return event;
 }
 
-/**
- * Process a single event - notify all matching subscribers
- */
 async function processEvent(event: AgentEvent): Promise<void> {
   const matchingSubscriptions = state.subscriptions.filter((sub) => {
-    // Check type match
     const typeMatch = sub.types === "*" || sub.types.includes(event.type);
-    // Check priority match
     const priorityMatch = sub.priority.includes(event.priority);
     return typeMatch && priorityMatch;
   });
 
-  // Sort by priority (urgent handlers first)
   const priorityOrder: EventPriority[] = ["urgent", "high", "medium", "low"];
   matchingSubscriptions.sort((a, b) => {
     const aHighest = Math.min(...a.priority.map((p) => priorityOrder.indexOf(p)));
@@ -323,7 +289,6 @@ async function processEvent(event: AgentEvent): Promise<void> {
     return aHighest - bHighest;
   });
 
-  // Notify handlers
   for (const sub of matchingSubscriptions) {
     try {
       await sub.handler(event);
@@ -332,20 +297,15 @@ async function processEvent(event: AgentEvent): Promise<void> {
     }
   }
 
-  // Mark as processed
   event.processed = true;
   state.processedEvents.unshift(event);
   if (state.processedEvents.length > MAX_PROCESSED_EVENTS) {
     state.processedEvents = state.processedEvents.slice(0, MAX_PROCESSED_EVENTS);
   }
 
-  // Remove from queue
   state.eventQueue = state.eventQueue.filter((e) => e.id !== event.id);
 }
 
-/**
- * Subscribe to events
- */
 export function subscribe(
   types: AgentEventType[] | "*",
   handler: EventHandler,
@@ -360,19 +320,11 @@ export function subscribe(
 
   state.subscriptions.push(subscription);
 
-  // Return unsubscribe function
   return () => {
     state.subscriptions = state.subscriptions.filter((s) => s.id !== subscription.id);
   };
 }
 
-// ============================================================================
-// ANNOUNCEMENT GENERATION
-// ============================================================================
-
-/**
- * Generate human-readable announcement for an event
- */
 function generateAnnouncement(event: AgentEvent): string {
   switch (event.type) {
     case "token_launch": {
@@ -573,23 +525,11 @@ function generateAnnouncement(event: AgentEvent): string {
   }
 }
 
-// ============================================================================
-// CONVENIENCE EMITTERS
-// ============================================================================
-
-/**
- * Emit a token launch event (from Scout Agent)
- * Returns null if event was deduplicated
- */
 export async function emitTokenLaunch(launch: TokenLaunch): Promise<AgentEvent | null> {
   const priority: EventPriority = launch.platform === "bags" ? "high" : "medium";
   return emitEvent("token_launch", "scout", launch as unknown as Record<string, unknown>, priority);
 }
 
-/**
- * Emit a price pump event
- * Returns null if event was deduplicated
- */
 export async function emitPricePump(
   symbol: string,
   change: number,
@@ -600,10 +540,6 @@ export async function emitPricePump(
   return emitEvent("token_pump", "price-monitor", { symbol, change, price, mint }, priority);
 }
 
-/**
- * Emit a price dump event
- * Returns null if event was deduplicated
- */
 export async function emitPriceDump(
   symbol: string,
   change: number,
@@ -614,10 +550,6 @@ export async function emitPriceDump(
   return emitEvent("token_dump", "price-monitor", { symbol, change, price, mint }, priority);
 }
 
-/**
- * Emit a fee claim event
- * Returns null if event was deduplicated
- */
 export async function emitFeeClaim(
   username: string,
   amount: number,
@@ -628,10 +560,6 @@ export async function emitFeeClaim(
   return emitEvent("fee_claim", "world-state", { username, amount, tokenSymbol, mint }, priority);
 }
 
-/**
- * Emit a distribution event (from Creator Rewards Agent)
- * Returns null if event was deduplicated
- */
 export async function emitDistribution(result: DistributionResult): Promise<AgentEvent | null> {
   return emitEvent(
     "distribution",
@@ -641,10 +569,6 @@ export async function emitDistribution(result: DistributionResult): Promise<Agen
   );
 }
 
-/**
- * Emit a world health change event
- * Returns null if event was deduplicated
- */
 export async function emitWorldHealthChange(
   health: number,
   previousHealth: number,
@@ -660,10 +584,6 @@ export async function emitWorldHealthChange(
   );
 }
 
-/**
- * Emit an AI agent insight
- * Returns null if event was deduplicated
- */
 export async function emitAgentInsight(
   message: string,
   action?: AIAction
@@ -671,10 +591,6 @@ export async function emitAgentInsight(
   return emitEvent("agent_insight", "ai-agent", { message, action }, "low");
 }
 
-/**
- * Emit a whale alert
- * Returns null if event was deduplicated
- */
 export async function emitWhaleAlert(
   action: "buy" | "sell",
   amount: number,
@@ -690,9 +606,6 @@ export async function emitWhaleAlert(
   );
 }
 
-/**
- * Emit a task posted event (from Task Board)
- */
 export async function emitTaskPosted(
   posterName: string,
   title: string,
@@ -708,9 +621,6 @@ export async function emitTaskPosted(
   );
 }
 
-/**
- * Emit a task claimed event (from Task Board)
- */
 export async function emitTaskClaimed(
   claimerName: string,
   posterName: string,
@@ -725,9 +635,6 @@ export async function emitTaskClaimed(
   );
 }
 
-/**
- * Emit a task completed event (from Task Board)
- */
 export async function emitTaskCompleted(
   claimerName: string,
   posterName: string,
@@ -743,9 +650,6 @@ export async function emitTaskCompleted(
   );
 }
 
-/**
- * Emit an A2A message event
- */
 export async function emitA2AMessage(
   fromName: string,
   toName: string,
@@ -755,9 +659,6 @@ export async function emitA2AMessage(
   return emitEvent("a2a_message", "a2a", { fromName, toName, messageType, taskId }, "low");
 }
 
-/**
- * Emit a corp founded event
- */
 export async function emitCorpFounded(
   corpName: string,
   ceoName: string,
@@ -766,9 +667,6 @@ export async function emitCorpFounded(
   return emitEvent("corp_founded", "task-board", { corpName, ceoName, ticker }, "high");
 }
 
-/**
- * Emit a corp joined event
- */
 export async function emitCorpJoined(
   agentName: string,
   corpName: string
@@ -776,9 +674,6 @@ export async function emitCorpJoined(
   return emitEvent("corp_joined", "task-board", { agentName, corpName }, "medium");
 }
 
-/**
- * Emit a corp mission complete event
- */
 export async function emitCorpMissionComplete(
   corpName: string,
   missionTitle: string,
@@ -792,9 +687,6 @@ export async function emitCorpMissionComplete(
   );
 }
 
-/**
- * Emit a corp payroll event
- */
 export async function emitCorpPayroll(
   corpName: string,
   distributed: number,
@@ -803,9 +695,6 @@ export async function emitCorpPayroll(
   return emitEvent("corp_payroll", "task-board", { corpName, distributed, recipients }, "medium");
 }
 
-/**
- * Emit a corp service task event (posted or completed)
- */
 export async function emitCorpService(
   agentName: string,
   corpName: string,
@@ -821,20 +710,10 @@ export async function emitCorpService(
   );
 }
 
-// ============================================================================
-// STATE ACCESS
-// ============================================================================
-
-/**
- * Get coordinator state
- */
 export function getCoordinatorState(): CoordinatorState {
   return { ...state };
 }
 
-/**
- * Get recent events
- */
 export function getRecentEvents(count: number = 20, type?: AgentEventType): AgentEvent[] {
   let events = state.processedEvents;
   if (type) {
@@ -843,23 +722,14 @@ export function getRecentEvents(count: number = 20, type?: AgentEventType): Agen
   return events.slice(0, count);
 }
 
-/**
- * Get pending events in queue
- */
 export function getPendingEvents(): AgentEvent[] {
   return [...state.eventQueue];
 }
 
-/**
- * Get event statistics
- */
 export function getEventStats(): CoordinatorState["stats"] {
   return { ...state.stats };
 }
 
-/**
- * Reset coordinator state
- */
 export function resetCoordinator(): void {
   state = {
     isRunning: state.isRunning,
@@ -875,10 +745,6 @@ export function resetCoordinator(): void {
   };
 }
 
-// ============================================================================
-// BUILT-IN HANDLERS
-// ============================================================================
-
 // Browser event dispatcher - sends events to the game UI
 let browserEventTarget: EventTarget | null = null;
 
@@ -886,9 +752,6 @@ export function setBrowserEventTarget(target: EventTarget): void {
   browserEventTarget = target;
 }
 
-/**
- * Built-in handler that dispatches events to the browser
- */
 function browserDispatchHandler(event: AgentEvent): void {
   if (browserEventTarget && typeof CustomEvent !== "undefined") {
     browserEventTarget.dispatchEvent(
@@ -899,9 +762,6 @@ function browserDispatchHandler(event: AgentEvent): void {
   }
 }
 
-/**
- * Initialize built-in handlers
- */
 export function initBuiltInHandlers(): void {
   // Subscribe to all high/urgent events for browser dispatch
   subscribe("*", browserDispatchHandler, ["high", "urgent"]);

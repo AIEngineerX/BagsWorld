@@ -4,11 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import {
-  getMoltbookAutonomousStatus,
-  triggerPost,
-  isMoltbookAutonomousRunning,
-} from "@/lib/moltbook-autonomous";
+import { getMoltbookAutonomousStatus, triggerPost } from "@/lib/moltbook-autonomous";
 import { getMoltbookOrNull } from "@/lib/moltbook-client";
 import { getMonitorStatus as getArenaMonitorStatus } from "@/lib/arena-moltbook-monitor";
 
@@ -62,7 +58,7 @@ export async function GET() {
       },
       moltbook: {
         configured: moltbookClient !== null,
-        serviceRunning: isMoltbookAutonomousRunning(),
+        serviceRunning: getMoltbookAutonomousStatus().isRunning,
         ...moltbookStatus,
       },
       arena: {

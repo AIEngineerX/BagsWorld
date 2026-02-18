@@ -1,14 +1,11 @@
 /**
- * ChadGhost Brain - MoltBook Alpha-Posting Agent
- * Decision-making and scheduling for ChadGhost's alpha posting
- * Runs on: Mac mini (separate from GhostTrader on Railway)
- * NOT related to GhostTrader (ElizaOS autonomous trading agent)
+ * ChadGhost Brain - Decision-making and scheduling for alpha posting.
+ * NOT related to GhostTrader (ElizaOS autonomous trading agent).
  *
  * ChadGhost is the alpha KOL for BagsWorld:
  * - Posts crypto alpha (launches, whale moves, volume spikes)
  * - Uses templates for alerts, AI for takes (saves tokens)
  * - Engages with the community
- * - Helps onboard new agents to Pokécenter
  */
 
 import { getChadGhostMoltbookOrNull, type MoltbookPost } from "./moltbook-client";

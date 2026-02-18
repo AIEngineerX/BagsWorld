@@ -19,7 +19,7 @@
 // Follow @DaddyGhost on X for updates
 // =============================================================================
 
-import { isProduction, isDevelopment } from "./env-utils";
+import { isProduction } from "./env-utils";
 
 /**
  * Get admin wallets from environment.
@@ -53,7 +53,7 @@ function getAdminWallets(): string[] {
   }
 
   // Development fallback with clear warning
-  if (isDevelopment()) {
+  if (!isProduction()) {
     console.warn(
       "[Config] Using development admin wallet fallback - NOT FOR PRODUCTION. " +
         "Set ADMIN_WALLETS environment variable for production."

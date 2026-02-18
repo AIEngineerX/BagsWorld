@@ -806,8 +806,8 @@ export function EncounterOverlay({ creature, onClose }: EncounterOverlayProps) {
   // Stable intro shake offset (not recalculated on re-renders)
   const shakeOffset = useMemo(
     () => ({ x: (Math.random() - 0.5) * 2, y: Math.random() - 0.5 }),
-    [introShake]
-  ); // eslint-disable-line react-hooks/exhaustive-deps
+    [introShake] // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   return (
     <div

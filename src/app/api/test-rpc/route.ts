@@ -1,10 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 /**
  * Test endpoint to verify Helius RPC connectivity
+ * Requires AGENT_SECRET auth header to prevent unauthenticated probing.
  * GET - basic health check
  * POST - test sendTransaction capability (with dummy tx that will fail but shows auth works)
  */
+
+function isAuthorized(req: NextRequest): boolean {
+  const secret = process.env.AGENT_SECRET;
+  if (!secret) return false;
+  const auth = req.headers.get("authorization");
+  return auth === `Bearer ${secret}`;
+}
 
 async function testRpcMethod(rpcUrl: string, method: string, params: unknown[] = []) {
   const response = await fetch(rpcUrl, {
@@ -22,7 +30,11 @@ async function testRpcMethod(rpcUrl: string, method: string, params: unknown[] =
   return { status: response.status, ok: response.ok, body: text };
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  if (!isAuthorized(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const rpcUrl = process.env.SOLANA_RPC_URL;
 
   if (!rpcUrl) {
@@ -101,7 +113,11 @@ export async function GET() {
 }
 
 // POST - Test multiple RPC methods including sendTransaction auth
-export async function POST() {
+export async function POST(req: NextRequest) {
+  if (!isAuthorized(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const rpcUrl = process.env.SOLANA_RPC_URL;
 
   if (!rpcUrl) {
