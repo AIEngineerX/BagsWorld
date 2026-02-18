@@ -796,7 +796,7 @@ export class BagsApiService extends Service {
       restrictIntermediateTokens: "true", // More stable routes
     });
 
-    const response = await fetch(`https://quote-api.jup.ag/v6/quote?${params}`, {
+    const response = await fetch(`https://lite-api.jup.ag/swap/v1/quote?${params}`, {
       headers: { Accept: "application/json" },
     });
 
@@ -883,7 +883,7 @@ export class BagsApiService extends Service {
       throw new Error("Invalid quote - missing Jupiter quote data");
     }
 
-    const response = await fetch("https://quote-api.jup.ag/v6/swap", {
+    const response = await fetch("https://lite-api.jup.ag/swap/v1/swap", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -892,8 +892,7 @@ export class BagsApiService extends Service {
       body: JSON.stringify({
         quoteResponse: jupiterQuote,
         userPublicKey,
-        dynamicComputeUnitLimit: true, // Let Jupiter calculate optimal compute
-        prioritizationFeeLamports: "auto", // Auto priority fee
+        wrapAndUnwrapSol: true,
       }),
     });
 
