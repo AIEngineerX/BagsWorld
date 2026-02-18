@@ -203,6 +203,7 @@ export interface TradeEvaluation {
   redFlags: string[];
   shouldBuy: boolean;
   suggestedAmount: number;
+  shortRetry?: boolean;
   metrics: {
     marketCapUsd: number;
     liquidityUsd: number;
@@ -624,10 +625,14 @@ export class GhostTrader {
         tiersSold: row.tiers_sold || 0,
       };
       this.positions.set(position.id, position);
-      this.tradedMints.add(position.tokenMint);
-
-      if (position.status === "open") openCount++;
-      else if (position.status === "closed") closedCount++;
+      // Only block re-evaluation for open positions.
+      // Failed/closed positions let the mint be retried after restart.
+      if (position.status === "open") {
+        this.tradedMints.add(position.tokenMint);
+        openCount++;
+      } else if (position.status === "closed") {
+        closedCount++;
+      }
     }
 
     console.log(
@@ -1034,7 +1039,9 @@ export class GhostTrader {
       }
 
       const evaluation = await this.evaluateLaunch(launch);
-      this.markAsEvaluated(launch.mint);
+      // Use a short 30s retry window for young tokens with no DexScreener data yet
+      const ttlMs = evaluation.shortRetry ? 30_000 : undefined;
+      this.markAsEvaluated(launch.mint, ttlMs);
       evaluatedCount++;
 
       if (evaluation.shouldBuy) {
@@ -1196,14 +1203,18 @@ export class GhostTrader {
       const currentMultiplier = currentPriceSol / position.entryPriceSol;
       const priceChangePercent = (currentMultiplier - 1) * 100;
 
-      // Track highest multiplier for trailing stop (persisted to DB)
-      if (currentMultiplier > position.peakMultiplier) {
+      // Calculate hold time
+      const holdTimeMinutes = (Date.now() - position.createdAt.getTime()) / 60000;
+
+      // Track highest multiplier for trailing stop (persisted to DB).
+      // Skip the first 5 minutes: own buy-impact on thin bonding curves temporarily
+      // inflates the spot price, causing a fake peakMultiplier that can trip the
+      // trailing stop when the price naturally reverts.
+      const hasSettled = holdTimeMinutes >= 5;
+      if (hasSettled && currentMultiplier > position.peakMultiplier) {
         position.peakMultiplier = currentMultiplier;
         await this.updatePositionInDatabase(position);
       }
-
-      // Calculate hold time
-      const holdTimeMinutes = (Date.now() - position.createdAt.getTime()) / 60000;
 
       // === COMPOUND STOP LOSS (BagBot pattern) ===
       // BagBot requires BOTH conditions: price drop AND active sell pressure.
@@ -1216,10 +1227,13 @@ export class GhostTrader {
       // creating zombie positions that occupy slots indefinitely.
       const stopLossHit = priceChangePercent <= -this.config.stopLossPercent;
       const sellPressureConfirmed = buySellRatioM5 < 0.5;
-      if (stopLossHit && (sellPressureConfirmed || noM5Activity)) {
+      // noM5Activity stop requires 30-minute settle time: own buy-impact on thin
+      // bonding curves can cause brief quiet windows in the first 30 min.
+      const isSettled = holdTimeMinutes >= 30;
+      if (stopLossHit && (sellPressureConfirmed || (noM5Activity && isSettled))) {
         const stopReason = sellPressureConfirmed
           ? `m5 buy/sell: ${buySellRatioM5.toFixed(2)}`
-          : `no m5 activity (token gone quiet)`;
+          : `no m5 activity after ${holdTimeMinutes.toFixed(0)}min`;
         console.log(
           `[GhostTrader] Compound stop loss triggered for ${position.tokenSymbol} ` +
             `(price: ${priceChangePercent.toFixed(1)}%, ${stopReason})`
@@ -1453,9 +1467,10 @@ export class GhostTrader {
 
     // Check minimum liquidity (BagBot: $50K, we use $5K for Bags tokens)
     if (liquidityUsd < this.config.minLiquidityUsd) {
-      return reject(
-        `low liquidity ($${liquidityUsd.toFixed(0)} < $${this.config.minLiquidityUsd})`
-      );
+      // Young tokens (< 15 min) may not be indexed by DexScreener yet — retry soon
+      const isUnhydrated = liquidityUsd === 0 && ageSeconds < 900;
+      const result = reject(`low liquidity ($${liquidityUsd.toFixed(0)} < $${this.config.minLiquidityUsd})`);
+      return isUnhydrated ? { ...result, shortRetry: true } : result;
     }
 
     // Check minimum market cap
@@ -1465,7 +1480,10 @@ export class GhostTrader {
 
     // Check minimum volume (KEY FILTER for Bags runners - they have MASSIVE volume)
     if (volume24hUsd < this.config.minVolume24hUsd) {
-      return reject(`low volume ($${volume24hUsd.toFixed(0)} < $${this.config.minVolume24hUsd})`);
+      // Young tokens (< 15 min) may not be indexed by DexScreener yet — retry soon
+      const isUnhydrated = volume24hUsd === 0 && ageSeconds < 900;
+      const result = reject(`low volume ($${volume24hUsd.toFixed(0)} < $${this.config.minVolume24hUsd})`);
+      return isUnhydrated ? { ...result, shortRetry: true } : result;
     }
 
     // === VOLUME/MCAP RATIO ===
@@ -1788,22 +1806,24 @@ export class GhostTrader {
     }
 
     // === FINAL DECISION ===
-    // Threshold: 65+ to trade (raised from 55 — fewer but higher-quality entries)
+    // Threshold: 55+ to trade — tuned for Bags.fm micro-caps where signals are weaker
     // Max base score: ~100 (vol/mcap 25 + buy/sell 25 + momentum 20 + liq 15 + age 15)
     // + bonuses: holders 5 + bags fees 18 + smart money 30 + learning adjustment
-    const shouldBuy = score >= 65 && redFlags.length === 0;
+    const shouldBuy = score >= 55 && redFlags.length === 0;
 
     // Calculate position size based on score (larger for higher conviction)
     const remainingExposure = this.config.maxTotalExposureSol - this.getTotalExposure();
     let suggestedAmount: number;
 
-    // Position sizing based on score (65+ range, since shouldBuy requires >= 65)
-    if (score >= 95) {
+    // Position sizing based on score (55+ range, since shouldBuy requires >= 55)
+    if (score >= 90) {
       suggestedAmount = this.config.maxPositionSol; // Max conviction
-    } else if (score >= 80) {
+    } else if (score >= 75) {
       suggestedAmount = this.config.maxPositionSol * 0.75; // High conviction
+    } else if (score >= 65) {
+      suggestedAmount = (this.config.minPositionSol + this.config.maxPositionSol) / 2; // Medium
     } else {
-      suggestedAmount = (this.config.minPositionSol + this.config.maxPositionSol) / 2; // Medium (65-79)
+      suggestedAmount = this.config.minPositionSol; // Minimum size for 55-64 range
     }
 
     suggestedAmount = Math.min(suggestedAmount, remainingExposure);
@@ -2748,18 +2768,19 @@ export class GhostTrader {
   }
 
   private wasRecentlyEvaluated(mint: string): boolean {
-    const lastEval = this.recentlyEvaluated.get(mint);
-    if (!lastEval) return false;
-    return Date.now() - lastEval < GhostTrader.EVALUATION_COOLDOWN_MS;
+    const expiry = this.recentlyEvaluated.get(mint);
+    if (!expiry) return false;
+    return Date.now() < expiry;
   }
 
-  private markAsEvaluated(mint: string): void {
-    this.recentlyEvaluated.set(mint, Date.now());
+  private markAsEvaluated(mint: string, ttlMs?: number): void {
+    const expiry = Date.now() + (ttlMs ?? GhostTrader.EVALUATION_COOLDOWN_MS);
+    this.recentlyEvaluated.set(mint, expiry);
 
-    // Cleanup old entries
-    const cutoff = Date.now() - GhostTrader.EVALUATION_COOLDOWN_MS;
-    for (const [key, time] of this.recentlyEvaluated) {
-      if (time < cutoff) {
+    // Cleanup expired entries
+    const now = Date.now();
+    for (const [key, exp] of this.recentlyEvaluated) {
+      if (now > exp) {
         this.recentlyEvaluated.delete(key);
       }
     }

@@ -316,11 +316,13 @@ export class AutonomousService extends Service {
       },
     });
 
-    // Ghost: Check positions for take-profit/stop-loss every 5 minutes
+    // Ghost: Check positions for take-profit/stop-loss every 60 seconds
+    // Fast-moving micro-caps can move significantly in 5 minutes; 1-minute checks
+    // reduce slippage between stop-loss trigger price and actual close price.
     this.registerTask({
       name: "ghost_position_check",
       agentId: "ghost",
-      interval: 5 * 60 * 1000,
+      interval: 60 * 1000,
       handler: async () => {
         await this.checkGhostPositions();
       },
