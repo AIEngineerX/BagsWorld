@@ -248,7 +248,7 @@ export class ElizaApiClient {
   }
 
   async getGhostStatus(): Promise<{ success: boolean } & GhostTradingStatus> {
-    return this.fetch("/api/ghost/status");
+    return this.fetchProxy("/api/ghost/status");
   }
 
   async getGhostPositions(): Promise<{
@@ -256,7 +256,7 @@ export class ElizaApiClient {
     count: number;
     positions: GhostPosition[];
   }> {
-    return this.fetch("/api/ghost/positions");
+    return this.fetchProxy("/api/ghost/positions");
   }
 
   async getGhostOpenPositions(): Promise<{
@@ -265,7 +265,7 @@ export class ElizaApiClient {
     totalExposureSol: number;
     positions: GhostPosition[];
   }> {
-    return this.fetch("/api/ghost/positions/open");
+    return this.fetchProxy("/api/ghost/positions/open");
   }
 
   async enableGhostTrading(confirmPhrase: string): Promise<{
