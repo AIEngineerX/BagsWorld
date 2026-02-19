@@ -229,6 +229,12 @@ export class BagsApiService extends Service {
   private bagsWorldUrl: string;
   /** When true, API errors are thrown instead of returning null/empty arrays */
   private throwOnError: boolean;
+  /** Timestamp of last API request — enforces minimum gap between calls */
+  private lastRequestTime = 0;
+  /** Minimum ms between API requests to avoid rate limiting */
+  private static readonly MIN_REQUEST_GAP_MS = 1000;
+  /** When true, skip API calls and return null/empty — set on repeated rate limits */
+  private rateLimitedUntil = 0;
 
   // BagsWorld partner config for fee sharing
   static readonly PARTNER_CONFIG_PDA = "5TcACd9yCLEBewdRrhk9hb6A22oS2gFLzG7oH5YCq1Po";
@@ -294,6 +300,20 @@ export class BagsApiService extends Service {
     const cached = getCached<T>(cacheKey);
     if (cached && !options?.method) return cached;
 
+    // Global rate limit cooldown — skip API calls entirely when rate limited
+    if (retryCount === 0 && this.rateLimitedUntil > Date.now()) {
+      throw new Error("Rate limit exceeded — global cooldown active");
+    }
+
+    // Enforce minimum gap between requests (global throttle)
+    if (retryCount === 0) {
+      const elapsed = Date.now() - this.lastRequestTime;
+      if (elapsed < BagsApiService.MIN_REQUEST_GAP_MS) {
+        await new Promise((r) => setTimeout(r, BagsApiService.MIN_REQUEST_GAP_MS - elapsed));
+      }
+      this.lastRequestTime = Date.now();
+    }
+
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
@@ -304,7 +324,7 @@ export class BagsApiService extends Service {
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
-    const maxRetries = 3;
+    const maxRetries = 2;
 
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
@@ -328,10 +348,16 @@ export class BagsApiService extends Service {
 
         // Handle 429 rate limit with exponential backoff
         if (response.status === 429 && retryCount < maxRetries) {
-          const delay = Math.pow(2, retryCount) * 3000; // 3s, 6s, 12s
+          const delay = Math.pow(2, retryCount) * 3000; // 3s, 6s
           console.warn(`[BagsApi] Rate limited on ${endpoint}, backing off ${delay / 1000}s (retry ${retryCount + 1}/${maxRetries})`);
           await new Promise((resolve) => setTimeout(resolve, delay));
           return this.fetch<T>(endpoint, options, retryCount + 1);
+        }
+
+        // All retries exhausted on 429 — activate global cooldown (60s)
+        if (response.status === 429) {
+          this.rateLimitedUntil = Date.now() + 60_000;
+          console.warn(`[BagsApi] Rate limit retries exhausted — global cooldown for 60s`);
         }
 
         // Handle 500 errors with retry
