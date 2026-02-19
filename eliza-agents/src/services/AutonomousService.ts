@@ -1011,6 +1011,11 @@ export class AutonomousService extends Service {
       }
     } catch (error) {
       console.error("[AutonomousService] Ghost trade evaluation failed:", error);
+      // Re-throw rate limit errors so tick() applies backoff
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.includes("Rate limit") || msg.includes("429")) {
+        throw error;
+      }
     }
   }
 

@@ -326,6 +326,14 @@ export class BagsApiService extends Service {
           // Not JSON, use raw text
         }
 
+        // Handle 429 rate limit with exponential backoff
+        if (response.status === 429 && retryCount < maxRetries) {
+          const delay = Math.pow(2, retryCount) * 3000; // 3s, 6s, 12s
+          console.warn(`[BagsApi] Rate limited on ${endpoint}, backing off ${delay / 1000}s (retry ${retryCount + 1}/${maxRetries})`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          return this.fetch<T>(endpoint, options, retryCount + 1);
+        }
+
         // Handle 500 errors with retry
         if (response.status >= 500 && retryCount < maxRetries) {
           const delay = Math.pow(2, retryCount) * 1000;
