@@ -107,10 +107,31 @@ export function GhostTradingMini() {
     .sort((a: any, b: any) => new Date(b.closedAt).getTime() - new Date(a.closedAt).getTime())
     .slice(0, 5);
 
+  const { isError } = { isError: !isLoading && !status };
+
   if (isLoading) {
     return (
       <div className="p-3 bg-purple-500/5 border-b border-purple-500/20 animate-pulse">
         <div className="h-16 bg-purple-500/10 rounded" />
+      </div>
+    );
+  }
+
+  if (isError || status?.success === false) {
+    return (
+      <div className="p-3 bg-purple-500/8 border-b-2 border-purple-500/30">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-gray-500" />
+            <span className="font-pixel text-[11px] font-bold tracking-wide text-gray-400">
+              TRADING OFFLINE
+            </span>
+          </div>
+          <span className="font-pixel text-[8px] text-gray-500">agent server unreachable</span>
+        </div>
+        <p className="font-pixel text-[8px] text-purple-400/60 text-center mt-2">
+          ask me about my trades or strategy
+        </p>
       </div>
     );
   }

@@ -14,7 +14,14 @@ export async function GET(request: NextRequest) {
   }
 
   // Whitelist allowed endpoints
-  const allowed = ["/health", "/api/coordination/statuses", "/api/coordination/shared-context"];
+  const allowed = [
+    "/health",
+    "/api/coordination/statuses",
+    "/api/coordination/shared-context",
+    "/api/ghost/status",
+    "/api/ghost/positions",
+    "/api/ghost/positions/open",
+  ];
   if (!allowed.includes(endpoint)) {
     return NextResponse.json({ error: "Endpoint not allowed" }, { status: 403 });
   }
@@ -41,6 +48,28 @@ export async function GET(request: NextRequest) {
     }
     if (endpoint === "/api/coordination/statuses") {
       return NextResponse.json({ success: false, agents: [], count: 0, online: 0 });
+    }
+    if (endpoint === "/api/ghost/status") {
+      return NextResponse.json({
+        success: false,
+        trading: {
+          enabled: false,
+          openPositions: 0,
+          totalExposureSol: 0,
+          maxExposureSol: 1,
+          maxPositions: 3,
+        },
+        performance: {
+          totalTrades: 0,
+          winningTrades: 0,
+          losingTrades: 0,
+          totalPnlSol: 0,
+          winRate: "0",
+        },
+      });
+    }
+    if (endpoint === "/api/ghost/positions" || endpoint === "/api/ghost/positions/open") {
+      return NextResponse.json({ success: false, count: 0, totalExposureSol: 0, positions: [] });
     }
     return NextResponse.json({ error: "Agent server unreachable" }, { status: 503 });
   }
