@@ -1031,14 +1031,24 @@ export class GhostTrader {
       if (this.tradedMints.has(launch.mint)) continue;
       if (this.wasRecentlyEvaluated(launch.mint)) continue;
 
-      // Stagger RPC calls: 500ms between evaluations to avoid bursting
-      // the Helius rate limit (each evaluation fires 2+ RPC calls for
-      // concentration checks, plus API calls for token info)
+      // Stagger RPC calls: 1.5s between evaluations to avoid bursting
+      // the Bags API and Helius rate limits
       if (evaluatedCount > 0) {
-        await new Promise((r) => setTimeout(r, 500));
+        await new Promise((r) => setTimeout(r, 1500));
       }
 
-      const evaluation = await this.evaluateLaunch(launch);
+      let evaluation: TradeEvaluation;
+      try {
+        evaluation = await this.evaluateLaunch(launch);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes("Rate limit") || msg.includes("429")) {
+          console.warn(`[GhostTrader] Rate limited during evaluation, stopping batch early (${evaluatedCount} evaluated)`);
+          break;
+        }
+        console.error(`[GhostTrader] Failed to evaluate ${launch.symbol || launch.mint}: ${msg}`);
+        continue;
+      }
       // Use a short 30s retry window for young tokens with no DexScreener data yet
       const ttlMs = evaluation.shortRetry ? 30_000 : undefined;
       this.markAsEvaluated(launch.mint, ttlMs);
