@@ -792,8 +792,25 @@ export class AutonomousService extends Service {
       const launches = await this.bagsApi.getRecentLaunches(20);
       let anomaliesDetected = 0;
 
-      for (const launch of launches) {
-        const token = await this.bagsApi.getToken(launch.mint);
+      for (let i = 0; i < launches.length; i++) {
+        const launch = launches[i];
+
+        // Stagger API calls to avoid rate limiting
+        if (i > 0) {
+          await new Promise((r) => setTimeout(r, 2000));
+        }
+
+        let token: Awaited<ReturnType<typeof this.bagsApi.getToken>>;
+        try {
+          token = await this.bagsApi.getToken(launch.mint);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          if (msg.includes("Rate limit") || msg.includes("429") || msg.includes("cooldown")) {
+            console.warn(`[AutonomousService] Anomaly scan rate limited, stopping early (${i}/${launches.length})`);
+            throw err; // Re-throw so tick() applies backoff
+          }
+          continue;
+        }
         if (!token) continue;
 
         const currentMC = token.marketCap || 0;
@@ -874,6 +891,11 @@ export class AutonomousService extends Service {
       }
     } catch (error) {
       console.error("[AutonomousService] Anomaly detection failed:", error);
+      // Re-throw rate limit errors so tick() applies backoff
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.includes("Rate limit") || msg.includes("429") || msg.includes("cooldown")) {
+        throw error;
+      }
     }
   }
 
