@@ -27,7 +27,5 @@ export { generateArenaSprites } from "./arena-sprites";
 export { generateFoundersAssets } from "./founders-assets";
 export { generateLabsAssets } from "./labs-assets";
 export { generateMoltbookAssets } from "./moltbook-assets";
-export { generateDungeonAssets } from "./dungeon-assets";
 export { generateAscensionAssets } from "./ascension-assets";
-export { generateDisclosureAssets } from "./disclosure-assets";
 export { exportAgentSprites } from "./sprite-export";

@@ -18,9 +18,7 @@ import {
   generateFoundersAssets,
   generateLabsAssets,
   generateMoltbookAssets,
-  generateDungeonAssets,
   generateAscensionAssets,
-  generateDisclosureAssets,
   generateArenaSprites,
   exportAgentSprites,
 } from "../textures";
@@ -149,14 +147,8 @@ export class BootScene extends Phaser.Scene {
     // Generate Moltbook Beach zone assets (tropical beach for AI agents)
     generateMoltbookAssets(this);
 
-    // Generate BagsDungeon zone assets (dark cave dungeon MMORPG entrance)
-    generateDungeonAssets(this);
-
     // Generate Ascension zone assets (cloud platforms, hall, shrine, crystals)
     generateAscensionAssets(this);
-
-    // Generate Disclosure Site zone assets (alien crash site, military, alien tech)
-    generateDisclosureAssets(this);
 
     // Generate Arena combat sprites
     generateArenaSprites(this);

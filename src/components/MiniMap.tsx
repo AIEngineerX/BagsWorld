@@ -67,13 +67,6 @@ const ZONE_THEME: Record<
     glow: "shadow-red-400/30",
     label: "ARENA",
   },
-  dungeon: {
-    accent: "text-purple-400",
-    bg: "bg-purple-400/15",
-    border: "border-purple-400/60",
-    glow: "shadow-purple-400/30",
-    label: "DUNGEON",
-  },
   ascension: {
     accent: "text-cyan-400",
     bg: "bg-cyan-400/15",
@@ -81,20 +74,13 @@ const ZONE_THEME: Record<
     glow: "shadow-cyan-400/30",
     label: "SPIRE",
   },
-  disclosure: {
-    accent: "#00ffd4",
-    bg: "rgba(0, 255, 212, 0.1)",
-    border: "rgba(0, 255, 212, 0.3)",
-    glow: "0 0 20px rgba(0, 255, 212, 0.2)",
-    label: "Disclosure Site",
-  },
 };
 
 // Map grid layout — rows of zone IDs matching a spatial map
 const MAP_ROWS: ZoneType[][] = [
   ["labs", "moltbook", "arena"],
   ["main_city", "trending", "ballers"],
-  ["founders", "dungeon", "ascension"],
+  ["founders", "ascension"],
 ];
 
 // Locations per zone
@@ -137,7 +123,6 @@ const LOCATIONS: Record<
     { id: "ring", name: "Fighting Ring", desc: "Watch Battles", event: null },
     { id: "queue", name: "Queue Status", desc: "Join the Fight", event: null },
   ],
-  dungeon: [{ id: "entrance", name: "Dungeon Gate", desc: "Enter MMORPG", event: null }],
   ascension: [
     {
       id: "hall",
