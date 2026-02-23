@@ -69,11 +69,11 @@ const ZONE_CLUSTERS: ZoneCluster[] = [
     features: ["Top Holder Mansions", "VIP Lounge"],
   },
   {
-    name: "Arena+Dungeon",
+    name: "Arena",
     x: 3350,
     scrollX: 2950,
     color: 0xef4444,
-    features: ["AI Combat Arena", "MMORPG Dungeon"],
+    features: ["AI Combat Arena"],
   },
 ];
 
@@ -205,7 +205,7 @@ const BUILDINGS: BuildingDef[] = [
     scale: 1.0,
     labelColor: 0xeab308,
   },
-  // Arena+Dungeon cluster
+  // Arena cluster
   {
     texture: "arena_building",
     label: "COMBAT",
@@ -213,17 +213,6 @@ const BUILDINGS: BuildingDef[] = [
     x: 3280,
     scale: 1.0,
     labelColor: 0xef4444,
-  },
-  {
-    texture: "dungeon_entrance",
-    label: "DUNGEON",
-    route: "/?zone=dungeon",
-    x: 3430,
-    scale: 1.0,
-    labelColor: 0xa855f7,
-    fallbackColor: 0x2a1a3a,
-    fallbackW: 60,
-    fallbackH: 85,
   },
 ];
 
@@ -323,7 +312,7 @@ const AGENTS: AgentDef[] = [
     texture: "carlo",
     name: "Carlo",
     fromBuilding: buildingIndex("arena_building"),
-    toBuilding: buildingIndex("dungeon_entrance"),
+    toBuilding: buildingIndex("mansion_1"),
     duration: 6200,
   },
 ];
@@ -579,10 +568,6 @@ export class EcosystemScene extends Phaser.Scene {
     this.placePropIfExists("topiary", 2750, GROUND_Y + 3, 0.9, 3);
     this.placePropIfExists("topiary", 2950, GROUND_Y + 3, 0.9, 3);
 
-    // Arena+Dungeon: torches
-    this.placePropIfExists("dungeon_torch", 3310, GROUND_Y - 5, 0.9, 4);
-    this.placePropIfExists("dungeon_torch", 3460, GROUND_Y - 5, 0.9, 4);
-
     // Generate simple inline props for zones that likely have no texture
     this.generateSimpleProps(rand);
   }
@@ -628,17 +613,6 @@ export class EcosystemScene extends Phaser.Scene {
       g.fillRect(2846, GROUND_Y - 12, 8, 14);
     }
 
-    // Dungeon torches (if no texture)
-    if (!this.textures.exists("dungeon_torch")) {
-      for (const tx of [3310, 3460]) {
-        g.fillStyle(0x8b6914, 0.8);
-        g.fillRect(tx - 2, GROUND_Y - 18, 4, 20);
-        g.fillStyle(0xef4444, 0.7);
-        g.fillCircle(tx, GROUND_Y - 22, 5);
-        g.fillStyle(0xfbbf24, 0.5);
-        g.fillCircle(tx, GROUND_Y - 24, 3);
-      }
-    }
   }
 
   // ===== Buildings =====

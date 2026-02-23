@@ -31,9 +31,7 @@ const ZONE_GRADIENT_COLORS: Record<ZoneType, string> = {
   ballers: "#eab308",
   founders: "#f59e0b",
   arena: "#ef4444",
-  dungeon: "#a855f7",
   ascension: "#06b6d4",
-  disclosure: "#00ffd4",
 };
 
 const ZONE_NAME_TO_ID: Record<string, ZoneType> = {
@@ -121,7 +119,6 @@ const FEATURES: FeatureItem[] = [
     description: "Claim your creator fee earnings",
     zone: "main_city",
   },
-  { name: "BagsDungeon", icon: "[X]", description: "MMORPG adventure zone", zone: "dungeon" },
 ];
 
 // ============================================================================

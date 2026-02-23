@@ -12,10 +12,9 @@ export const MAIN_ZONES: ZoneType[] = [
   "ballers",
   "founders",
   "arena",
-  "disclosure",
 ];
 
-export const ZONE_ORDER: ZoneType[] = ["ascension", ...MAIN_ZONES, "dungeon"];
+export const ZONE_ORDER: ZoneType[] = ["ascension", ...MAIN_ZONES];
 
 const ZONE_SHORT_LABELS: Record<ZoneType, string> = {
   labs: "HQ",
@@ -25,9 +24,7 @@ const ZONE_SHORT_LABELS: Record<ZoneType, string> = {
   ballers: "BAL",
   founders: "LCH",
   arena: "ARENA",
-  dungeon: "DNGN",
   ascension: "SPIRE",
-  disclosure: "A51",
 };
 
 // Inactive color accents per zone (border / text / hover)
@@ -38,8 +35,6 @@ const ZONE_COLORS: Partial<Record<ZoneType, string>> = {
   ballers: "border-yellow-500/50 text-yellow-400 hover:border-yellow-400",
   founders: "border-amber-500/50 text-amber-400 hover:border-amber-400",
   arena: "border-red-500/50 text-red-400 hover:border-red-400",
-  disclosure: "border-teal-500/50 text-teal-400 hover:border-teal-400",
-  dungeon: "border-purple-500/50 text-purple-400 hover:border-purple-400",
   ascension: "border-cyan-500/50 text-cyan-400 hover:border-cyan-400",
 };
 
@@ -50,14 +45,8 @@ const BTN_ACTIVE =
 const BTN_INACTIVE =
   "bg-black/75 backdrop-blur-sm hover:bg-white/5 border-gray-600 text-gray-400 hover:text-bags-green hover:border-bags-green/50";
 
-const DUNGEON_ACTIVE =
-  "bg-purple-600 text-white border-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.6),inset_0_1px_0_rgba(255,255,255,0.2)]";
-
 const ASCENSION_ACTIVE =
   "bg-cyan-600 text-white border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.6),inset_0_1px_0_rgba(255,255,255,0.2)]";
-
-const DISCLOSURE_ACTIVE =
-  "bg-teal-600 text-white border-teal-400 shadow-[0_0_12px_rgba(20,184,166,0.6),inset_0_1px_0_rgba(255,255,255,0.2)]";
 
 function ZoneButton({
   zoneId,
@@ -70,16 +59,8 @@ function ZoneButton({
 }) {
   const zone = ZONES[zoneId];
   const isActive = currentZone === zoneId;
-  const isDungeon = zoneId === "dungeon";
   const isAscension = zoneId === "ascension";
-  const isDisclosure = zoneId === "disclosure";
-  const activeClass = isDungeon
-    ? DUNGEON_ACTIVE
-    : isAscension
-      ? ASCENSION_ACTIVE
-      : isDisclosure
-        ? DISCLOSURE_ACTIVE
-        : BTN_ACTIVE;
+  const activeClass = isAscension ? ASCENSION_ACTIVE : BTN_ACTIVE;
 
   return (
     <button
@@ -132,7 +113,7 @@ export function ZoneNav() {
         ))}
       </nav>
 
-      {/* Desktop: 3-row — Ascension top, main zones middle, Dungeon bottom */}
+      {/* Desktop: 2-row — Ascension top, main zones bottom */}
       <nav className="hidden sm:flex flex-col items-center gap-1 px-1 py-1">
         {/* Row 1: Ascension — centered */}
         <div className="flex justify-center">
@@ -152,10 +133,6 @@ export function ZoneNav() {
               onZoneChange={handleZoneChange}
             />
           ))}
-        </div>
-        {/* Row 3: Dungeon — centered */}
-        <div className="flex justify-center">
-          <ZoneButton zoneId="dungeon" currentZone={currentZone} onZoneChange={handleZoneChange} />
         </div>
       </nav>
     </>

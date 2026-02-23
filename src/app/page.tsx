@@ -125,10 +125,6 @@ const CasinoModal = dynamic(() => import("@/components/CasinoModal").then((m) =>
 const ArenaModal = dynamic(() => import("@/components/ArenaModal").then((m) => m.ArenaModal), {
   ssr: false,
 });
-const DungeonModal = dynamic(
-  () => import("@/components/DungeonModal").then((m) => m.DungeonModal),
-  { ssr: false }
-);
 const AgentHutModal = dynamic(
   () => import("@/components/AgentHutModal").then((m) => m.AgentHutModal),
   { ssr: false }
@@ -247,7 +243,6 @@ function DeepLinkHandler() {
         "founders",
         "moltbook",
         "arena",
-        "dungeon",
       ];
       if (validZones.includes(zone)) {
         timers.push(
@@ -308,7 +303,6 @@ export default function Home() {
     | "agentHut"
     | "agentBar"
     | "launch"
-    | "dungeon"
     | "incinerator"
     | "bountyBoard"
     | "corpBoard"
@@ -410,7 +404,6 @@ export default function Home() {
       "bagsworld-launch-click": (() => openModal("launch")) as EventListener,
       "bagsworld-oak-intro": (() => openModal("oakIntro")) as EventListener,
       "bagsworld-claim-click": (() => openModal("feeClaim")) as EventListener,
-      "bagsworld-open-dungeon": (() => openModal("dungeon")) as EventListener,
       "bagsworld-phaser-zone-change": ((e: CustomEvent<{ zone: string }>) => {
         const zone = e.detail?.zone;
         if (zone) setZone(zone as ZoneType);
@@ -632,7 +625,7 @@ export default function Home() {
             {/* Scanlines disabled on mobile via CSS for better touch handling */}
             <div className="scanlines" aria-hidden="true" />
 
-            {/* Desktop zone nav overlay (2-row grid with Dungeon) — hidden in immersive mode */}
+            {/* Desktop zone nav overlay — hidden in immersive mode */}
             {!isImmersive && (
               <div className="hidden sm:block absolute top-2 left-1/2 -translate-x-1/2 z-20">
                 <ZoneNav />
@@ -872,8 +865,6 @@ export default function Home() {
         {activeModal === "arena" && <ArenaModal onClose={closeModal} />}
         {activeModal === "agentHut" && <AgentHutModal onClose={closeModal} />}
         {activeModal === "agentBar" && <AgentBarModal onClose={closeModal} />}
-        {activeModal === "dungeon" && <DungeonModal onClose={closeModal} />}
-
         {/* Sol Incinerator Modal - Burn tokens & close empty accounts */}
         {activeModal === "incinerator" && <IncineratorModal onClose={closeModal} />}
 

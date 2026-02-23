@@ -158,12 +158,7 @@ function getZonePosition(zone: ZoneType): { x: number; y: number } {
       y: GROUND_Y + Math.random() * yVariation,
     },
     arena: { x: Math.round((400 + Math.random() * 100) * SCALE), y: GROUND_Y },
-    dungeon: { x: Math.round((400 + Math.random() * 100) * SCALE), y: GROUND_Y },
     ascension: { x: Math.round((350 + Math.random() * 150) * SCALE), y: GROUND_Y },
-    disclosure: {
-      x: Math.round((300 + Math.random() * 200) * SCALE),
-      y: GROUND_Y + Math.random() * yVariation,
-    },
   };
   return zonePositions[zone] || zonePositions.moltbook;
 }

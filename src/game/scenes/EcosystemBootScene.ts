@@ -12,7 +12,6 @@ import {
   generateArenaSprites,
   generateMansions,
   generateBallersProps,
-  generateDungeonAssets,
   generateLaunchPadAssets,
 } from "@/game/textures";
 import { SCALE } from "@/game/textures/constants";
@@ -62,9 +61,6 @@ export class EcosystemBootScene extends Phaser.Scene {
 
     // Ballers props: gold fountain, topiary, etc.
     generateBallersProps(this);
-
-    // Dungeon assets: entrance, torches, etc.
-    generateDungeonAssets(this);
 
     // City props: billboards, neon tubes, etc.
     generateLaunchPadAssets(this);
