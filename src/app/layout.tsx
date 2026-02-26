@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Press_Start_2P } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
+import { SerwistProvider } from "./serwist";
 
 const pressStart2P = Press_Start_2P({
   weight: "400",
@@ -69,7 +70,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={pressStart2P.variable}>
       <body className="min-h-screen bg-bags-darker antialiased font-pixel">
-        <Providers>{children}</Providers>
+        <SerwistProvider swUrl="/serwist/sw.js">
+          <Providers>{children}</Providers>
+        </SerwistProvider>
       </body>
     </html>
   );

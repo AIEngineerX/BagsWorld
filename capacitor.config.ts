@@ -15,8 +15,17 @@ const config: CapacitorConfig = {
     allowsLinkPreview: false,
     scrollEnabled: false,
     scheme: "bagsworld",
-    // Prefer WKWebView (default on modern Capacitor)
     webContentsDebuggingEnabled: false,
+  },
+  android: {
+    // Require modern WebView for Solana wallet adapter compatibility
+    minWebViewVersion: 80,
+    webContentsDebuggingEnabled: false,
+    buildOptions: {
+      // APK required for Solana dApp Store (not AAB)
+      releaseType: "APK",
+      signingType: "apksigner",
+    },
   },
   plugins: {
     SplashScreen: {

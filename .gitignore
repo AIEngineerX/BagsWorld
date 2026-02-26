@@ -60,6 +60,13 @@ ios/App/build/
 ios/App/DerivedData/
 ios/capacitor-cordova-ios-plugins/
 
+# Capacitor Android build artifacts
+android/
+
+# Capacitor Android signing
+*.keystore
+*.jks
+
 # Local-only agent dashboard (MoltbookDashboard replaced by MeetTheAgents)
 /src/components/MoltbookDashboard.tsx
 /src/app/api/agent-dashboard/
