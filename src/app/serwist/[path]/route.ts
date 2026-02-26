@@ -12,5 +12,6 @@ export const { dynamic, dynamicParams, revalidate, generateStaticParams, GET } =
   {
     additionalPrecacheEntries: [{ url: "/~offline", revision }],
     swSrc: "src/app/sw.ts",
+    useNativeEsbuild: true,
   }
 );

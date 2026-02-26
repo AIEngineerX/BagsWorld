@@ -1,0 +1,19 @@
+{
+  "name": "bagsworld-dapp-store",
+  "version": "1.0.0",
+  "description": "Solana dApp Store publishing for BagsWorld",
+  "private": true,
+  "scripts": {
+    "validate": "npx dapp-store validate -k ./keypair.json -b \"$ANDROID_TOOLS\"",
+    "create:app": "npx dapp-store create app -k ./keypair.json -u \"$RPC_URL\"",
+    "create:release": "npx dapp-store create release -k ./keypair.json -b \"$ANDROID_TOOLS\" -u \"$RPC_URL\"",
+    "submit": "npx dapp-store publish submit -k ./keypair.json -u \"$RPC_URL\" --complies-with-solana-dapp-store-policies --requestor-is-authorized"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.30.1",
+  "devDependencies": {
+    "@solana-mobile/dapp-store-cli": "^0.15.0"
+  }
+}
