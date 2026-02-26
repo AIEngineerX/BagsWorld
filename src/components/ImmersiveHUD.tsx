@@ -127,9 +127,9 @@ export function ImmersiveHUD({ visible, worldHealth }: ImmersiveHUDProps) {
         EXIT
       </button>
 
-      {/* WASD hint — bottom center, fades after 4s */}
+      {/* Control hint — bottom center, fades after 4s */}
       <div
-        className={`absolute bottom-4 left-1/2 -translate-x-1/2 font-pixel text-[9px] text-white/50 bg-black/40 px-3 py-1 transition-opacity duration-1000 ${
+        className={`absolute bottom-4 left-1/2 -translate-x-1/2 font-pixel text-[9px] text-white/50 bg-black/40 px-3 py-1 transition-opacity duration-1000 hidden sm:block ${
           showHint ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
       >

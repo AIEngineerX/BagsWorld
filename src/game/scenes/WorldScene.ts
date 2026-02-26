@@ -278,6 +278,24 @@ export class WorldScene extends Phaser.Scene {
   private wasDragGesture = false;
   private static readonly TAP_DISTANCE_THRESHOLD = 12; // pixels
 
+  // Virtual joystick (mobile only)
+  private joystickBase: Phaser.GameObjects.Arc | null = null;
+  private joystickThumb: Phaser.GameObjects.Arc | null = null;
+  private joystickActive = false;
+  private joystickInput = { x: 0, y: 0 }; // -1 to 1 normalized
+  private joystickSprinting = false;
+  private readonly JOYSTICK_BASE_RADIUS = 54;
+  private readonly JOYSTICK_THUMB_RADIUS = 22;
+  private readonly JOYSTICK_SPRINT_THRESHOLD = 0.6;
+  private joystickPointerId = -1; // track which pointer owns the joystick drag
+
+  // Mobile interact button
+  private interactButton: Phaser.GameObjects.Container | null = null;
+  private interactButtonVisible = false;
+
+  // Mobile drag-to-pan disabled when player is in world
+  private mobileDragPanEnabled = true;
+
   constructor() {
     super({ key: "WorldScene" });
   }
@@ -394,6 +412,10 @@ export class WorldScene extends Phaser.Scene {
 
     // Setup mobile camera controls (drag to pan, pinch to zoom)
     this.setupMobileCameraControls();
+
+    // Create virtual joystick and interact button (mobile only, hidden until Enter World)
+    this.createVirtualJoystick();
+    this.createMobileInteractButton();
 
     // Connect to agent server for bidirectional communication
     this.connectToAgentServer();
@@ -563,13 +585,16 @@ export class WorldScene extends Phaser.Scene {
     // Cool spawn effect
     this.playSpawnEffect(startX, pathLevel);
 
-    // Camera follow + zoom (skip on mobile — mobile has its own camera controls)
-    if (!this.isMobile && this.localPlayer) {
+    // Camera follow + zoom
+    if (this.localPlayer) {
       this.cameras.main.setBounds(0, 0, GAME_WIDTH, GAME_HEIGHT);
       this.cameras.main.startFollow(this.localPlayer, true, 0.08, 0.08);
       this.cameras.main.zoomTo(1.3, 800, "Sine.easeInOut");
       this.cameraFollowing = true;
     }
+
+    // Show virtual joystick on mobile
+    this.showVirtualJoystick();
 
     window.dispatchEvent(new CustomEvent("bagsworld-player-entered"));
   }
@@ -600,13 +625,14 @@ export class WorldScene extends Phaser.Scene {
     // Play cool spawn effect
     this.playSpawnEffect(startX, pathLevel, 1.4);
 
-    // Camera follow + zoom (skip on mobile — mobile has its own camera controls)
-    if (!this.isMobile) {
-      this.cameras.main.setBounds(0, 0, GAME_WIDTH, GAME_HEIGHT);
-      this.cameras.main.startFollow(this.localPlayer, true, 0.08, 0.08);
-      this.cameras.main.zoomTo(1.3, 800, "Sine.easeInOut");
-      this.cameraFollowing = true;
-    }
+    // Camera follow + zoom
+    this.cameras.main.setBounds(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    this.cameras.main.startFollow(this.localPlayer, true, 0.08, 0.08);
+    this.cameras.main.zoomTo(1.3, 800, "Sine.easeInOut");
+    this.cameraFollowing = true;
+
+    // Show virtual joystick on mobile
+    this.showVirtualJoystick();
 
     // Notify React that player entered
     window.dispatchEvent(new CustomEvent("bagsworld-player-entered"));
@@ -734,6 +760,9 @@ export class WorldScene extends Phaser.Scene {
 
     this.playerEnabled = false;
 
+    // Hide virtual joystick on mobile
+    this.hideVirtualJoystick();
+
     // Play exit sound
     this.playExitSfx();
 
@@ -842,6 +871,191 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
+  // === VIRTUAL JOYSTICK (mobile) ===
+  private createVirtualJoystick(): void {
+    if (!this.isMobile) return;
+
+    const cam = this.cameras.main;
+    const baseX = 80;
+    const baseY = cam.height - 90;
+
+    // Joystick base — semi-transparent dark circle
+    this.joystickBase = this.add.circle(baseX, baseY, this.JOYSTICK_BASE_RADIUS, 0x000000, 0.35);
+    this.joystickBase.setStrokeStyle(2, 0x4ade80, 0.4);
+    this.joystickBase.setScrollFactor(0);
+    this.joystickBase.setDepth(200);
+    this.joystickBase.setVisible(false);
+
+    // Joystick thumb — green circle
+    this.joystickThumb = this.add.circle(baseX, baseY, this.JOYSTICK_THUMB_RADIUS, 0x4ade80, 0.5);
+    this.joystickThumb.setStrokeStyle(2, 0x4ade80, 0.8);
+    this.joystickThumb.setScrollFactor(0);
+    this.joystickThumb.setDepth(201);
+    this.joystickThumb.setVisible(false);
+
+    // Make the base interactive (large hit area for thumb-friendly touch)
+    const hitZone = this.add.circle(baseX, baseY, this.JOYSTICK_BASE_RADIUS + 20, 0x000000, 0);
+    hitZone.setScrollFactor(0);
+    hitZone.setDepth(202);
+    hitZone.setInteractive();
+    hitZone.setVisible(false);
+    (this.joystickBase as any)._hitZone = hitZone;
+
+    hitZone.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      this.joystickActive = true;
+      this.joystickPointerId = pointer.id;
+      this.updateJoystickFromPointer(pointer);
+      if (this.joystickBase) this.joystickBase.setAlpha(1).setFillStyle(0x000000, 0.5);
+      if (this.joystickThumb) this.joystickThumb.setAlpha(1).setFillStyle(0x4ade80, 0.7);
+    });
+
+    this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
+      if (this.joystickActive && pointer.id === this.joystickPointerId && pointer.isDown) {
+        this.updateJoystickFromPointer(pointer);
+      }
+    });
+
+    this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
+      if (pointer.id === this.joystickPointerId) {
+        this.resetJoystick();
+      }
+    });
+  }
+
+  private updateJoystickFromPointer(pointer: Phaser.Input.Pointer): void {
+    if (!this.joystickBase || !this.joystickThumb) return;
+
+    const baseX = this.joystickBase.x;
+    const baseY = this.joystickBase.y;
+    const maxDist = this.JOYSTICK_BASE_RADIUS;
+
+    // Pointer position in screen space (scrollFactor 0 elements use screen coords)
+    const dx = pointer.x - baseX;
+    const dy = pointer.y - baseY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // Clamp thumb to base radius
+    const clampedDist = Math.min(dist, maxDist);
+    const angle = Math.atan2(dy, dx);
+    const thumbX = baseX + Math.cos(angle) * clampedDist;
+    const thumbY = baseY + Math.sin(angle) * clampedDist;
+
+    this.joystickThumb.setPosition(thumbX, thumbY);
+
+    // Normalize to -1..1
+    const normalized = clampedDist / maxDist;
+    this.joystickInput.x = Math.cos(angle) * normalized;
+    this.joystickInput.y = Math.sin(angle) * normalized;
+
+    // Sprint if thumb pushed past threshold
+    this.joystickSprinting = normalized > this.JOYSTICK_SPRINT_THRESHOLD;
+
+    // Visual sprint feedback — base ring turns brighter green
+    if (this.joystickSprinting) {
+      this.joystickBase.setStrokeStyle(2, 0x4ade80, 0.9);
+    } else {
+      this.joystickBase.setStrokeStyle(2, 0x4ade80, 0.4);
+    }
+  }
+
+  private resetJoystick(): void {
+    this.joystickActive = false;
+    this.joystickPointerId = -1;
+    this.joystickInput = { x: 0, y: 0 };
+    this.joystickSprinting = false;
+
+    // Return thumb to center
+    if (this.joystickBase && this.joystickThumb) {
+      this.joystickThumb.setPosition(this.joystickBase.x, this.joystickBase.y);
+      this.joystickBase.setAlpha(1).setFillStyle(0x000000, 0.35);
+      this.joystickBase.setStrokeStyle(2, 0x4ade80, 0.4);
+      this.joystickThumb.setAlpha(1).setFillStyle(0x4ade80, 0.5);
+    }
+  }
+
+  private showVirtualJoystick(): void {
+    if (!this.isMobile) return;
+    if (this.joystickBase) this.joystickBase.setVisible(true);
+    if (this.joystickThumb) this.joystickThumb.setVisible(true);
+    const hitZone = (this.joystickBase as any)?._hitZone as Phaser.GameObjects.Arc | undefined;
+    if (hitZone) hitZone.setVisible(true);
+    if (this.interactButton) this.interactButton.setVisible(false);
+    this.mobileDragPanEnabled = false;
+  }
+
+  private hideVirtualJoystick(): void {
+    if (this.joystickBase) this.joystickBase.setVisible(false);
+    if (this.joystickThumb) this.joystickThumb.setVisible(false);
+    const hitZone = (this.joystickBase as any)?._hitZone as Phaser.GameObjects.Arc | undefined;
+    if (hitZone) hitZone.setVisible(false);
+    if (this.interactButton) this.interactButton.setVisible(false);
+    this.resetJoystick();
+    this.mobileDragPanEnabled = true;
+  }
+
+  // === MOBILE INTERACT BUTTON ===
+  private createMobileInteractButton(): void {
+    if (!this.isMobile) return;
+
+    const cam = this.cameras.main;
+    const btnX = cam.width - 70;
+    const btnY = cam.height - 90;
+
+    this.interactButton = this.add.container(btnX, btnY);
+    this.interactButton.setScrollFactor(0);
+    this.interactButton.setDepth(200);
+    this.interactButton.setVisible(false);
+
+    // Button circle background
+    const bg = this.add.circle(0, 0, 30, 0x4ade80, 0.6);
+    bg.setStrokeStyle(2, 0x4ade80, 0.9);
+    this.interactButton.add(bg);
+
+    // "!" icon
+    const icon = this.add.text(0, -1, "!", {
+      fontFamily: "monospace",
+      fontSize: "24px",
+      color: "#ffffff",
+      fontStyle: "bold",
+    });
+    icon.setOrigin(0.5, 0.5);
+    this.interactButton.add(icon);
+
+    // Hit area (larger than visual for easy tapping)
+    const hitArea = this.add.circle(0, 0, 40, 0x000000, 0);
+    hitArea.setInteractive({ useHandCursor: true });
+    hitArea.on("pointerup", () => {
+      if (this.wasDragGesture) return;
+      if (this.nearbyNPC) {
+        this.interactWithNPC(this.nearbyNPC);
+      } else if (this.nearbyBuilding) {
+        this.interactWithBuilding(this.nearbyBuilding);
+      }
+    });
+    this.interactButton.add(hitArea);
+
+    // Pulse tween (runs when visible)
+    this.tweens.add({
+      targets: bg,
+      scaleX: 1.15,
+      scaleY: 1.15,
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+  }
+
+  private updateMobileInteractButton(): void {
+    if (!this.isMobile || !this.interactButton || !this.playerEnabled) return;
+
+    const shouldShow = this.nearbyNPC !== null || this.nearbyBuilding !== null;
+    if (shouldShow !== this.interactButtonVisible) {
+      this.interactButtonVisible = shouldShow;
+      this.interactButton.setVisible(shouldShow);
+    }
+  }
+
   private updateLocalPlayer(): void {
     if (!this.localPlayer || !this.playerEnabled) return;
 
@@ -855,30 +1069,45 @@ export class WorldScene extends Phaser.Scene {
     const activeTag = document.activeElement?.tagName;
     const isTyping = activeTag === "INPUT" || activeTag === "TEXTAREA" || activeTag === "SELECT";
 
-    // Get input state — arrow keys always work, WASD only when not typing
-    const left = this.cursors?.left.isDown || (!isTyping && this.wasdKeys?.A.isDown) || false;
-    const right = this.cursors?.right.isDown || (!isTyping && this.wasdKeys?.D.isDown) || false;
-    const up = this.cursors?.up.isDown || (!isTyping && this.wasdKeys?.W.isDown) || false;
-    const down = this.cursors?.down.isDown || (!isTyping && this.wasdKeys?.S.isDown) || false;
-    const interact =
+    // Get input state — keyboard (desktop) or joystick (mobile)
+    let inputX = 0;
+    let inputY = 0;
+    let sprinting = false;
+    let interact = false;
+
+    if (this.isMobile && this.joystickActive) {
+      // Mobile: read from virtual joystick
+      inputX = this.joystickInput.x;
+      inputY = this.joystickInput.y;
+      sprinting = this.joystickSprinting;
+    } else {
+      // Desktop: read from keyboard
+      const left = this.cursors?.left.isDown || (!isTyping && this.wasdKeys?.A.isDown) || false;
+      const right = this.cursors?.right.isDown || (!isTyping && this.wasdKeys?.D.isDown) || false;
+      const up = this.cursors?.up.isDown || (!isTyping && this.wasdKeys?.W.isDown) || false;
+      const down = this.cursors?.down.isDown || (!isTyping && this.wasdKeys?.S.isDown) || false;
+      sprinting = this.sprintKey?.isDown || false;
+
+      if (left) inputX = -1;
+      else if (right) inputX = 1;
+      if (up) inputY = -1;
+      else if (down) inputY = 1;
+    }
+
+    interact =
       !isTyping && this.wasdKeys?.E ? Phaser.Input.Keyboard.JustDown(this.wasdKeys.E) : false;
-    const sprinting = this.sprintKey?.isDown || false;
 
     // Apply acceleration based on input (natural walking feel)
     const accel = sprinting ? this.PLAYER_SPRINT_ACCELERATION : this.PLAYER_ACCELERATION;
-    if (left) {
-      this.playerVelocity.x -= accel;
-    } else if (right) {
-      this.playerVelocity.x += accel;
+    if (inputX !== 0) {
+      this.playerVelocity.x += inputX * accel;
     } else {
       // Apply friction when no input
       this.playerVelocity.x *= this.PLAYER_FRICTION;
     }
 
-    if (up) {
-      this.playerVelocity.y -= accel;
-    } else if (down) {
-      this.playerVelocity.y += accel;
+    if (inputY !== 0) {
+      this.playerVelocity.y += inputY * accel;
     } else {
       this.playerVelocity.y *= this.PLAYER_FRICTION;
     }
@@ -1128,13 +1357,14 @@ export class WorldScene extends Phaser.Scene {
 
     // Update interact prompt visibility and position
     if (this.interactPrompt) {
-      if (npcResult.npc && npcResult.pos) {
-        // Show "Press E to talk" for NPCs
+      // On mobile, the floating interact button replaces the text prompt
+      if (this.isMobile) {
+        this.interactPrompt.setVisible(false);
+      } else if (npcResult.npc && npcResult.pos) {
         this.updateInteractPromptText("Press E to talk");
         this.interactPrompt.setVisible(true);
         this.interactPrompt.setPosition(npcResult.pos.x, npcResult.pos.y - 70);
       } else if (buildingResult.building && buildingResult.pos) {
-        // Show "Press E to enter" for buildings
         this.updateInteractPromptText("Press E to enter");
         this.interactPrompt.setVisible(true);
         this.interactPrompt.setPosition(buildingResult.pos.x, buildingResult.pos.y - 120);
@@ -1312,8 +1542,9 @@ export class WorldScene extends Phaser.Scene {
       this.wasDragGesture = false;
     });
 
-    // Handle pointer down - start drag
+    // Handle pointer down - start drag (disabled when player is in world — camera follows player)
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      if (!this.mobileDragPanEnabled) return;
       // Only start drag if not clicking on a character/building
       const hitObjects = this.input.hitTestPointer(pointer);
       if (hitObjects.length === 0) {
@@ -1340,7 +1571,7 @@ export class WorldScene extends Phaser.Scene {
         }
       }
 
-      if (!isDragging || !pointer.isDown) return;
+      if (!this.mobileDragPanEnabled || !isDragging || !pointer.isDown) return;
 
       const deltaX = dragStartX - pointer.x;
       const deltaY = dragStartY - pointer.y;
@@ -5069,8 +5300,11 @@ export class WorldScene extends Phaser.Scene {
   }
 
   update(): void {
-    // Update local player movement (WASD/arrow keys)
+    // Update local player movement (WASD/arrow keys + joystick on mobile)
     this.updateLocalPlayer();
+
+    // Update mobile interact button visibility
+    this.updateMobileInteractButton();
 
     // Update speech bubbles for autonomous dialogue
     this.updateDialogueBubbles();
