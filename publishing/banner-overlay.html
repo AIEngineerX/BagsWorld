@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1200px;
+    height: 600px;
+    overflow: hidden;
+    position: relative;
+    font-family: 'Press Start 2P', monospace;
+  }
+
+  .bg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 1200px;
+    height: 600px;
+    object-fit: cover;
+  }
+
+  /* Soft overlay — lets the world breathe */
+  .overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(10, 10, 15, 0.35);
+    z-index: 2;
+  }
+
+  /* Gentle center glow behind title for legibility */
+  .center-glow {
+    position: absolute;
+    top: 50%;
+    left: 42%;
+    transform: translate(-50%, -50%);
+    width: 700px;
+    height: 200px;
+    background: radial-gradient(ellipse, rgba(10, 10, 15, 0.6) 0%, rgba(10, 10, 15, 0.25) 55%, transparent 80%);
+    z-index: 3;
+  }
+
+  /* Soft vignette — heavier on edges, light center */
+  .vignette {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at 42% 48%, transparent 25%, rgba(0,0,0,0.45) 100%);
+    z-index: 3;
+  }
+
+  /* Title centered in viewport */
+  .title-area {
+    position: absolute;
+    top: 50%;
+    left: 42%;
+    transform: translate(-50%, -55%);
+    text-align: center;
+    z-index: 10;
+  }
+
+  .title {
+    font-size: 64px;
+    color: #4ade80;
+    text-shadow:
+      4px 4px 0 #166534,
+      -1px -1px 0 #166534,
+      0 0 30px #4ade8066,
+      0 0 60px #4ade8033;
+    letter-spacing: 8px;
+  }
+
+  .subtitle {
+    font-size: 13px;
+    color: #e5e7eb;
+    letter-spacing: 4px;
+    margin-top: 18px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+  }
+
+  /* Bottom badges */
+  .badge-left {
+    position: absolute;
+    bottom: 20px;
+    left: 30px;
+    font-size: 10px;
+    color: #4ade80;
+    letter-spacing: 2px;
+    z-index: 10;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.95);
+  }
+
+  .badge-right {
+    position: absolute;
+    bottom: 20px;
+    right: 30px;
+    font-size: 10px;
+    color: #9945FF;
+    letter-spacing: 2px;
+    z-index: 10;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.95), 0 0 12px #9945FF44;
+  }
+</style>
+</head>
+<body>
+  <img class="bg" src="assets/capture-park.png" />
+  <div class="overlay"></div>
+  <div class="center-glow"></div>
+  <div class="vignette"></div>
+
+  <div class="title-area">
+    <div class="title">BAGSWORLD</div>
+    <div class="subtitle">A LIVING CRYPTO WORLD ON SOLANA</div>
+  </div>
+
+  <div class="badge-left">BAGS.FM</div>
+  <div class="badge-right">BUILT ON SOLANA</div>
+</body>
+</html>

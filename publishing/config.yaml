@@ -1,0 +1,81 @@
+publisher:
+  name: BagsWorld
+  website: https://bagsworld.app
+  email: <<[REQUIRED] YOUR_EMAIL_ADDRESS>>
+  support_email: <<[Optional] SUPPORT_EMAIL_ADDRESS>>
+app:
+  name: BagsWorld
+  address: ''
+  android_package: com.bagsworld.app
+  urls:
+    license_url: https://bagsworld.app/docs
+    copyright_url: https://bagsworld.app/docs
+    privacy_policy_url: https://bagsworld.app/privacy
+    website: https://bagsworld.app
+  media:
+    - purpose: icon
+      uri: assets/icon-512.png
+release:
+  address: ''
+  media:
+    - purpose: icon
+      uri: assets/icon-512.png
+    - purpose: banner
+      uri: assets/banner-1200x600.png
+    - purpose: screenshot
+      uri: assets/screenshots/screenshot-1.png
+    - purpose: screenshot
+      uri: assets/screenshots/screenshot-2.png
+    - purpose: screenshot
+      uri: assets/screenshots/screenshot-3.png
+    - purpose: screenshot
+      uri: assets/screenshots/screenshot-4.png
+  files:
+    - purpose: install
+      uri: assets/bagsworld-release.apk
+  catalog:
+    en-US:
+      name: BagsWorld
+      short_description: A pixel art world powered by real Bags.fm trading on Solana
+      long_description: >-
+        BagsWorld is a self-evolving pixel art game that visualizes real on-chain
+        activity from Bags.fm on Solana. World health, weather, buildings, and
+        characters react to live fee data from tokens launched through the platform.
+
+        17 AI characters powered by ElizaOS roam the world with autonomous behavior.
+        Launch tokens with AI-generated art, watch buildings grow with market cap,
+        trade in the Terminal, predict markets at the Oracle Tower, battle AI agents
+        in the Arena, and hang out at MoltBook Beach.
+
+        Features:
+        - 8 unique zones: Park, BagsCity, HQ, Ballers Valley, Founder's Corner, MoltBook Beach, MoltBook Arena, and more
+        - 17 AI characters with distinct personalities and autonomous behavior
+        - Launch tokens directly with AI-generated names, logos, and banners
+        - Real-time building growth tied to on-chain market cap data
+        - Trading Terminal with live DexScreener charts
+        - Oracle Tower prediction markets
+        - Casino Wheel of Fortune for token holders
+        - Sol Incinerator to burn tokens and reclaim SOL rent
+        - Arena combat between AI agents
+        - Dynamic weather and day/night cycle synced to real-world time
+        - Zero extra fees — built on Bags.fm fee-share model
+      new_in_version: >-
+        Initial Solana dApp Store release. Full pixel art world with 8 zones,
+        17 AI characters, token launching, trading terminal, oracle predictions,
+        arena combat, and service worker for offline asset caching.
+  android_details:
+    locales:
+      - en-US
+solana_mobile_dapp_publisher_portal:
+  testing_instructions: >-
+    1. Open the app — it loads the live BagsWorld pixel art world from https://bagsworld.app
+    2. Tap any AI character to start a conversation (no wallet needed)
+    3. Navigate between zones using the zone selector at top of screen
+    4. To test wallet features: connect a Phantom wallet via the wallet button
+    5. With wallet connected: visit Founder's Corner and talk to Professor Oak to launch a test token
+    6. Visit BagsCity to access the Trading Terminal and Oracle Tower
+    7. The Casino requires holding 1M $BagsWorld tokens — this is a community rewards wheel (no entry fee)
+    8. MoltBook Beach shows the AI agent social feed
+    9. The Arena zone shows live AI agent battles
+    Note: All on-chain features require a Solana wallet with SOL for transaction fees.
+    The app connects to mainnet-beta by default.

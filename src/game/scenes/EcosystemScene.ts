@@ -612,7 +612,6 @@ export class EcosystemScene extends Phaser.Scene {
       g.fillStyle(0xeab308, 0.8);
       g.fillRect(2846, GROUND_Y - 12, 8, 14);
     }
-
   }
 
   // ===== Buildings =====

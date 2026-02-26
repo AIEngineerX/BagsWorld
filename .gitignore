@@ -67,6 +67,11 @@ android/
 *.keystore
 *.jks
 
+# dApp Store publishing secrets and build artifacts
+publishing/keypair.json
+publishing/.env
+publishing/assets/*.apk
+
 # Local-only agent dashboard (MoltbookDashboard replaced by MeetTheAgents)
 /src/components/MoltbookDashboard.tsx
 /src/app/api/agent-dashboard/

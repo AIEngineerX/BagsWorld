@@ -6366,11 +6366,7 @@ export class WorldScene extends Phaser.Scene {
     // Buildings with no zone appear in most zones, but NOT in arena/ascension (special zones)
     const zoneBuildings = buildings.filter((b) => {
       // Arena and Ascension zones have no token buildings
-      if (
-        this.currentZone === "arena" ||
-        this.currentZone === "ascension"
-      )
-        return false;
+      if (this.currentZone === "arena" || this.currentZone === "ascension") return false;
       if (!b.zone) return true; // No zone = appears in all non-special zones
       return b.zone === this.currentZone;
     });
