@@ -772,15 +772,13 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         {/* Step 2: Fee Sharing */}
         {step === "fees" && (
           <div className="p-4 space-y-4">
-            {/* Important notice about permanent fees */}
+            {/* Fee sharing notice */}
             <div className="bg-bags-green/10 border-2 border-bags-green p-3">
-              <p className="font-pixel text-[10px] text-bags-green mb-1">
-                🔒 FEES ARE SET PERMANENTLY
-              </p>
+              <p className="font-pixel text-[10px] text-bags-green mb-1">🔄 DYNAMIC FEE SHARING</p>
               <p className="font-pixel text-[8px] text-gray-300">
-                On Bags.fm, fee shares are <span className="text-bags-gold">locked at launch</span>{" "}
-                and cannot be changed. This is why launching through BagsWorld ensures the ecosystem
-                is supported forever.
+                Fee shares can now be <span className="text-bags-gold">updated anytime</span> on
+                Bags.fm. Direct fees to people, apps, or services — and change them as your
+                community evolves.
               </p>
             </div>
 
@@ -845,6 +843,50 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 </a>
               </div>
             )}
+
+            {/* Bags App Presets */}
+            <div className="flex gap-2">
+              <button
+                onClick={() =>
+                  setFeeShares([
+                    { provider: "twitter", username: "DividendsBot", bps: 3000 },
+                    { provider: "twitter", username: "DEXBoosts", bps: 3000 },
+                    { provider: "twitter", username: "CompoundLiquidity", bps: 2000 },
+                    { provider: "twitter", username: "BagsAMM", bps: 2000 },
+                  ])
+                }
+                className="flex-1 py-2 bg-bags-gold/10 border border-bags-gold/40 font-pixel text-[8px] text-bags-gold hover:bg-bags-gold/20 transition-colors"
+              >
+                ⚡ USE BAGS APPS (Recommended)
+              </button>
+              <button
+                onClick={() => setFeeShares([{ provider: "twitter", username: "", bps: 10000 }])}
+                className="flex-1 py-2 bg-bags-darker border border-bags-green/30 font-pixel text-[8px] text-gray-400 hover:text-white hover:border-bags-green/60 transition-colors"
+              >
+                ✏️ CUSTOM SPLIT
+              </button>
+            </div>
+
+            {/* App preset info */}
+            {feeShares.length === 4 &&
+              feeShares[0]?.username === "DividendsBot" &&
+              feeShares[1]?.username === "DEXBoosts" && (
+                <div className="bg-bags-gold/5 border border-bags-gold/20 p-2 space-y-1">
+                  <p className="font-pixel text-[7px] text-bags-gold">BAGS APP STORE SPLIT:</p>
+                  <p className="font-pixel text-[7px] text-gray-400">
+                    💰 30% DividendsBot — auto-pays top 100 holders daily
+                  </p>
+                  <p className="font-pixel text-[7px] text-gray-400">
+                    📈 30% DEX Boosts — auto-buys DexScreener visibility
+                  </p>
+                  <p className="font-pixel text-[7px] text-gray-400">
+                    💧 20% Compound Liquidity — deepens your token&apos;s pool
+                  </p>
+                  <p className="font-pixel text-[7px] text-gray-400">
+                    🤖 20% BagsAMM — automated market maker for volume
+                  </p>
+                </div>
+              )}
 
             <div className="space-y-3">
               {feeShares.map((share, index) => (
