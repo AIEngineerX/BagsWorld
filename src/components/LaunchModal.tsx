@@ -857,7 +857,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 }
                 className="flex-1 py-2 bg-bags-gold/10 border border-bags-gold/40 font-pixel text-[8px] text-bags-gold hover:bg-bags-gold/20 transition-colors"
               >
-                ⚡ USE BAGS APPS (Recommended)
+                ⚡ BAGSAPP MARKETPLACE
               </button>
               <button
                 onClick={() => setFeeShares([{ provider: "twitter", username: "", bps: 10000 }])}
@@ -872,7 +872,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               feeShares[0]?.username === "DividendsBot" &&
               feeShares[1]?.username === "DEXBoosts" && (
                 <div className="bg-bags-gold/5 border border-bags-gold/20 p-2 space-y-1">
-                  <p className="font-pixel text-[7px] text-bags-gold">BAGS APP STORE SPLIT:</p>
+                  <p className="font-pixel text-[7px] text-bags-gold">BAGSAPP MARKETPLACE SPLIT:</p>
                   <p className="font-pixel text-[7px] text-gray-400">
                     💰 30% DividendsBot — auto-pays top 100 holders daily
                   </p>
