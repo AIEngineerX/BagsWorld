@@ -257,7 +257,7 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
             <div>
               <h2 className="font-pixel text-white text-xs sm:text-sm">COMMUNITY FUND</h2>
               <p className="font-pixel text-green-200 text-[7px] sm:text-[8px]">
-                Funded by Ghost&apos;s 5% contribution
+                Powered by BagsApp Marketplace
               </p>
             </div>
           </div>
@@ -404,35 +404,34 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
               </div>
             </div>
 
-            {/* What It Funds */}
+            {/* BagsApp Marketplace Apps */}
             <div className="bg-bags-darker rounded-lg p-3 border border-purple-500/30">
-              <h3 className="font-pixel text-purple-400 text-xs mb-2">What It Funds</h3>
-              <div className="grid grid-cols-3 gap-2">
-                {ECOSYSTEM_CONFIG.ecosystem.founderContribution.fundedFeatures.map((feature, i) => (
+              <h3 className="font-pixel text-purple-400 text-xs mb-2">BagsApp Marketplace Split</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.values(ECOSYSTEM_CONFIG.ecosystem.marketplaceApps).map((app, i) => (
                   <div key={i} className="bg-black/30 rounded p-2 text-center">
-                    <span className="text-base">{i === 0 ? "🎰" : i === 1 ? "🎁" : "🚀"}</span>
-                    <p className="font-pixel text-gray-300 text-[7px] mt-1">{feature}</p>
+                    <span className="text-base">
+                      {i === 0 ? "💰" : i === 1 ? "📈" : i === 2 ? "💧" : "🤖"}
+                    </span>
+                    <p className="font-pixel text-bags-gold text-[8px] mt-1">
+                      {app.bps / 100}% @{app.username}
+                    </p>
+                    <p className="font-pixel text-gray-500 text-[6px] mt-0.5">{app.description}</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Comparison */}
+            {/* Agent Services */}
             <div className="border border-gray-700 rounded-lg p-3">
-              <h3 className="font-pixel text-white text-[10px] mb-2">Why This Model?</h3>
+              <h3 className="font-pixel text-white text-[10px] mb-2">Agent-as-a-Service</h3>
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-red-500 text-xs">✗</span>
-                  <span className="font-pixel text-gray-500 text-[7px] line-through">
-                    Old: Mandatory ecosystem fees on every launch
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-green-500 text-xs">✓</span>
-                  <span className="font-pixel text-gray-300 text-[7px]">
-                    New: Ghost funds it himself - creators keep 100%
-                  </span>
-                </div>
+                {ECOSYSTEM_CONFIG.ecosystem.agentServices.map((service, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="text-green-500 text-xs">✓</span>
+                    <span className="font-pixel text-gray-300 text-[7px]">{service}</span>
+                  </div>
+                ))}
               </div>
             </div>
 

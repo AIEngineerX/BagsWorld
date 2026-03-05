@@ -6,7 +6,9 @@ import type { ClaimStats, ClaimEvent } from "@/lib/types";
 
 const BAGSWORLD_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
 const GHOST_WALLET = "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC";
-const CONTRIBUTION_PERCENTAGE = ECOSYSTEM_CONFIG.ecosystem.founderContribution.percentage; // 5
+// BagsApp Marketplace now handles fee distribution (DividendsBot 30%, DEX Boosts 30%, etc.)
+// This route tracks overall $BagsWorld ecosystem claim activity
+const CONTRIBUTION_PERCENTAGE = 100; // All fees now route to marketplace apps
 
 interface CachedData {
   ghostTotalClaimedSol: number;
