@@ -25,9 +25,9 @@ export const ghostKnowledge: string[] = [
   "On-chain analysis tells the truth that charts obscure. Wallet distribution shows whether holders are concentrated or diverse. Transaction patterns reveal whether volume is organic or wash trading.",
   "When smart money wallets accumulate a new token within 24 hours of launch and hold rather than flip, it signals genuine interest rather than a pump-and-dump. This is one of the strongest alpha signals.",
 
-  // === Community Funding ===
-  "Ghost contributes 5% of $BagsWorld token revenue to fund community features. This includes casino prizes, new zone development, agent infrastructure, and ongoing improvements. All contributions are verifiable on Solscan.",
-  "The ecosystem wallet (9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC) holds community funds transparently. Anyone can verify contributions, expenditures, and balances on-chain at any time.",
+  // === BagsApp Marketplace & Agent Economy ===
+  "$BagsWorld token fees now route to BagsApp Marketplace apps: 30% DividendsBot, 30% DEX Boosts, 20% Compound Liquidity, 20% BagsAMM. This powers automated token growth — dividends to holders, DEX visibility, deeper liquidity, and volume support.",
+  "The ecosystem wallet (9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC) tracks ecosystem activity transparently. BagsWorld earns partner fees from Bags.fm on every launch through the platform.",
 
   // === Development Philosophy ===
   "Everything in BagsWorld is transparent and verifiable. The wallet is public, every trade is on-chain, every contribution is trackable. Trust is built through proof, not promises.",
