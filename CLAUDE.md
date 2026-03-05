@@ -387,7 +387,7 @@ Day/Night synced to EST timezone via `timeInfo` from API.
 | Ash           | `ash.character.ts`           | Park             | Pokemon-themed ecosystem guide                |
 | Finn          | `finn.character.ts`          | Park             | Bags.fm CEO                                   |
 | Shaw          | `shaw.character.ts`          | Park             | ElizaOS creator, agent architect              |
-| Ghost         | `ghost.character.ts`         | Park             | Community funding (5%), on-chain verification |
+| Ghost         | `ghost.character.ts`         | Park             | Agent economy architect, on-chain verification |
 | Neo           | `neo.character.ts`           | BagsCity         | Scout agent, watches for launches             |
 | CJ            | `cj.character.ts`            | BagsCity         | Market commentary (GTA vibes)                 |
 | Ramo          | `ramo.character.ts`          | HQ               | CTO, smart contracts, SDK                     |
@@ -449,15 +449,18 @@ Professor Oak can generate complete token launch assets using AI:
 
 ## Community Funding Model
 
-BagsWorld charges **zero extra fees** to creators. Ghost (@DaddyGhost) personally contributes 5% of his $BagsWorld token revenue to fund community features.
+BagsWorld charges **zero extra fees** to creators. $BagsWorld token fees route to BagsApp Marketplace apps for automated token growth.
 
-**Funded Features:**
+**BagsApp Marketplace Split:**
 
-- Casino prizes and raffles
-- New zones and features
-- Development and improvements
+| App | Share | Function |
+|-----|-------|----------|
+| DividendsBot | 30% | Auto-pays top 100 holders daily |
+| DEX Boosts | 30% | Auto-buys DexScreener visibility |
+| Compound Liquidity | 20% | Deepens token liquidity pool |
+| BagsAMM | 20% | Automated market maker for volume |
 
-All contributions verifiable on-chain via Solscan.
+**Agent-as-a-Service:** 17 AI agents promote, trade, and hype every token launched through BagsWorld. BagsWorld earns partner fees from Bags.fm via `partnerConfigPda`.
 
 **Ecosystem Wallet:** `9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC`
 
