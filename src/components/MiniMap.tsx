@@ -103,7 +103,7 @@ const LOCATIONS: Record<
     {
       id: "treasury",
       name: "Community Fund",
-      desc: "Ghost's 5%",
+      desc: "Marketplace",
       event: "bagsworld-treasury-click",
     },
   ],

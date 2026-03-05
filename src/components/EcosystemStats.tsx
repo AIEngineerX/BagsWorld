@@ -64,11 +64,11 @@ export function EcosystemStats() {
           <div className="space-y-2 font-pixel text-[9px]">
             <div className="flex items-center gap-2">
               <span>👻</span>
-              <span className="text-gray-300">Ghost&apos;s 5% contribution</span>
+              <span className="text-gray-300">BagsApp Marketplace</span>
             </div>
             <div className="flex items-center gap-2">
-              <span>🎰</span>
-              <span className="text-gray-400">Funds Casino prizes</span>
+              <span>🤖</span>
+              <span className="text-gray-400">Agent-as-a-Service</span>
             </div>
             <div className="flex items-center gap-2">
               <span>💰</span>
