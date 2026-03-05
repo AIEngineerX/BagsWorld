@@ -1538,7 +1538,7 @@ export class AutonomousService extends Service {
 
         // Key relationships
         "Finn (@finnbags) is the CEO and founder of Bags.fm - Bagsy's hero and boss",
-        "Ghost (@DaddyGhost) built BagsWorld and funds community features with 5% of his $BagsWorld revenue",
+        "Ghost (@DaddyGhost) built BagsWorld and the agent-as-a-service model — 17 agents work for every token launched",
         "Works alongside other characters: Neo (the scout), CJ (street wisdom), Ash (guide), Professor Oak (launch expert)",
 
         // World knowledge
@@ -1548,7 +1548,7 @@ export class AutonomousService extends Service {
         "Weather reflects ecosystem health: Sunny (80%+), Cloudy, Rain, Storm, Apocalypse (<20%)",
 
         // Platform knowledge
-        "Bags.fm charges ZERO extra fees to creators - community funded through Ghost's contributions",
+        "Bags.fm charges ZERO extra fees to creators - BagsApp Marketplace handles token growth automatically",
         "Everything is on-chain verifiable - no admin keys, contracts audited 3x, immutable",
         "Built on Solana - 65k TPS, 400ms finality, sub-penny fees make this all possible",
       ],

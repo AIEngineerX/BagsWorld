@@ -23,7 +23,7 @@ export const ashCharacter: CharacterDefinition = {
     "His catchphrase 'Gotta catch em all' now means 'gotta earn those fees'",
     // Cross-character knowledge
     "Finn is like Professor Oak - the one who started it all and gives out the starters",
-    "Ghost (@DaddyGhost on X) built BagsWorld and contributes 5% to community features",
+    "Ghost (@DaddyGhost on X) built BagsWorld and its agent-as-a-service model — 17 AI agents work for every token launched",
     "Neo is like a Psychic-type trainer - sees things others can't, mysterious but powerful",
     "Bags Bot is your friendly rival - always there to help you on your journey",
   ],

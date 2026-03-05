@@ -28,7 +28,7 @@ export const sharedKnowledge: string[] = [
   "Creators can claim accumulated fees at any time through bags.fm/claim. Fees accumulate from every trade that happens on a creator's token.",
   "Tokens on Bags.fm are launched through the Bags.fm SDK/API with integrated fee sharing. The Meteora DBC bonding curve is used for token pricing.",
   "Token graduation on Bags.fm happens when certain market cap thresholds are met, unlocking additional platform features and visibility.",
-  "BagsWorld charges zero extra fees to creators. The platform is community-funded through Ghost's personal contributions.",
+  "BagsWorld charges zero extra fees to creators. $BagsWorld token fees route to BagsApp Marketplace apps (DividendsBot, DEX Boosts, Compound Liquidity, BagsAMM) for automated token growth.",
   "Getting Bagged means someone launched a coin using your content, meme, or idea on Bags.fm, and you earn from every trade. Verify your X/TikTok/Instagram at bags.fm to claim earnings.",
   "Fee sharing on Bags.fm is configured at token launch by adding Twitter, GitHub, or Kick usernames and assigning percentages that must total 100%. Each person needs their wallet linked at bags.fm/settings.",
 
@@ -47,14 +47,14 @@ export const sharedKnowledge: string[] = [
   "The Oracle Tower in BagsCity requires a minimum of 2 million $BagsWorld tokens to access predictions. This is the highest token gate in BagsWorld.",
   "Ballers Valley showcases the top token holders with luxury mansion representations. Mansion size and detail reflect holding amounts.",
 
-  // === Community Funding ===
-  "Ghost (@DaddyGhost) personally contributes 5% of his $BagsWorld token revenue to fund community features including casino prizes, new zones, and ongoing development.",
-  "All community fund contributions are verifiable on-chain via Solscan. The ecosystem wallet address is 9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC.",
-  "BagsWorld's community funding model means zero extra fees for creators. Ghost's contributions are the primary funding source for community rewards and development.",
+  // === BagsApp Marketplace & Agent Economy ===
+  "$BagsWorld token fees auto-route to BagsApp Marketplace: 30% DividendsBot (auto-pays top 100 holders daily), 30% DEX Boosts (auto-buys DexScreener visibility), 20% Compound Liquidity (deepens pool), 20% BagsAMM (volume support).",
+  "All ecosystem activity is verifiable on-chain via Solscan. The ecosystem wallet address is 9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC.",
+  "BagsWorld is an Agent-as-a-Service platform: 17 AI agents promote, trade, and hype every token launched through BagsWorld. The agents are the unique value prop no other launchpad offers.",
 
   // === Key Characters ===
   "Finn is the CEO of Bags.fm. He is the platform's hype man who gets genuinely excited when creators ship, and persistently reminds everyone to claim their fees.",
-  "Ghost (@DaddyGhost on X) is the developer who built BagsWorld. He runs autonomous trading with strict risk management (0.05-0.1 SOL positions, max 1 SOL total exposure) and funds community features.",
+  "Ghost (@DaddyGhost on X) is the developer who built BagsWorld. He runs autonomous trading with strict risk management (0.05-0.1 SOL positions, max 1 SOL total exposure) and built the agent-as-a-service model.",
   "Neo is the scout agent based in BagsCity who monitors every launch on the blockchain. He speaks in Matrix-inspired language and sees the chain as streams of code.",
   "Ash is the ecosystem guide who explains BagsWorld and crypto concepts using Pokemon analogies. He is based in the Park zone and helps newcomers understand the platform.",
   "Toly represents Solana co-founder Anatoly Yakovenko. He is a blockchain technology expert who explains Proof of History, Sealevel parallel execution, and Solana's 65K TPS with 400ms finality.",

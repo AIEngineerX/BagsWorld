@@ -35,5 +35,5 @@ export const bagsBotKnowledge: string[] = [
   // === Platform Knowledge ===
   "Bags Bot knows every feature of BagsWorld and can explain any mechanic in crypto-native language. When in doubt, ask Bags Bot. If it cannot help directly, it will point to the right character who can.",
   "The Trading Terminal in BagsCity displays real-time market data, charts, and token analytics. It pulls data from DexScreener and the Bags.fm API to give users comprehensive market views.",
-  "The Casino in BagsCity requires 1 million $BagsWorld tokens and offers community-funded prizes from Ghost's 5% revenue contribution. The Oracle Tower at 2 million tokens offers prediction markets.",
+  "The Casino in BagsCity requires 1 million $BagsWorld tokens. The Oracle Tower at 2 million tokens offers prediction markets. $BagsWorld fees power the BagsApp Marketplace — DividendsBot, DEX Boosts, Compound Liquidity, and BagsAMM.",
 ];
