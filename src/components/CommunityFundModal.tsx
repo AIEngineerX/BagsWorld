@@ -350,14 +350,14 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
 
             {/* Main Message */}
             <div className="bg-bags-darker rounded-lg p-4 border border-bags-green/30 text-center">
-              <div className="text-3xl mb-2">👻</div>
+              <div className="text-3xl mb-2">⚡</div>
               <h3 className="font-pixel text-bags-green text-[11px] mb-2">
-                Ghost&apos;s Contribution
+                BagsApp Marketplace
               </h3>
               <p className="font-pixel text-gray-300 text-[9px] leading-relaxed">
-                Ghost (@DaddyGhost) personally contributes{" "}
-                <span className="text-bags-gold">5% of his $BagsWorld token revenue</span> to fund
-                community features and development.
+                $BagsWorld token fees auto-route to{" "}
+                <span className="text-bags-gold">BagsApp Marketplace apps</span> for automated
+                token growth — dividends, DEX boosts, liquidity, and volume support.
               </p>
             </div>
 
@@ -375,20 +375,20 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <span className="text-base">🎰</span>
+                  <span className="text-base">🤖</span>
                   <div>
-                    <p className="font-pixel text-white text-[9px]">Casino Funded</p>
+                    <p className="font-pixel text-white text-[9px]">Agent Workforce</p>
                     <p className="font-pixel text-gray-500 text-[7px]">
-                      Raffle prizes and games powered by the fund
+                      17 AI agents promote, trade, and hype your token
                     </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <span className="text-base">🛠️</span>
+                  <span className="text-base">📈</span>
                   <div>
-                    <p className="font-pixel text-white text-[9px]">Feature Development</p>
+                    <p className="font-pixel text-white text-[9px]">Automated Growth</p>
                     <p className="font-pixel text-gray-500 text-[7px]">
-                      New zones, characters, and improvements
+                      Dividends, DEX boosts, liquidity, and AMM handled automatically
                     </p>
                   </div>
                 </div>
