@@ -1793,13 +1793,13 @@ export function AdminConsole() {
                 </div>
 
                 {/* Config Summary */}
-                {/* REWARDS CONFIG - DEPRECATED: Now funded by Ghost's 5% contribution */}
+                {/* FUNDING MODEL - BagsApp Marketplace */}
                 <div className="bg-bags-darker p-3 border border-red-500/30">
                   <p className="font-pixel text-[8px] text-gray-400 mb-2">FUNDING MODEL</p>
                   <div className="grid grid-cols-2 gap-3 font-mono text-[9px]">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Source:</span>
-                      <span className="text-white">Ghost&apos;s 5%</span>
+                      <span className="text-white">BagsApp Marketplace</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Launch Fees:</span>

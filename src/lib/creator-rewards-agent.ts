@@ -87,9 +87,9 @@ export interface DistributionResult {
 }
 
 // Default configuration - DEPRECATED: Creator rewards agent disabled
-// Community is now funded by Ghost's 5% $BagsWorld revenue contribution
+// $BagsWorld fees now route to BagsApp Marketplace apps
 const DEFAULT_CONFIG: CreatorRewardsConfig = {
-  enabled: false, // Disabled - using Ghost's founder contribution model instead
+  enabled: false, // Disabled - fees route to BagsApp Marketplace (DividendsBot, DEX Boosts, etc.)
   thresholdSol: 10,
   backupTimerMs: 5 * 24 * 60 * 60 * 1000, // 5 days
   minimumDistributionSol: 2,

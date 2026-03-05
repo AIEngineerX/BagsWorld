@@ -788,13 +788,13 @@ async function enrichTokenWithSDK(
 const TREASURY_WALLET = "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC";
 
 // Community Fund - ALWAYS appears in the world (permanent landmark)
-// Links to Solscan so users can verify Ghost's community contributions
+// Links to Solscan for ecosystem transparency
 const TREASURY_BUILDING: RegisteredToken = {
   mint: "TreasuryBagsWorld1111111111111111111111111111",
   name: "Community Fund",
   symbol: "FUND",
   description:
-    "Ghost's 5% $BagsWorld contribution funds Casino, features & development. Click to verify on Solscan!",
+    "BagsWorld ecosystem hub. Fees power the BagsApp Marketplace — dividends, DEX boosts, liquidity & AMM. Click to verify on Solscan!",
   imageUrl: "/assets/buildings/treasury.png",
   creator: TREASURY_WALLET,
   createdAt: Date.now() - 86400000 * 365, // 1 year ago (always been here)
@@ -829,8 +829,7 @@ const STARTER_BUILDINGS: RegisteredToken[] = [
     mint: "StarterCasino1111111111111111111111111111111",
     name: "BagsWorld Casino",
     symbol: "CASINO",
-    description:
-      "Try your luck! Free raffle entries and wheel spins funded by Ghost's trading fees. Win SOL from the fee pool!",
+    description: "Try your luck! Free raffle entries and wheel spins. Win SOL from the fee pool!",
     imageUrl: "/assets/buildings/casino.png",
     creator: "BagsWorld",
     createdAt: Date.now() - 86400000 * 7, // 7 days ago

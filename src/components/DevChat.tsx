@@ -48,7 +48,7 @@ const AGENT_TOPICS = [
   {
     title: "Community Fund",
     icon: "💰",
-    description: "Ghost's 5% contribution",
+    description: "BagsApp Marketplace",
   },
   {
     title: "Auto Trading",
@@ -322,7 +322,7 @@ export function DevChat() {
         id: `${Date.now()}-info`,
         type: "info",
         message:
-          "COMMUNITY FUND\n\nGhost contributes 5% of his $BagsWorld token revenue:\n• Powers Casino prizes & raffles\n• Funds new features & zones\n• Supports development\n\nNo mandatory fees on creators - this is Ghost's personal contribution.",
+          "BAGSAPP MARKETPLACE\n\n$BagsWorld fees auto-route to marketplace apps:\n• 30% DividendsBot — auto-pays top 100 holders daily\n• 30% DEX Boosts — auto-buys DexScreener visibility\n• 20% Compound Liquidity — deepens token pool\n• 20% BagsAMM — automated market maker\n\nNo mandatory fees on creators. BagsWorld earns partner fees from Bags.fm.",
         timestamp: Date.now(),
       });
       setTimeout(() => {
@@ -330,7 +330,7 @@ export function DevChat() {
           id: `${Date.now()}-dev`,
           type: "dev",
           message:
-            "i built bagsworld. 5% of my token revenue goes back to the community. casino prizes, new features, whatever helps the ecosystem grow. all verifiable on-chain.",
+            "i built bagsworld. token fees now route to bagsapp marketplace — dividends, dex boosts, liquidity, amm. the agents are the real moat. 17 of them working for every launch.",
           timestamp: Date.now(),
         });
       }, 500);
