@@ -264,7 +264,11 @@ export const docsContent: DocSection[] = [
             ["Toly", "Blockchain Expert", "Solana co-founder, technical questions, PoH"],
             ["Ash", "Ecosystem Guide", "Pokemon-themed tips, how BagsWorld works"],
             ["Finn", "Bags.fm Founder", "Platform mechanics, Bags.fm features"],
-            ["Ghost/Dev", "The Dev (@DaddyGhost)", "Agent economy architect, on-chain transparency"],
+            [
+              "Ghost/Dev",
+              "The Dev (@DaddyGhost)",
+              "Agent economy architect, on-chain transparency",
+            ],
             ["Neo", "Scout Agent", "On-chain patterns, launch detection"],
             ["CJ", "Hood Rat", "GTA San Andreas vibes, market commentary"],
             ["Shaw", "ElizaOS Creator", "AI agents, character files, plugins"],

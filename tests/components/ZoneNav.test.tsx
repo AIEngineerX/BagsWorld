@@ -40,13 +40,10 @@ describe("ZONE_ORDER constant", () => {
     ZONE_ORDER.forEach((zone) => expect(ZONES[zone]).toBeDefined());
   });
 
-  it("main zones first, special zones after", () => {
-    // ZONE_ORDER = [ascension, ...MAIN_ZONES, dungeon]
-    // ascension is a special zone at the start
-    expect(ZONE_ORDER.slice(1, MAIN_ZONES.length + 1)).toEqual(MAIN_ZONES);
-    const specialZones = [ZONE_ORDER[0], ZONE_ORDER[ZONE_ORDER.length - 1]];
-    expect(specialZones).toContain("dungeon");
-    expect(specialZones).toContain("ascension");
+  it("main zones after ascension", () => {
+    // ZONE_ORDER = [ascension, ...MAIN_ZONES]
+    expect(ZONE_ORDER[0]).toBe("ascension");
+    expect(ZONE_ORDER.slice(1)).toEqual(MAIN_ZONES);
   });
 });
 
@@ -71,13 +68,13 @@ describe("ZoneNav rendering", () => {
     });
   });
 
-  it("mobile nav contains all zones, desktop nav has all zones in 3 rows", () => {
+  it("mobile nav contains all zones, desktop nav has ascension + main zones", () => {
     const { container } = render(<ZoneNav />);
     const navs = container.querySelectorAll("nav");
     // Mobile nav (first) has all zones
     expect(navs[0].querySelectorAll("button")).toHaveLength(ZONE_ORDER.length);
-    // Desktop nav (second) has ascension + main zones + dungeon
-    expect(navs[1].querySelectorAll("button")).toHaveLength(MAIN_ZONES.length + 2);
+    // Desktop nav (second) has ascension (1) + main zones
+    expect(navs[1].querySelectorAll("button")).toHaveLength(MAIN_ZONES.length + 1);
   });
 
   it("sets title attribute from zone description", () => {
@@ -111,30 +108,14 @@ describe("ZoneNav active highlighting", () => {
     expect(getZoneButton("labs").className).toContain("bg-bags-green");
   });
 
-  it("highlights dungeon with purple when active", () => {
-    useGameStore.setState({ currentZone: "dungeon" });
+  it("highlights ascension with cyan when active", () => {
+    useGameStore.setState({ currentZone: "ascension" });
     render(<ZoneNav />);
-    const dungeon = getZoneButton("dungeon");
+    const ascension = getZoneButton("ascension");
 
-    expect(dungeon.className).toContain("bg-purple-600");
-    expect(dungeon.className).toContain("text-white");
-    expect(dungeon.className).toContain("border-purple-400");
-  });
-
-  it("dungeon has purple inactive styling when not active", () => {
-    render(<ZoneNav />);
-    const dungeon = getZoneButton("dungeon");
-    expect(dungeon.className).toContain("border-purple-500/50");
-    expect(dungeon.className).toContain("text-purple-400");
-    expect(dungeon.className).not.toContain("bg-purple-600");
-  });
-
-  it("no main zones highlighted when dungeon is active", () => {
-    useGameStore.setState({ currentZone: "dungeon" });
-    render(<ZoneNav />);
-    MAIN_ZONES.forEach((zone) => {
-      expect(getZoneButton(zone).className).not.toContain("bg-bags-green");
-    });
+    expect(ascension.className).toContain("bg-cyan-600");
+    expect(ascension.className).toContain("text-white");
+    expect(ascension.className).toContain("border-cyan-400");
   });
 });
 
@@ -173,30 +154,14 @@ describe("ZoneNav click behavior", () => {
     });
   });
 
-  it("dispatches and updates store when clicking dungeon", () => {
+  it("dispatches and updates store when clicking ascension", () => {
     render(<ZoneNav />);
-    fireEvent.click(getZoneButton("dungeon"));
+    fireEvent.click(getZoneButton("ascension"));
 
     const zoneEvents = dispatchedEvents.filter((e) => e.type === "bagsworld-zone-change");
     expect(zoneEvents).toHaveLength(1);
-    expect(zoneEvents[0].detail).toEqual({ zone: "dungeon" });
-    expect(useGameStore.getState().currentZone).toBe("dungeon");
-  });
-
-  it("no-ops when clicking dungeon while already in dungeon", () => {
-    useGameStore.setState({ currentZone: "dungeon" });
-    render(<ZoneNav />);
-    fireEvent.click(getZoneButton("dungeon"));
-
-    expect(dispatchedEvents.filter((e) => e.type === "bagsworld-zone-change")).toHaveLength(0);
-  });
-
-  it("navigates from dungeon to a main zone", () => {
-    useGameStore.setState({ currentZone: "dungeon" });
-    render(<ZoneNav />);
-    fireEvent.click(getZoneButton("labs"));
-
-    expect(useGameStore.getState().currentZone).toBe("labs");
+    expect(zoneEvents[0].detail).toEqual({ zone: "ascension" });
+    expect(useGameStore.getState().currentZone).toBe("ascension");
   });
 });
 
@@ -208,7 +173,7 @@ describe("ZoneNav zone-specific colors", () => {
     ["ballers", "border-yellow-500/50", "text-yellow-400"],
     ["founders", "border-amber-500/50", "text-amber-400"],
     ["arena", "border-red-500/50", "text-red-400"],
-    ["disclosure", "border-teal-500/50", "text-teal-400"],
+    ["ascension", "border-cyan-500/50", "text-cyan-400"],
   ];
 
   zoneColors.forEach(([zone, borderClass, textClass]) => {
