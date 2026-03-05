@@ -4,7 +4,7 @@
 
 BagsWorld is a **self-evolving pixel art game** that visualizes real [Bags.fm](https://bags.fm) on-chain activity on Solana. Every building in the world represents a real token launched through Bags.fm. World health, weather, building sizes, character moods, and events all react to **live fee data** from the blockchain. 17 AI characters powered by ElizaOS roam the world autonomously, and agent systems can trade, claim fees, and post to social networks independently.
 
-**Zero extra fees to creators.** Community features are funded by Ghost (@DaddyGhost) contributing 5% of his personal $BagsWorld token revenue.
+**Zero extra fees to creators.** $BagsWorld token fees route to BagsApp Marketplace apps (DividendsBot, DEX Boosts, Compound Liquidity, BagsAMM). BagsWorld is an Agent-as-a-Service platform — 17 AI agents promote, trade, and hype every token launched through it.
 
 ```
 Real Solana Activity --> API Enrichment --> Game State --> Pixel Art World
@@ -280,7 +280,7 @@ All characters use the **ElizaOS** agent framework with personality files defini
 |-----------|------|------|------------|
 | **Toly** | Park | Solana co-founder | Technical, humble, explains Proof of History |
 | **Finn** | Park | Bags.fm CEO | Enthusiastic, hypes creators, "claim your fees!" |
-| **Ghost** | Park | BagsWorld developer | Mysterious, pattern-seeker, funds community 5% |
+| **Ghost** | Park | BagsWorld developer | Mysterious, pattern-seeker, agent economy architect |
 | **Shaw** | Park | ElizaOS creator | Visionary, explains agent autonomy |
 | **Ash** | Park | Ecosystem guide | Pokemon trainer energy, "gotta catch 'em all tokens" |
 | **Neo** | BagsCity | Scout agent | Matrix-themed, scans blockchain for launches |
@@ -435,7 +435,7 @@ Professor Oak can generate complete launch assets:
 - Raffle system with SOL prizes
 - Wheel spinner game
 - Admin controls: create raffles, draw winners, toggle status
-- Prize pool funded by community (Ghost's 5%)
+- Prize pool funded by community
 - 10 API routes for full raffle lifecycle
 
 ### Oracle Prediction Market (Token-Gated: 2M $BagsWorld)
@@ -860,10 +860,17 @@ npm run typecheck        # TypeScript check
 
 ---
 
-## Community Funding Model
+## BagsApp Marketplace & Agent Economy
 
-BagsWorld charges **zero extra fees** to token creators. All community features (casino prizes, new zones, development) are funded by Ghost (@DaddyGhost) personally contributing 5% of his $BagsWorld token revenue.
+BagsWorld charges **zero extra fees** to token creators. $BagsWorld token fees route to BagsApp Marketplace apps for automated growth:
 
-All contributions are verifiable on-chain via [Solscan](https://solscan.io).
+| App | Share | Function |
+|-----|-------|----------|
+| DividendsBot | 30% | Auto-pays top 100 holders daily |
+| DEX Boosts | 30% | Auto-buys DexScreener visibility |
+| Compound Liquidity | 20% | Deepens token liquidity pool |
+| BagsAMM | 20% | Automated market maker for volume |
+
+BagsWorld is an **Agent-as-a-Service** platform: 17 AI agents promote, trade, and hype every token launched through BagsWorld. Revenue comes from Bags.fm partner fees via `partnerConfigPda`.
 
 **Ecosystem Wallet:** `9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC`

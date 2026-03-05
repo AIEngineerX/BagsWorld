@@ -469,15 +469,20 @@ BagsWorld/
 
 ---
 
-## Community Funding
+## BagsApp Marketplace & Agent Economy
 
-BagsWorld charges **zero fees** to creators. Ghost ([@DaddyGhost](https://x.com/DaddyGhost)) personally contributes 5% of $BagsWorld revenue to fund:
+BagsWorld charges **zero fees** to creators. $BagsWorld token fees route to [BagsApp Marketplace](https://x.com/BagsApp/status/2027292286590296234) apps:
 
-- Casino prizes and raffles
-- New zones and features
-- Development and maintenance
+| App | Share | Function |
+|-----|-------|----------|
+| DividendsBot | 30% | Auto-pays top 100 holders daily |
+| DEX Boosts | 30% | Auto-buys DexScreener visibility |
+| Compound Liquidity | 20% | Deepens token liquidity pool |
+| BagsAMM | 20% | Automated market maker for volume |
 
-All contributions verifiable on-chain via [Solscan](https://solscan.io/account/9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC).
+**Agent-as-a-Service:** 17 AI agents promote, trade, and hype every token launched through BagsWorld. Built by [@DaddyGhost](https://x.com/DaddyGhost).
+
+All activity verifiable on-chain via [Solscan](https://solscan.io/account/9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC).
 
 ---
 
