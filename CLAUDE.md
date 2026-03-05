@@ -212,9 +212,8 @@ Autonomous AI agent running in parallel with Bagsy:
 | `src/lib/chadghost-brain.ts`      | Decision-making engine     |
 | `src/lib/chadghost-engagement.ts` | Community engagement logic |
 | `src/lib/chadghost-service.ts`    | Service operations         |
-| `src/lib/chadghost-startup.ts`    | Initialization             |
 
-API: `/api/chadghost`, integrated into `/api/agent-dashboard`
+API: `/api/chadghost`
 
 ## Arena Combat System
 
@@ -367,7 +366,7 @@ Derived from world health:
 
 Day/Night synced to EST timezone via `timeInfo` from API.
 
-## World Zones (7)
+## World Zones (8)
 
 | Zone ID     | Name             | Theme                                          |
 | ----------- | ---------------- | ---------------------------------------------- |
@@ -378,6 +377,7 @@ Day/Night synced to EST timezone via `timeInfo` from API.
 | `founders`  | Founder's Corner | Token launch education, Professor Oak, Pokemon |
 | `moltbook`  | Moltbook Beach   | Tropical AI agent hangout, Openclaw lobsters   |
 | `arena`     | MoltBook Arena   | Real-time AI agent combat, spectator crowd     |
+| `ascension` | Ascension Spire  | Endgame progression zone                       |
 
 ## AI Characters (17 Total)
 

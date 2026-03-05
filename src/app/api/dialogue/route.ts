@@ -3,8 +3,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-const ELIZAOS_SERVER =
-  process.env.ELIZAOS_SERVER_URL || "https://bagsworld-production.up.railway.app";
+const ELIZAOS_SERVER = process.env.ELIZAOS_SERVER_URL || "http://localhost:3001";
 
 interface DialogueRequest {
   participants: string[]; // Agent IDs to participate

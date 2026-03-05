@@ -7,8 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 const LOCAL_AGENTS_URL = process.env.AGENTS_API_URL || "http://localhost:3001";
 
 // Railway ElizaOS server (fallback)
-const ELIZAOS_SERVER =
-  process.env.ELIZAOS_SERVER_URL || "https://bagsworld-production.up.railway.app";
+const ELIZAOS_SERVER = process.env.ELIZAOS_SERVER_URL || "http://localhost:3001";
 
 // Valid agent IDs that match Railway character files
 const VALID_AGENTS = [
