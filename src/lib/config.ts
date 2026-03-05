@@ -5,15 +5,19 @@
 // WHY JOIN BAGSWORLD?
 // =============================================================================
 // 1. VISIBILITY: Your token becomes a building in a living world
-// 2. SUCCESS REWARDS SUCCESS: More volume = more fees = higher ranking
+// 2. AGENT WORKFORCE: 17 AI agents promote, trade, and hype your token
 // 3. ZERO EXTRA FEES: No additional BagsWorld fees on token launches
-// 4. COMMUNITY FUNDED: Ghost contributes 5% of his $BagsWorld revenue to community
+// 4. BAGSAPP MARKETPLACE: Fees auto-route to DividendsBot, DEX Boosts,
+//    Compound Liquidity, and BagsAMM for automated token growth
 // =============================================================================
 //
-// FUNDING MODEL:
-// - Ghost (dev) personally diverts 5% of his $BagsWorld token revenue fees
-// - This funds Casino, community features, and future development
-// - Bags.fm fees are separate (standard platform fees)
+// REVENUE MODEL:
+// - $BagsWorld token fees route to BagsApp Marketplace apps:
+//   30% DividendsBot (auto-pays top 100 holders daily)
+//   30% DEX Boosts (auto-buys DexScreener visibility)
+//   20% Compound Liquidity (deepens token liquidity pool)
+//   20% BagsAMM (automated market maker for volume)
+// - BagsWorld earns Bags.fm partner fees via partnerConfigPda
 // - Creators launching tokens pay NO extra BagsWorld fees
 //
 // Follow @DaddyGhost on X for updates
@@ -69,10 +73,10 @@ export const ECOSYSTEM_CONFIG = {
   // ECOSYSTEM FUNDING
   // -------------------------------------------------------------------------
   // BagsWorld does NOT take fees on token launches
-  // Community features are funded by Ghost's 5% $BagsWorld revenue contribution
-  // Bags.fm has its own separate fee structure (standard platform fees)
+  // $BagsWorld token fees route to BagsApp Marketplace apps for automated growth
+  // BagsWorld earns partner fees from Bags.fm on launches through the platform
   ecosystem: {
-    // Wallet that receives Ghost's community contribution
+    // Ecosystem wallet
     wallet:
       process.env.NEXT_PUBLIC_ECOSYSTEM_WALLET || "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
 
@@ -81,15 +85,37 @@ export const ECOSYSTEM_CONFIG = {
     partnerConfigPda: "5TcACd9yCLEBewdRrhk9hb6A22oS2gFLzG7oH5YCq1Po",
 
     // Fee percentage in basis points (0 = no mandatory ecosystem fee on launches)
-    // Community is funded by Ghost's personal $BagsWorld revenue contribution instead
     feeBps: 0,
 
-    // Founder's Community Contribution
-    // Ghost contributes 5% of his personal $BagsWorld token fees to fund community
-    founderContribution: {
-      percentage: 5, // 5% of Ghost's $BagsWorld revenue
-      fundedFeatures: ["Casino", "Community rewards", "Future development"],
+    // BagsApp Marketplace fee structure for $BagsWorld token
+    marketplaceApps: {
+      dividendsBot: {
+        username: "DividendsBot",
+        bps: 3000,
+        description: "Auto-pays top 100 holders daily",
+      },
+      dexBoosts: {
+        username: "DEXBoosts",
+        bps: 3000,
+        description: "Auto-buys DexScreener visibility",
+      },
+      compoundLiquidity: {
+        username: "CompoundLiquidity",
+        bps: 2000,
+        description: "Deepens token liquidity pool",
+      },
+      bagsAMM: { username: "BagsAMM", bps: 2000, description: "Automated market maker for volume" },
     },
+
+    // Agent-as-a-Service: 17 AI agents work for tokens launched through BagsWorld
+    agentServices: [
+      "Neo detects and announces launches",
+      "Bagsy hypes on Moltbook",
+      "BNN runs breaking news coverage",
+      "ChadGhost engages community",
+      "Agents trade during 24h grace period",
+      "Arena creates token-themed battles",
+    ],
 
     // Scout Agent: Scans for new token launches in real-time
     scout: {
@@ -273,14 +299,14 @@ export const ECOSYSTEM_CONFIG = {
         icon: "0",
       },
       {
-        title: "Ghost's 5%",
-        description: "Founder funds community from his $BagsWorld revenue",
-        icon: "F",
+        title: "Agent Workforce",
+        description: "17 AI agents promote, trade, and hype your token",
+        icon: "A",
       },
       {
-        title: "Community First",
-        description: "Casino, features & development funded by Ghost",
-        icon: "C",
+        title: "BagsApp Marketplace",
+        description: "Fees auto-route to dividends, DEX boosts, liquidity & AMM",
+        icon: "M",
       },
     ],
   },
@@ -341,7 +367,7 @@ export const ECOSYSTEM_CONFIG = {
     name: "Community Hub",
     symbol: "COMMUNITY",
     description:
-      "Funded by Ghost's 5% $BagsWorld revenue. Powers Casino, features & development. Click to verify on Solscan.",
+      "BagsWorld ecosystem hub. Fees power the BagsApp Marketplace — dividends, DEX boosts, liquidity & AMM. Click to verify on Solscan.",
     level: 5, // Always max level - it's the centerpiece
     getSolscanUrl: () => `https://solscan.io/account/${ECOSYSTEM_CONFIG.ecosystem.wallet}`,
   },
@@ -359,11 +385,11 @@ export const ECOSYSTEM_CONFIG = {
     // Ash explains the ecosystem with Pokemon-themed analogies
     quotes: [
       "Gotta catch 'em all... tokens that is! Each one becomes a building in BagsWorld!",
-      "Ghost funds the community with 5% of his $BagsWorld fees - like a Pokemon Champion giving back!",
+      "17 AI agents work for your token when you launch through BagsWorld - like having your own Pokemon team!",
       "Just like Pokemon evolve, your building grows as market cap increases!",
       "Launch tokens with ZERO extra fees - BagsWorld is free to use!",
       "I wanna be the very best! And in BagsWorld, creators keep 100% of their fee share!",
-      "Ghost's contribution powers the Casino, features, and more - community first!",
+      "BagsApp Marketplace powers your token automatically - dividends, DEX boosts, liquidity, all handled!",
     ],
     // Clicking Ash opens ecosystem explainer
     interactionType: "ecosystem-guide",
@@ -405,16 +431,16 @@ export const ECOSYSTEM_CONFIG = {
     providerUsername: "DaddyGhost",
     twitterHandle: "DaddyGhost",
     mood: "happy" as const,
-    // Ghost builds BagsWorld - no more reward system, community funded by Ghost
+    // Ghost builds BagsWorld - agent-as-a-service model
     quotes: [
-      "yo i build the features here. i fund the community with 5% of his $BagsWorld revenue",
+      "yo i build the features here. 17 agents working for every token launched through bagsworld",
       "no mandatory fees on your launches. creators get 100% of their configured share",
-      "my contribution powers the casino, features, all the cool stuff. community first",
+      "bagsapp marketplace handles the fundamentals - dividends, dex boosts, liquidity, amm",
       "bags.fm fees are separate - that's their platform. bagsworld adds zero extra fees",
-      "i built this for devs. launch for free, earn your fees through bags.fm, simple as that",
-      "check the community wallet on solscan. my 5% contribution funds everything here",
-      "not just a dev, im the ghost in the machine. you build, you keep your earnings",
-      "the old reward system is gone. now it's funded by me directly. cleaner, simpler",
+      "i built this for devs. launch for free, get an agent workforce, earn through bags.fm",
+      "the agents are the moat. neo scouts, bagsy hypes, bnn reports, chadghost engages",
+      "not just a dev, im the ghost in the machine. you build, the agents go to work",
+      "agent economy is the model now. more agents active = more world activity = more launches",
     ],
     // Clicking Dev opens trading assistant
     interactionType: "trading-agent",
