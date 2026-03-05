@@ -8154,14 +8154,14 @@ export class WorldScene extends Phaser.Scene {
 
     if (isTreasury) {
       // Community Fund tooltip
-      const descText = this.add.text(0, -12, "Ghost's 5% Contribution", {
+      const descText = this.add.text(0, -12, "BagsApp Marketplace", {
         fontFamily: "monospace",
         fontSize: "10px",
         color: "#4ade80",
       });
       descText.setOrigin(0.5, 0.5);
 
-      const breakdownText = this.add.text(0, 4, "Funds Casino, features & dev", {
+      const breakdownText = this.add.text(0, 4, "Dividends, DEX Boosts, Liquidity, AMM", {
         fontFamily: "monospace",
         fontSize: "6px",
         color: "#9ca3af",
