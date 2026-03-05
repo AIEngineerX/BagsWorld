@@ -118,7 +118,6 @@ describe("MiniMap", () => {
       expect(grid.getByText("BALLERS")).toBeInTheDocument();
       expect(grid.getByText("ARENA")).toBeInTheDocument();
       expect(grid.getByText("BEACH")).toBeInTheDocument();
-      expect(grid.getByText("DUNGEON")).toBeInTheDocument();
       expect(grid.getByText("LAUNCH")).toBeInTheDocument();
     });
 

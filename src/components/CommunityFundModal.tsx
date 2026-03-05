@@ -351,13 +351,11 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
             {/* Main Message */}
             <div className="bg-bags-darker rounded-lg p-4 border border-bags-green/30 text-center">
               <div className="text-3xl mb-2">⚡</div>
-              <h3 className="font-pixel text-bags-green text-[11px] mb-2">
-                BagsApp Marketplace
-              </h3>
+              <h3 className="font-pixel text-bags-green text-[11px] mb-2">BagsApp Marketplace</h3>
               <p className="font-pixel text-gray-300 text-[9px] leading-relaxed">
                 $BagsWorld token fees auto-route to{" "}
-                <span className="text-bags-gold">BagsApp Marketplace apps</span> for automated
-                token growth — dividends, DEX boosts, liquidity, and volume support.
+                <span className="text-bags-gold">BagsApp Marketplace apps</span> for automated token
+                growth — dividends, DEX boosts, liquidity, and volume support.
               </p>
             </div>
 
