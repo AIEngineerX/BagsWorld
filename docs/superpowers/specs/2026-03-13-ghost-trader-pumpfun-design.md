@@ -1,18 +1,22 @@
-# Ghost Trader — Standalone Pump.fun Tokenized Agent
+# Neo Trader — Standalone Pump.fun Tokenized Agent
 
 **Date:** 2026-03-13
 **Status:** Draft
-**Author:** Ghost (DaddyGhost) extraction from BagsWorld
+**Author:** Neo extraction from BagsWorld (rebrand of Ghost trading engine)
 
 ---
 
 ## 1. Overview
 
-Extract the Ghost autonomous trading agent from BagsWorld into a standalone repository (`C:\Users\footb\ghost-trader\`). Remove all BagsWorld/Bags.fm knowledge and dependencies. Rewrite Ghost as a pump.fun-native tokenized agent with two revenue streams feeding 75% automated buybacks via pump.fun's native Tokenized Agent feature.
+Extract the Ghost autonomous trading agent from BagsWorld into a standalone repository (`C:\Users\footb\neo-trader\`), rebrand as **Neo** — a Matrix-themed pump.fun autonomous trader who "sees the chain." Remove all BagsWorld/Bags.fm knowledge and dependencies. Two revenue streams feeding 75% automated buybacks via pump.fun's native Tokenized Agent feature.
+
+### Character Identity
+
+Neo merges Ghost's proven trading engine with Neo's existing Matrix-themed personality from BagsWorld. "I don't believe. I see." — every trade is backed by data, every position is transparent on-chain. Neo sees the blockchain as streams of green code and trades what the data reveals.
 
 ### Revenue Streams
 
-1. **Autonomous trading profits** — Ghost evaluates and trades pump.fun launches, profits split 75/25
+1. **Autonomous trading profits** — Neo evaluates and trades pump.fun launches, profits split 75/25
 2. **Paid services** — Users pay SOL (via `@pump-fun/agent-payments-sdk`) for chat, token evaluations, and smart money feeds
 
 Both streams deposit to pump.fun's buyback address. Pump.fun handles buyback and burn natively.
@@ -20,7 +24,7 @@ Both streams deposit to pump.fun's buyback address. Pump.fun handles buyback and
 ### Non-Goals
 
 - Frontend / web UI (API-first, any frontend can connect)
-- Multiple characters (Ghost only)
+- Multiple characters (Neo only)
 - ElizaOS framework (using Anthropic SDK directly)
 - Memory / RAG / embeddings (can add later)
 - Twitter integration
@@ -31,23 +35,23 @@ Both streams deposit to pump.fun's buyback address. Pump.fun handles buyback and
 ## 2. Architecture
 
 ```
-ghost-trader/
+neo-trader/
 ├── src/
 │   ├── server.ts                  # Express entry + autonomous scheduler (port 3001)
-│   ├── character.ts               # Ghost personality (pump.fun rewrite)
+│   ├── character.ts               # Neo personality (pump.fun Matrix trader)
 │   ├── types.ts                   # Standalone types (no ElizaOS)
 │   ├── services/
-│   │   ├── GhostTrader.ts         # Autonomous trading engine
+│   │   ├── NeoTrader.ts           # Autonomous trading engine
 │   │   ├── SolanaService.ts       # Tx signing, balances, holder checks
 │   │   ├── SmartMoneyService.ts   # Alpha wallet tracking
 │   │   ├── DexScreenerService.ts  # Pump.fun launch sourcing (NEW)
 │   │   ├── ProfitSplitter.ts      # 75/25 split → pump.fun deposit (NEW)
-│   │   ├── ChatService.ts         # Anthropic SDK + Ghost persona (NEW)
+│   │   ├── ChatService.ts         # Anthropic SDK + Neo persona (NEW)
 │   │   ├── PaymentService.ts      # Pump.fun agent payments SDK (NEW)
 │   │   └── TelegramBroadcaster.ts # Trade signal alerts
 │   └── routes/
-│       ├── ghost.ts               # Trading API (status, positions, config)
-│       ├── chat.ts                # Chat with Ghost (paid)
+│       ├── neo.ts                 # Trading API (status, positions, config)
+│       ├── chat.ts                # Chat with Neo (paid)
 │       └── payments.ts            # Invoice creation + verification (NEW)
 ├── package.json
 ├── tsconfig.json
@@ -59,21 +63,23 @@ ghost-trader/
 
 ## 3. Components
 
-### 3.1 Ghost Character (`character.ts`)
+### 3.1 Neo Character (`character.ts`)
 
-Rewritten from BagsWorld's `ghost.character.ts`. All BagsWorld/Bags.fm/pixel art references removed. Reframed as a pump.fun autonomous trader.
+Combines Ghost's trading discipline with Neo's Matrix-themed persona from BagsWorld. All BagsWorld/Bags.fm/pixel art references removed. Reframed as a pump.fun autonomous trader.
 
-**Kept:** Trading philosophy, risk management personality, on-chain transparency, lowercase style, mysterious builder tone, data-driven approach.
+**From Ghost (kept):** Trading philosophy, risk management, on-chain transparency, data-driven approach, lowercase style, position reporting.
+
+**From Neo (kept):** Matrix metaphors ("i see the chain", "the code never lies"), cryptic/philosophical tone, "i see" instead of "i think", red/green as code colors, dramatic alpha reveals.
 
 **Added:** Pump.fun ecosystem knowledge, tokenized agent awareness, buyback narrative, pump.fun launch evaluation expertise.
 
-**Removed:** BagsWorld vision, pixel art worlds, world health, weather systems, Bags.fm fee claiming, cross-character references (Neo, Oak, Bags Bot).
+**Removed:** BagsWorld vision, pixel art worlds, world health, weather systems, Bags.fm fee claiming, all cross-character references.
 
-The character definition is a plain TypeScript object (not ElizaOS `CharacterDefinition`). ChatService builds a system prompt from it directly.
+The character definition is a plain TypeScript object. ChatService builds a system prompt from it directly.
 
-### 3.2 GhostTrader (`services/GhostTrader.ts`)
+### 3.2 NeoTrader (`services/NeoTrader.ts`)
 
-Extracted from BagsWorld's ~3000-line GhostTrader. This is the core autonomous trading engine.
+Extracted from BagsWorld's ~3000-line GhostTrader, renamed to NeoTrader. This is the core autonomous trading engine.
 
 **Kept (all critical trading logic):**
 - Position management (open, close, track)
@@ -89,6 +95,7 @@ Extracted from BagsWorld's ~3000-line GhostTrader. This is the core autonomous t
 - Evaluation cooldowns and trade deduplication
 
 **Modified:**
+- Class renamed: `GhostTrader` → `NeoTrader`
 - `BagsApiService` dependency replaced with `DexScreenerService`
 - `evaluateLaunch()` rewritten to use DexScreener data instead of Bags.fm API
 - Bags-specific signals removed: `lifetimeFeesSol`, `hasFeeClaims`, `requireTokenClaimed`, `maxCreatorFeeBps` (Bags.fm fee bps)
@@ -156,7 +163,7 @@ Extracted from BagsWorld with ElizaOS base class removed. The source file extend
 - Recent blockhash
 - **NEW:** `transferSol(toAddress, amountSol)` — for ProfitSplitter deposits
 
-**Env var:** `GHOST_WALLET_PRIVATE_KEY` (same name, same behavior).
+**Env var:** `NEO_WALLET_PRIVATE_KEY` (renamed from `GHOST_WALLET_PRIVATE_KEY`).
 
 ### 3.4 SmartMoneyService (`services/SmartMoneyService.ts`)
 
@@ -197,28 +204,28 @@ Replaces `BagsApiService` for launch sourcing and token data. Pump.fun launches 
 
 ### 3.6 ProfitSplitter (`services/ProfitSplitter.ts`) — NEW
 
-Handles the 75/25 profit split after Ghost closes a winning trade.
+Handles the 75/25 profit split after Neo closes a winning trade.
 
 **Flow:**
-1. GhostTrader closes a position with positive P&L
+1. NeoTrader closes a position with positive P&L
 2. Calls `ProfitSplitter.splitProfit(pnlSol)`
 3. ProfitSplitter calculates: `buybackAmount = pnlSol * 0.75`
 4. If `buybackAmount >= 0.01 SOL` (minimum worth sending):
    - Builds SOL transfer instruction to `PUMPFUN_DEPOSIT_ADDRESS`
    - Signs and sends via SolanaService
    - Logs the deposit (DB + console)
-5. Remaining 25% stays in Ghost's wallet
+5. Remaining 25% stays in Neo's wallet
 
-**Pump.fun native buyback:** Once deposits accumulate to $10+ worth, pump.fun automatically executes the buyback and burn on Ghost's token. We do not handle the buyback ourselves.
+**Pump.fun native buyback:** Once deposits accumulate to $10+ worth, pump.fun automatically executes the buyback and burn on Neo's token. We do not handle the buyback ourselves.
 
 **Config:**
-- `PUMPFUN_DEPOSIT_ADDRESS` — pump.fun's unique deposit address for Ghost's token (set after token launch)
-- `GHOST_BUYBACK_PERCENT=75` — configurable via env var
+- `PUMPFUN_DEPOSIT_ADDRESS` — pump.fun's unique deposit address for Neo's token (set after token launch)
+- `NEO_BUYBACK_PERCENT=75` — configurable via env var
 - Minimum deposit: 0.01 SOL (below this, tx fees aren't worth it)
 
 **When `PUMPFUN_DEPOSIT_ADDRESS` is not set (pre-launch):**
-- ProfitSplitter logs the pending buyback amount to `ghost_buybacks` table with `deposit_tx_signature = NULL`
-- 100% of profits stay in Ghost's wallet
+- ProfitSplitter logs the pending buyback amount to `neo_buybacks` table with `deposit_tx_signature = NULL`
+- 100% of profits stay in Neo's wallet
 - Console warning on each skipped deposit: `[ProfitSplitter] PUMPFUN_DEPOSIT_ADDRESS not set — 0.15 SOL buyback pending`
 - Once the address is configured, pending deposits are NOT batch-sent (they stay as historical records). Only future profits are split. This avoids a large sudden outflow.
 
@@ -227,11 +234,11 @@ Handles the 75/25 profit split after Ghost closes a winning trade.
 Lightweight chat powered by Anthropic SDK directly. No ElizaOS.
 
 **System prompt construction:**
-- Ghost character definition (bio, lore, style, quirks)
+- Neo character definition (bio, lore, style, quirks)
 - Live trading context injected per message (same pattern as `ghostTradingProvider`):
   - Trading status (enabled/disabled)
   - Open positions with P&L
-  - Recent trades (last 3)
+  - Recent trades (last 3, sourced from positions table)
   - Performance stats (win rate, total P&L)
   - Smart money alerts
 
@@ -269,9 +276,9 @@ const agent = new PumpAgent(new PublicKey(AGENT_TOKEN_MINT), "mainnet", connecti
 **SDK verification note:** The `@pump-fun/agent-payments-sdk` package must be verified at implementation time via `npm info @pump-fun/agent-payments-sdk` to confirm the exact version, API surface, and `@solana/web3.js` peer dependency version. If the package name or API differs, the PaymentService implementation will adapt accordingly.
 
 **Pricing (SOL, configurable via env):**
-- Chat message: `GHOST_CHAT_PRICE` (default: 0.005 SOL ~$0.85)
-- Token evaluation: `GHOST_EVAL_PRICE` (default: 0.01 SOL ~$1.70)
-- Smart money feed (1hr access): `GHOST_FEED_PRICE` (default: 0.02 SOL ~$3.40)
+- Chat message: `NEO_CHAT_PRICE` (default: 0.005 SOL ~$0.85)
+- Token evaluation: `NEO_EVAL_PRICE` (default: 0.01 SOL ~$1.70)
+- Smart money feed (1hr access): `NEO_FEED_PRICE` (default: 0.02 SOL ~$3.40)
 
 **Currency:** Wrapped SOL (`So11111111111111111111111111111111111111112`). SDK auto-handles wrapping/unwrapping.
 
@@ -295,25 +302,25 @@ Extracted from BagsWorld. Sends trade signals to a Telegram channel.
 
 ## 4. API Routes
 
-### 4.1 Trading Routes (`routes/ghost.ts`)
+### 4.1 Trading Routes (`routes/neo.ts`)
 
 **Public:**
-- `GET /api/ghost/status` — trading stats, performance, config
-- `GET /api/ghost/positions` — all positions
-- `GET /api/ghost/positions/open` — open positions only
-- `GET /api/ghost/learning` — self-learning signal insights
+- `GET /api/neo/status` — trading stats, performance, config
+- `GET /api/neo/positions` — all positions
+- `GET /api/neo/positions/open` — open positions only
+- `GET /api/neo/learning` — self-learning signal insights
 
-**Admin (requires `x-ghost-admin-key` header):**
-- `POST /api/ghost/enable` — enable trading (requires confirmation phrase)
-- `POST /api/ghost/disable` — kill switch
-- `POST /api/ghost/config` — update trading config
-- `POST /api/ghost/evaluate` — manually trigger launch evaluation
-- `POST /api/ghost/check-positions` — manually check positions for exits
-- `POST /api/ghost/learning/reset` — reset learning data
+**Admin (requires `x-neo-admin-key` header):**
+- `POST /api/neo/enable` — enable trading (requires confirmation phrase)
+- `POST /api/neo/disable` — kill switch
+- `POST /api/neo/config` — update trading config
+- `POST /api/neo/evaluate` — manually trigger launch evaluation
+- `POST /api/neo/check-positions` — manually check positions for exits
+- `POST /api/neo/learning/reset` — reset learning data
 
 ### 4.2 Chat Routes (`routes/chat.ts`)
 
-- `POST /api/chat` — chat with Ghost
+- `POST /api/chat` — chat with Neo
   - Body: `{ message, sessionId?, walletAddress }`
   - Requires payment verification (via PaymentService)
   - Returns: `{ response, sessionId }`
@@ -350,7 +357,7 @@ Applied via `express-rate-limit`:
 
 ```
 DexScreener API → getPumpFunLaunches()
-    → GhostTrader.evaluateLaunches()
+    → NeoTrader.evaluateLaunches()
         → Score each launch (liquidity, volume, holders, smart money, concentration)
         → Score >= 70 → buy
             → SolanaService.signAndSendTransaction()
@@ -377,7 +384,7 @@ Client → POST /api/payments/create-invoice { service: "chat" }
                     → Server validates on-chain
                         → POST /api/chat { message }
                             → ChatService: system prompt + trading context + history
-                                → Anthropic API → Ghost response
+                                → Anthropic API → Neo response
                                     → Payment revenue → pump.fun deposit → buyback
 ```
 
@@ -394,8 +401,8 @@ Uses Neon serverless PostgreSQL (same as BagsWorld). Falls back to in-memory if 
 ### Tables
 
 ```sql
--- Position tracking (extracted from BagsWorld)
-CREATE TABLE ghost_positions (
+-- Position tracking
+CREATE TABLE neo_positions (
   id UUID PRIMARY KEY,
   token_mint VARCHAR(64) NOT NULL,
   token_symbol VARCHAR(20),
@@ -418,14 +425,14 @@ CREATE TABLE ghost_positions (
 );
 
 -- Trading config persistence
-CREATE TABLE ghost_config (
+CREATE TABLE neo_config (
   key VARCHAR(50) PRIMARY KEY,
   value TEXT,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Self-learning signal tracking
-CREATE TABLE ghost_learning (
+CREATE TABLE neo_learning (
   signal VARCHAR(100) PRIMARY KEY,
   total_trades INTEGER DEFAULT 0,
   winning_trades INTEGER DEFAULT 0,
@@ -434,8 +441,8 @@ CREATE TABLE ghost_learning (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Buyback deposit tracking (replaces ghost_burns)
-CREATE TABLE ghost_buybacks (
+-- Buyback deposit tracking
+CREATE TABLE neo_buybacks (
   id UUID PRIMARY KEY,
   pnl_sol DECIMAL(18, 9) NOT NULL,
   deposit_sol DECIMAL(18, 9) NOT NULL,
@@ -484,31 +491,31 @@ CREATE TABLE payment_invoices (
 
 ```env
 # === REQUIRED ===
-GHOST_WALLET_PRIVATE_KEY=          # Base58 private key for trading
+NEO_WALLET_PRIVATE_KEY=            # Base58 private key for trading
 SOLANA_RPC_URL=                    # Helius or similar (supports sendTransaction)
-ANTHROPIC_API_KEY=                 # Powers Ghost chat
+ANTHROPIC_API_KEY=                 # Powers Neo chat
 
 # === PUMP.FUN (set after token launch) ===
 PUMPFUN_DEPOSIT_ADDRESS=           # Pump.fun buyback deposit address
-AGENT_TOKEN_MINT=                  # Ghost's pump.fun token mint address
-GHOST_BUYBACK_PERCENT=75           # % of trading profits to buyback (default 75)
+AGENT_TOKEN_MINT=                  # Neo's pump.fun token mint address
+NEO_BUYBACK_PERCENT=75             # % of trading profits to buyback (default 75)
 
 # === DATABASE (optional — in-memory fallback) ===
 DATABASE_URL=                      # Neon PostgreSQL connection string
 
 # === TRADING ===
-GHOST_TRADING_ENABLED=false        # Must explicitly enable
-GHOST_ADMIN_KEY=                   # Protects enable/disable/config endpoints
-GHOST_MAX_POSITION_SOL=1.0         # Override max position size
-GHOST_MAX_TOTAL_EXPOSURE=3.0       # Override max total exposure
-GHOST_MAX_POSITIONS=3              # Override max concurrent positions
-GHOST_STOP_LOSS_PERCENT=15         # Override stop loss
-GHOST_TRAILING_STOP_PERCENT=25     # Override trailing stop
+NEO_TRADING_ENABLED=false          # Must explicitly enable
+NEO_ADMIN_KEY=                     # Protects enable/disable/config endpoints
+NEO_MAX_POSITION_SOL=1.0           # Override max position size
+NEO_MAX_TOTAL_EXPOSURE=3.0         # Override max total exposure
+NEO_MAX_POSITIONS=3                # Override max concurrent positions
+NEO_STOP_LOSS_PERCENT=15           # Override stop loss
+NEO_TRAILING_STOP_PERCENT=25       # Override trailing stop
 
 # === PAID SERVICES (SOL prices in lamports) ===
-GHOST_CHAT_PRICE=5000000           # 0.005 SOL per chat message
-GHOST_EVAL_PRICE=10000000          # 0.01 SOL per token evaluation
-GHOST_FEED_PRICE=20000000          # 0.02 SOL per hour smart money feed
+NEO_CHAT_PRICE=5000000             # 0.005 SOL per chat message
+NEO_EVAL_PRICE=10000000            # 0.01 SOL per token evaluation
+NEO_FEED_PRICE=20000000            # 0.02 SOL per hour smart money feed
 
 # === TELEGRAM (optional) ===
 TELEGRAM_BROADCAST_ENABLED=false   # Must be true to activate broadcasting
@@ -517,7 +524,7 @@ TELEGRAM_CHANNEL_ID=               # Signal channel
 
 # === OPTIONAL ===
 HELIUS_RPC_URL=                    # Helius-specific (future: wallet discovery)
-GHOST_WALLET_PUBLIC_KEY=           # Optional — derived from private key if not set
+NEO_WALLET_PUBLIC_KEY=             # Optional — derived from private key if not set
 
 # === SERVER ===
 PORT=3001
@@ -531,6 +538,9 @@ CORS_ORIGINS=http://localhost:3000
 
 ```json
 {
+  "name": "neo-trader",
+  "version": "1.0.0",
+  "description": "Neo — autonomous pump.fun trading agent with tokenized buybacks",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",
     "@pump-fun/agent-payments-sdk": "3.0.0",
@@ -610,16 +620,16 @@ Set all environment variables in Railway dashboard. Connect Neon DB via `DATABAS
 
 Files extracted and their transformation:
 
-| BagsWorld Source | Ghost Trader Target | Changes |
+| BagsWorld Source | Neo Trader Target | Changes |
 |---|---|---|
-| `eliza-agents/src/services/GhostTrader.ts` | `src/services/GhostTrader.ts` | Remove Bags API, use DexScreener + Jupiter. Remove WorldSync, Coordinator. Replace burn with ProfitSplitter. |
-| `eliza-agents/src/services/SolanaService.ts` | `src/services/SolanaService.ts` | Strip `extends Service` + `IAgentRuntime`. Add `transferSol()`. |
+| `eliza-agents/src/services/GhostTrader.ts` | `src/services/NeoTrader.ts` | Rename class. Remove Bags API, use DexScreener + Jupiter. Remove WorldSync, Coordinator. Replace burn with ProfitSplitter. |
+| `eliza-agents/src/services/SolanaService.ts` | `src/services/SolanaService.ts` | Strip `extends Service` + `IAgentRuntime`. Add `transferSol()`. Rename env vars `GHOST_*` → `NEO_*`. |
 | `eliza-agents/src/services/SmartMoneyService.ts` | `src/services/SmartMoneyService.ts` | Strip `extends Service` + `IAgentRuntime`. Replace `refreshSmartMoneyList()` with no-op (defer wallet discovery). |
 | `eliza-agents/src/services/TelegramBroadcaster.ts` | `src/services/TelegramBroadcaster.ts` | Remove Bags-specific fields. Replace grammy with raw fetch. |
 | `eliza-agents/src/services/DexScreenerCache.ts` | Absorbed into `DexScreenerService.ts` | Expanded for pump.fun launch sourcing |
-| `eliza-agents/src/routes/ghost.ts` | `src/routes/ghost.ts` | Remove Bags-specific endpoints |
+| `eliza-agents/src/routes/ghost.ts` | `src/routes/neo.ts` | Rename routes `/api/ghost/*` → `/api/neo/*`. Remove Bags-specific endpoints. |
 | `eliza-agents/src/providers/ghostTrading.ts` | Absorbed into `ChatService.ts` | Trading context injected into system prompt |
-| `eliza-agents/src/characters/definitions/ghost.character.ts` | `src/character.ts` | Full rewrite for pump.fun |
+| `eliza-agents/src/characters/definitions/ghost.character.ts` + `neo.character.ts` | `src/character.ts` | Merge Ghost trading + Neo personality. Full rewrite for pump.fun. |
 | `eliza-agents/src/types/elizaos.ts` | `src/types.ts` | Stripped to minimal types needed |
 | — | `src/services/DexScreenerService.ts` | NEW |
 | — | `src/services/ProfitSplitter.ts` | NEW |
