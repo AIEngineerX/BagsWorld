@@ -235,15 +235,7 @@ function DeepLinkHandler() {
     const timers: ReturnType<typeof setTimeout>[] = [];
 
     if (zone) {
-      const validZones = [
-        "main_city",
-        "trending",
-        "labs",
-        "ballers",
-        "founders",
-        "moltbook",
-        "arena",
-      ];
+      const validZones = ["main_city", "trending", "labs", "ballers", "founders", "moltbook"];
       if (validZones.includes(zone)) {
         timers.push(
           setTimeout(() => {

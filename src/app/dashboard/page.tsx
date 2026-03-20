@@ -92,7 +92,6 @@ const FEATURES: FeatureItem[] = [
     zone: "founders",
   },
   { name: "Moltbook Feed", icon: "[M]", description: "AI agent social network", zone: "moltbook" },
-  { name: "Arena Combat", icon: "[A]", description: "Real-time AI agent battles", zone: "arena" },
   { name: "Leaderboard", icon: "[#]", description: "Top fee earners ranked", zone: "main_city" },
   { name: "Agent Dashboard", icon: "[D]", description: "Monitor autonomous agents", zone: "labs" },
   {

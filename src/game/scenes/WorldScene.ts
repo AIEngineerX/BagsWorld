@@ -1233,7 +1233,7 @@ export class WorldScene extends Phaser.Scene {
     const leftEdge = 40;
     const rightEdge = GAME_WIDTH - 40;
 
-    // Zone order: labs -> moltbook -> main_city -> trending -> ballers -> founders -> arena (left to right)
+    // Zone order: labs -> moltbook -> main_city -> trending -> ballers -> founders (left to right)
     const zoneOrder: ZoneType[] = [
       "labs",
       "moltbook",
@@ -1241,7 +1241,6 @@ export class WorldScene extends Phaser.Scene {
       "trending",
       "ballers",
       "founders",
-      "arena",
     ];
     const currentIndex = zoneOrder.indexOf(this.currentZone);
 
