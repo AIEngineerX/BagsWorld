@@ -46,7 +46,7 @@ export function ImmersiveHUD({ visible, worldHealth }: ImmersiveHUDProps) {
 
   const currentIndex = ZONE_ORDER.indexOf(currentZone);
   const canGoLeft = currentIndex > 0;
-  const canGoRight = currentIndex < ZONE_ORDER.length - 1;
+  const canGoRight = currentIndex !== -1 && currentIndex < ZONE_ORDER.length - 1;
 
   const navigateZone = (direction: "left" | "right") => {
     const nextIndex = direction === "left" ? currentIndex - 1 : currentIndex + 1;
