@@ -5,9 +5,11 @@
 import { NextResponse } from "next/server";
 import { characters, generateCharacterPrompt } from "@/characters";
 
+import { BAGS_API_BASE_URL } from "@/lib/config";
+
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const BAGS_API_KEY = process.env.BAGS_API_KEY;
-const BAGS_API_URL = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
+const BAGS_API_URL = BAGS_API_BASE_URL;
 const ELIZAOS_SERVER = process.env.ELIZAOS_SERVER_URL || "http://localhost:3001";
 
 // ============================================================================

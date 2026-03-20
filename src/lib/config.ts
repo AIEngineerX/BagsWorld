@@ -25,6 +25,9 @@
 
 import { isProduction } from "./env-utils";
 
+/** Canonical Bags.fm API base URL — use this instead of hardcoding the URL. */
+export const BAGS_API_BASE_URL = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
+
 /**
  * Get admin wallets from environment.
  *

@@ -78,7 +78,7 @@ const ZONE_THEME: Record<
 
 // Map grid layout — rows of zone IDs matching a spatial map
 const MAP_ROWS: ZoneType[][] = [
-  ["labs", "moltbook", "arena"],
+  ["labs", "moltbook"],
   ["main_city", "trending", "ballers"],
   ["founders", "ascension"],
 ];

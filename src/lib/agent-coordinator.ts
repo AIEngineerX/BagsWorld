@@ -591,21 +591,6 @@ export async function emitAgentInsight(
   return emitEvent("agent_insight", "ai-agent", { message, action }, "low");
 }
 
-export async function emitWhaleAlert(
-  action: "buy" | "sell",
-  amount: number,
-  tokenSymbol: string,
-  mint?: string,
-  wallet?: string
-): Promise<AgentEvent | null> {
-  return emitEvent(
-    "whale_alert",
-    "price-monitor",
-    { action, amount, tokenSymbol, mint, wallet },
-    "high"
-  );
-}
-
 export async function emitTaskPosted(
   posterName: string,
   title: string,
@@ -674,40 +659,12 @@ export async function emitCorpJoined(
   return emitEvent("corp_joined", "task-board", { agentName, corpName }, "medium");
 }
 
-export async function emitCorpMissionComplete(
-  corpName: string,
-  missionTitle: string,
-  rewardSol: number
-): Promise<AgentEvent | null> {
-  return emitEvent(
-    "corp_mission_complete",
-    "task-board",
-    { corpName, missionTitle, rewardSol },
-    "high"
-  );
-}
-
 export async function emitCorpPayroll(
   corpName: string,
   distributed: number,
   recipients: number
 ): Promise<AgentEvent | null> {
   return emitEvent("corp_payroll", "task-board", { corpName, distributed, recipients }, "medium");
-}
-
-export async function emitCorpService(
-  agentName: string,
-  corpName: string,
-  title: string,
-  rewardSol: number,
-  completed: boolean = false
-): Promise<AgentEvent | null> {
-  return emitEvent(
-    "corp_service",
-    "task-board",
-    { agentName, corpName, title, rewardSol, completed },
-    completed ? "high" : "medium"
-  );
 }
 
 export function getCoordinatorState(): CoordinatorState {
@@ -722,53 +679,11 @@ export function getRecentEvents(count: number = 20, type?: AgentEventType): Agen
   return events.slice(0, count);
 }
 
-export function getPendingEvents(): AgentEvent[] {
-  return [...state.eventQueue];
-}
-
 export function getEventStats(): CoordinatorState["stats"] {
   return { ...state.stats };
-}
-
-export function resetCoordinator(): void {
-  state = {
-    isRunning: state.isRunning,
-    eventQueue: [],
-    processedEvents: [],
-    subscriptions: state.subscriptions, // Keep subscriptions
-    stats: {
-      totalEvents: 0,
-      eventsByType: {} as Record<AgentEventType, number>,
-      eventsBySource: {} as Record<AgentSource, number>,
-      lastEventTime: 0,
-    },
-  };
-}
-
-// Browser event dispatcher - sends events to the game UI
-let browserEventTarget: EventTarget | null = null;
-
-export function setBrowserEventTarget(target: EventTarget): void {
-  browserEventTarget = target;
-}
-
-function browserDispatchHandler(event: AgentEvent): void {
-  if (browserEventTarget && typeof CustomEvent !== "undefined") {
-    browserEventTarget.dispatchEvent(
-      new CustomEvent("bagsworld-agent-event", {
-        detail: event,
-      })
-    );
-  }
-}
-
-export function initBuiltInHandlers(): void {
-  // Subscribe to all high/urgent events for browser dispatch
-  subscribe("*", browserDispatchHandler, ["high", "urgent"]);
 }
 
 // Auto-start in non-test environments
 if (typeof window !== "undefined") {
   startCoordinator();
-  initBuiltInHandlers();
 }

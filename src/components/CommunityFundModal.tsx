@@ -15,28 +15,16 @@ interface WalletInfo {
 }
 
 interface FeeData {
-  ghostTotalClaimedSol: number;
-  communityContributionSol: number;
-  contributionPercentage: number;
   tokenLifetimeFeesSol: number;
   recentClaims: Array<{
+    claimer: string;
     amount: number;
     timestamp: number;
     signature: string;
   }>;
+  totalClaimsSol: number;
+  claimCount: number;
   lastUpdated: string;
-}
-
-interface RaffleData {
-  raffles: Array<{
-    id: number;
-    prizeSol: number;
-    entryCount: number;
-    winnerWallet: string | null;
-    drawnAt: string | null;
-  }>;
-  totalGivenAwaySol: number;
-  totalRaffles: number;
 }
 
 function truncateWallet(wallet: string): string {
@@ -44,7 +32,6 @@ function truncateWallet(wallet: string): string {
   return `${wallet.slice(0, 4)}...${wallet.slice(-4)}`;
 }
 
-/** Animated counting number */
 function AnimatedNumber({ value, decimals = 4 }: { value: number; decimals?: number }) {
   const [display, setDisplay] = useState(0);
 
@@ -55,14 +42,10 @@ function AnimatedNumber({ value, decimals = 4 }: { value: number; decimals?: num
     }
     const duration = 1200;
     const steps = 30;
-    const increment = value / steps;
-    let current = 0;
     let step = 0;
 
     const timer = setInterval(() => {
       step++;
-      current = Math.min(current + increment, value);
-      // Ease out — slow down near the end
       const progress = step / steps;
       const eased = 1 - Math.pow(1 - progress, 3);
       setDisplay(value * eased);
@@ -78,7 +61,6 @@ function AnimatedNumber({ value, decimals = 4 }: { value: number; decimals?: num
   return <>{display.toFixed(decimals)}</>;
 }
 
-/** Animated bar that grows from 0 to target width */
 function AnimatedBar({
   percentage,
   color,
@@ -103,7 +85,6 @@ function AnimatedBar({
   );
 }
 
-/** Pixel-art SOL coin SVG */
 function PixelCoin({ size = 16, className = "" }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" className={className}>
@@ -122,6 +103,37 @@ function PixelCoin({ size = 16, className = "" }: { size?: number; className?: s
   );
 }
 
+const MARKETPLACE_APPS = [
+  {
+    name: "DividendsBot",
+    pct: 30,
+    emoji: "💰",
+    color: "from-green-600 to-green-400",
+    description: "Auto-pays top 100 holders daily",
+  },
+  {
+    name: "DEX Boosts",
+    pct: 30,
+    emoji: "📈",
+    color: "from-blue-600 to-blue-400",
+    description: "Auto-buys DexScreener visibility",
+  },
+  {
+    name: "Compound Liquidity",
+    pct: 20,
+    emoji: "💧",
+    color: "from-cyan-600 to-cyan-400",
+    description: "Deepens token liquidity pool",
+  },
+  {
+    name: "BagsAMM",
+    pct: 20,
+    emoji: "🤖",
+    color: "from-purple-600 to-purple-400",
+    description: "Automated market maker for volume",
+  },
+] as const;
+
 export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
   const [activeTab, setActiveTab] = useState<"fund" | "fees">("fund");
   const [walletInfo, setWalletInfo] = useState<WalletInfo>({
@@ -132,19 +144,16 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
   const [feeData, setFeeData] = useState<FeeData | null>(null);
   const [feeLoading, setFeeLoading] = useState(false);
   const [feeError, setFeeError] = useState<string | null>(null);
-  const [raffleData, setRaffleData] = useState<RaffleData | null>(null);
   const [showContent, setShowContent] = useState(false);
 
   const walletAddress = ECOSYSTEM_CONFIG.ecosystem.wallet;
   const solscanUrl = `https://solscan.io/account/${walletAddress}`;
 
-  // Entrance animation
   useEffect(() => {
     const timer = setTimeout(() => setShowContent(true), 100);
     return () => clearTimeout(timer);
   }, []);
 
-  // Escape key to close
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -153,7 +162,6 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
     return () => window.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
-  // Lock body scroll while modal is open
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => {
@@ -161,52 +169,33 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
     };
   }, []);
 
-  // Fetch wallet balance
   useEffect(() => {
     const fetchBalance = async () => {
-      try {
-        const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana";
-        const connection = new Connection(rpcUrl, "confirmed");
-        const pubkey = new PublicKey(walletAddress);
-        const balance = await connection.getBalance(pubkey);
-        setWalletInfo({
-          balance: balance / LAMPORTS_PER_SOL,
-          isLoading: false,
-          error: null,
-        });
-      } catch (err) {
-        console.error("Error fetching wallet balance:", err);
-        setWalletInfo({
-          balance: 0,
-          isLoading: false,
-          error: "Failed to load balance",
-        });
-      }
+      const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana";
+      const connection = new Connection(rpcUrl, "confirmed");
+      const pubkey = new PublicKey(walletAddress);
+      const balance = await connection.getBalance(pubkey);
+      setWalletInfo({ balance: balance / LAMPORTS_PER_SOL, isLoading: false, error: null });
     };
 
-    fetchBalance();
-    const interval = setInterval(fetchBalance, 30000);
+    fetchBalance().catch(() => {
+      setWalletInfo({ balance: 0, isLoading: false, error: "Failed to load balance" });
+    });
+
+    const interval = setInterval(() => {
+      fetchBalance().catch(() => {});
+    }, 30000);
     return () => clearInterval(interval);
   }, [walletAddress]);
 
-  // Lazy-load fee data + raffle data when fees tab is selected
   const fetchFeeData = useCallback(async () => {
     setFeeLoading(true);
     setFeeError(null);
     try {
-      const [feeRes, raffleRes] = await Promise.all([
-        fetch("/api/community-fund"),
-        fetch("/api/community-fund/raffles"),
-      ]);
-      if (!feeRes.ok) throw new Error("Failed to fetch fee data");
-      const fee: FeeData = await feeRes.json();
-      setFeeData(fee);
-
-      if (raffleRes.ok) {
-        const raffle: RaffleData = await raffleRes.json();
-        if (!raffle.raffles) raffle.raffles = [];
-        setRaffleData(raffle);
-      }
+      const res = await fetch("/api/community-fund");
+      if (!res.ok) throw new Error("Failed to fetch fee data");
+      const data: FeeData = await res.json();
+      setFeeData(data);
     } catch (err) {
       console.error("Error fetching fee data:", err);
       setFeeError("Failed to load fee data");
@@ -222,21 +211,13 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
   }, [activeTab, feeData, feeLoading, feeError, fetchFeeData]);
 
   const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
+    if (e.target === e.currentTarget) onClose();
   };
 
   const formatDate = (timestamp: number | string) => {
     const date = typeof timestamp === "string" ? new Date(timestamp) : new Date(timestamp * 1000);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   };
-
-  const ghostKeeps = feeData ? feeData.ghostTotalClaimedSol - feeData.communityContributionSol : 0;
 
   return (
     <div
@@ -255,7 +236,7 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
               <span className="text-lg">🏛️</span>
             </div>
             <div>
-              <h2 className="font-pixel text-white text-xs sm:text-sm">COMMUNITY FUND</h2>
+              <h2 className="font-pixel text-white text-xs sm:text-sm">COMMUNITY BUILDING</h2>
               <p className="font-pixel text-green-200 text-[7px] sm:text-[8px]">
                 Powered by BagsApp Marketplace
               </p>
@@ -280,7 +261,7 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
                 : "text-gray-500 border-transparent hover:text-gray-300"
             }`}
           >
-            FUND
+            HOW IT WORKS
           </button>
           <button
             onClick={() => setActiveTab("fees")}
@@ -290,17 +271,17 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
                 : "text-gray-500 border-transparent hover:text-gray-300"
             }`}
           >
-            FEES
+            ON-CHAIN DATA
           </button>
         </div>
 
-        {/* Fund Tab Content */}
+        {/* How It Works Tab */}
         {activeTab === "fund" && (
           <div className="p-4 space-y-4">
-            {/* Wallet Balance Display */}
+            {/* Wallet Balance */}
             <div className="bg-gradient-to-br from-bags-darker to-black rounded-lg p-4 border border-bags-gold/50">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-pixel text-bags-gold text-xs">Community Wallet</h3>
+                <h3 className="font-pixel text-bags-gold text-xs">Ecosystem Wallet</h3>
                 <a
                   href={solscanUrl}
                   target="_blank"
@@ -323,8 +304,6 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
                   </svg>
                 </a>
               </div>
-
-              {/* Balance Display */}
               <div className="bg-black/50 rounded-lg p-4 text-center mb-3">
                 {walletInfo.isLoading ? (
                   <div className="font-pixel text-gray-400 text-sm animate-pulse">Loading...</div>
@@ -339,8 +318,6 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
                   </>
                 )}
               </div>
-
-              {/* Wallet Address */}
               <div className="bg-black/30 rounded p-2">
                 <p className="font-mono text-[8px] text-gray-500 break-all text-center">
                   {walletAddress}
@@ -361,12 +338,12 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
 
             {/* Key Points */}
             <div className="bg-bags-darker rounded-lg p-4 border border-blue-500/30">
-              <h3 className="font-pixel text-blue-400 text-xs mb-3">How It Works</h3>
+              <h3 className="font-pixel text-blue-400 text-xs mb-3">Zero Creator Fees</h3>
               <div className="space-y-2">
                 <div className="flex items-start gap-3">
                   <span className="text-base">💰</span>
                   <div>
-                    <p className="font-pixel text-white text-[9px]">Zero Creator Fees</p>
+                    <p className="font-pixel text-white text-[9px]">Launch for Free</p>
                     <p className="font-pixel text-gray-500 text-[7px]">
                       Creators pay NO extra BagsWorld fees on token launches
                     </p>
@@ -395,25 +372,33 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
                   <div>
                     <p className="font-pixel text-white text-[9px]">100% Transparent</p>
                     <p className="font-pixel text-gray-500 text-[7px]">
-                      All transactions verifiable on-chain
+                      All transactions verifiable on-chain via Solscan
                     </p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* BagsApp Marketplace Apps */}
+            {/* BagsApp Marketplace Split */}
             <div className="bg-bags-darker rounded-lg p-3 border border-purple-500/30">
-              <h3 className="font-pixel text-purple-400 text-xs mb-2">BagsApp Marketplace Split</h3>
-              <div className="grid grid-cols-2 gap-2">
-                {Object.values(ECOSYSTEM_CONFIG.ecosystem.marketplaceApps).map((app, i) => (
-                  <div key={i} className="bg-black/30 rounded p-2 text-center">
-                    <span className="text-base">
-                      {i === 0 ? "💰" : i === 1 ? "📈" : i === 2 ? "💧" : "🤖"}
-                    </span>
-                    <p className="font-pixel text-bags-gold text-[8px] mt-1">
-                      {app.bps / 100}% @{app.username}
-                    </p>
+              <h3 className="font-pixel text-purple-400 text-xs mb-3">Fee Distribution</h3>
+              <div className="space-y-2">
+                {MARKETPLACE_APPS.map((app, i) => (
+                  <div key={app.name}>
+                    <div className="flex justify-between mb-1">
+                      <span className="font-pixel text-[8px] text-white flex items-center gap-1.5">
+                        <span>{app.emoji}</span> {app.name}
+                      </span>
+                      <span className="font-pixel text-[8px] text-bags-gold">{app.pct}%</span>
+                    </div>
+                    <div className="h-4 bg-black/60 rounded-sm border border-gray-700 overflow-hidden relative">
+                      <AnimatedBar
+                        percentage={(app.pct / 30) * 100}
+                        color={`bg-gradient-to-r ${app.color}`}
+                        delay={200 + i * 150}
+                      />
+                      <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_3px,rgba(0,0,0,0.15)_3px,rgba(0,0,0,0.15)_4px)]" />
+                    </div>
                     <p className="font-pixel text-gray-500 text-[6px] mt-0.5">{app.description}</p>
                   </div>
                 ))}
@@ -450,7 +435,7 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
           </div>
         )}
 
-        {/* Fees Tab Content */}
+        {/* On-Chain Data Tab */}
         {activeTab === "fees" && (
           <div className="p-4 space-y-4">
             {feeLoading && (
@@ -461,7 +446,7 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
                   ))}
                 </div>
                 <div className="font-pixel text-gray-400 text-[10px] animate-pulse">
-                  Loading fee data...
+                  Loading on-chain data...
                 </div>
               </div>
             )}
@@ -484,113 +469,87 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
 
             {!feeLoading && !feeError && feeData && (
               <>
-                {/* Hero Stats — Animated SOL counter with coin */}
+                {/* Lifetime Fees */}
                 <div className="bg-gradient-to-br from-bags-darker via-black to-bags-darker rounded-lg p-5 border border-bags-green/40 relative overflow-hidden">
-                  {/* Floating pixel coins background */}
                   <div className="absolute inset-0 pointer-events-none opacity-10">
                     {[...Array(6)].map((_, i) => (
                       <PixelCoin key={i} size={12} className="absolute animate-pulse" />
                     ))}
                   </div>
-
                   <div className="relative text-center">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <PixelCoin size={20} />
                       <span className="font-pixel text-gray-400 text-[9px]">
-                        Ghost&apos;s Total Claimed
+                        $BagsWorld Lifetime Fees
                       </span>
                       <PixelCoin size={20} />
                     </div>
                     <div className="font-pixel text-4xl sm:text-5xl text-bags-green drop-shadow-[0_0_12px_rgba(34,197,94,0.4)]">
-                      <AnimatedNumber value={feeData.ghostTotalClaimedSol} />
+                      <AnimatedNumber value={feeData.tokenLifetimeFeesSol} />
                     </div>
                     <div className="font-pixel text-gray-500 text-[10px] mt-1">
-                      SOL from $BagsWorld fees
+                      SOL generated by $BagsWorld trading
                     </div>
                   </div>
                 </div>
 
-                {/* Animated Revenue Split Bars */}
+                {/* Marketplace Distribution Breakdown */}
                 <div className="bg-bags-darker rounded-lg p-4 border border-bags-green/30 space-y-3">
                   <h3 className="font-pixel text-white text-[10px] flex items-center gap-2">
                     <span className="inline-block w-2 h-2 bg-bags-green rounded-full animate-pulse" />
-                    Revenue Split
+                    Where Fees Go
                   </h3>
+                  <p className="font-pixel text-gray-500 text-[7px]">
+                    100% of $BagsWorld trading fees route to BagsApp Marketplace apps
+                  </p>
 
-                  {/* Ghost keeps */}
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="font-pixel text-[8px] text-green-400">
-                        Ghost keeps: <AnimatedNumber value={ghostKeeps} /> SOL
-                      </span>
-                      <span className="font-pixel text-[8px] text-gray-500">95%</span>
+                  {MARKETPLACE_APPS.map((app, i) => (
+                    <div key={app.name}>
+                      <div className="flex justify-between mb-1">
+                        <span className="font-pixel text-[8px] text-white flex items-center gap-1.5">
+                          <span>{app.emoji}</span> {app.name}
+                        </span>
+                        <span className="font-pixel text-[8px] text-bags-gold">{app.pct}%</span>
+                      </div>
+                      <div className="h-5 bg-black/60 rounded-sm border border-gray-700 overflow-hidden relative">
+                        <AnimatedBar
+                          percentage={(app.pct / 30) * 100}
+                          color={`bg-gradient-to-r ${app.color}`}
+                          delay={300 + i * 200}
+                        />
+                        <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_3px,rgba(0,0,0,0.15)_3px,rgba(0,0,0,0.15)_4px)]" />
+                      </div>
                     </div>
-                    <div className="h-5 bg-black/60 rounded-sm border border-gray-700 overflow-hidden relative">
-                      <AnimatedBar
-                        percentage={95}
-                        color="bg-gradient-to-r from-green-600 to-green-400"
-                        delay={300}
-                      />
-                      <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_3px,rgba(0,0,0,0.15)_3px,rgba(0,0,0,0.15)_4px)]" />
-                    </div>
-                  </div>
-
-                  {/* Community fund */}
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="font-pixel text-[8px] text-yellow-400">
-                        Community Fund: <AnimatedNumber value={feeData.communityContributionSol} />{" "}
-                        SOL
-                      </span>
-                      <span className="font-pixel text-[8px] text-gray-500">5%</span>
-                    </div>
-                    <div className="h-5 bg-black/60 rounded-sm border border-gray-700 overflow-hidden relative">
-                      <AnimatedBar
-                        percentage={100}
-                        color="bg-gradient-to-r from-yellow-600 to-yellow-400"
-                        delay={600}
-                      />
-                      <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_3px,rgba(0,0,0,0.15)_3px,rgba(0,0,0,0.15)_4px)]" />
-                    </div>
-                  </div>
+                  ))}
                 </div>
 
-                {/* Animated Pixel Flow — coins flowing from Ghost to Community */}
+                {/* Flow Diagram */}
                 <div className="bg-bags-darker rounded-lg p-4 border border-bags-green/30">
-                  <h3 className="font-pixel text-white text-[10px] mb-3 text-center">
-                    How the 5% flows
-                  </h3>
+                  <h3 className="font-pixel text-white text-[10px] mb-3 text-center">Fee Flow</h3>
                   <div className="flex items-center justify-between gap-2 px-2">
-                    {/* Ghost */}
                     <div className="text-center flex-shrink-0">
-                      <div className="text-2xl mb-1">👻</div>
-                      <div className="font-pixel text-[7px] text-green-400">Ghost</div>
-                      <div className="font-pixel text-[7px] text-gray-500">claims fees</div>
+                      <div className="text-2xl mb-1">💱</div>
+                      <div className="font-pixel text-[7px] text-bags-gold">Trading</div>
+                      <div className="font-pixel text-[7px] text-gray-500">fees generated</div>
                     </div>
 
-                    {/* Animated flow arrow */}
                     <div className="flex-1 flex items-center justify-center gap-[2px] overflow-hidden relative h-8">
                       {[...Array(8)].map((_, i) => (
                         <div
                           key={i}
-                          className="w-2 h-2 bg-yellow-500/80 rounded-[1px] animate-pulse flex-shrink-0"
-                          style={{
-                            animationDelay: `${i * 150}ms`,
-                            animationDuration: "1.2s",
-                          }}
+                          className="w-2 h-2 bg-bags-green/80 rounded-[1px] animate-pulse flex-shrink-0"
+                          style={{ animationDelay: `${i * 150}ms`, animationDuration: "1.2s" }}
                         />
                       ))}
                     </div>
 
-                    {/* Arrow */}
-                    <div className="font-pixel text-yellow-500 text-xs flex-shrink-0">5%</div>
+                    <div className="font-pixel text-bags-green text-xs flex-shrink-0">100%</div>
 
-                    {/* Animated flow arrow */}
                     <div className="flex-1 flex items-center justify-center gap-[2px] overflow-hidden relative h-8">
                       {[...Array(8)].map((_, i) => (
                         <div
                           key={i}
-                          className="w-2 h-2 bg-yellow-500/80 rounded-[1px] animate-pulse flex-shrink-0"
+                          className="w-2 h-2 bg-bags-green/80 rounded-[1px] animate-pulse flex-shrink-0"
                           style={{
                             animationDelay: `${i * 150 + 600}ms`,
                             animationDuration: "1.2s",
@@ -599,89 +558,35 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
                       ))}
                     </div>
 
-                    {/* Community */}
                     <div className="text-center flex-shrink-0">
-                      <div className="text-2xl mb-1">🏛️</div>
-                      <div className="font-pixel text-[7px] text-yellow-400">Community</div>
-                      <div className="font-pixel text-[7px] text-gray-500">fund</div>
+                      <div className="text-2xl mb-1">📱</div>
+                      <div className="font-pixel text-[7px] text-bags-green">BagsApp</div>
+                      <div className="font-pixel text-[7px] text-gray-500">Marketplace</div>
                     </div>
                   </div>
                 </div>
 
-                {/* Raffle Giveaways — The Proof */}
-                {raffleData && raffleData.totalRaffles > 0 && (
-                  <div className="bg-gradient-to-br from-purple-900/30 to-bags-darker rounded-lg p-4 border border-purple-500/40">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-pixel text-purple-400 text-xs flex items-center gap-2">
-                        <span className="animate-bounce inline-block">🎰</span>
-                        Raffle Giveaways
-                      </h3>
-                      <div className="bg-purple-500/20 border border-purple-500/30 rounded px-2 py-0.5">
-                        <span className="font-pixel text-purple-300 text-[9px]">
-                          {raffleData.totalRaffles} drawn
-                        </span>
-                      </div>
+                {/* Stats Row */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-black/30 rounded-lg p-3 border border-gray-700 text-center">
+                    <div className="font-pixel text-[8px] text-gray-400 mb-1">Total Claims</div>
+                    <div className="font-pixel text-lg text-bags-green">
+                      <AnimatedNumber value={feeData.totalClaimsSol} decimals={2} />
                     </div>
-
-                    {/* Total given away hero */}
-                    <div className="bg-black/40 rounded-lg p-3 mb-3 text-center border border-purple-500/20">
-                      <div className="font-pixel text-[8px] text-gray-400 mb-1">
-                        Total Given Away
-                      </div>
-                      <div className="font-pixel text-2xl text-purple-300 drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]">
-                        <AnimatedNumber value={raffleData.totalGivenAwaySol} /> SOL
-                      </div>
-                    </div>
-
-                    {/* Raffle history list */}
-                    <div className="space-y-1.5 max-h-[180px] overflow-y-auto">
-                      {raffleData.raffles.map((raffle, i) => (
-                        <div
-                          key={raffle.id}
-                          className="flex items-center gap-2 bg-black/30 rounded p-2 border border-purple-500/10 hover:border-purple-500/30 transition-colors"
-                          style={{
-                            animationDelay: `${i * 100}ms`,
-                          }}
-                        >
-                          <div className="flex-shrink-0">
-                            <PixelCoin size={14} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-pixel text-purple-300 text-[10px]">
-                                {raffle.prizeSol.toFixed(4)} SOL
-                              </span>
-                              <span className="font-pixel text-gray-600 text-[7px]">
-                                Raffle #{raffle.id}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {raffle.winnerWallet && (
-                                <span className="font-pixel text-green-500 text-[7px]">
-                                  Winner: {truncateWallet(raffle.winnerWallet)}
-                                </span>
-                              )}
-                              <span className="font-pixel text-gray-600 text-[7px]">
-                                {raffle.entryCount} entries
-                              </span>
-                            </div>
-                          </div>
-                          {raffle.drawnAt && (
-                            <span className="font-pixel text-gray-600 text-[7px] flex-shrink-0">
-                              {formatDate(raffle.drawnAt)}
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                    <div className="font-pixel text-[7px] text-gray-500">SOL claimed</div>
                   </div>
-                )}
+                  <div className="bg-black/30 rounded-lg p-3 border border-gray-700 text-center">
+                    <div className="font-pixel text-[8px] text-gray-400 mb-1">Claim Events</div>
+                    <div className="font-pixel text-lg text-bags-gold">{feeData.claimCount}</div>
+                    <div className="font-pixel text-[7px] text-gray-500">transactions</div>
+                  </div>
+                </div>
 
-                {/* Recent Fee Claims */}
+                {/* Recent Claims */}
                 {feeData.recentClaims.length > 0 && (
                   <div className="bg-bags-darker rounded-lg p-4 border border-blue-500/30">
-                    <h3 className="font-pixel text-blue-400 text-xs mb-3">Recent Fee Claims</h3>
-                    <div className="space-y-1.5 max-h-[160px] overflow-y-auto">
+                    <h3 className="font-pixel text-blue-400 text-xs mb-3">Recent Claims</h3>
+                    <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
                       {feeData.recentClaims.map((claim, i) => (
                         <div
                           key={i}
@@ -689,49 +594,44 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
                         >
                           <div className="flex items-center gap-2">
                             <PixelCoin size={12} />
-                            <span className="font-pixel text-bags-green text-[10px]">
-                              {claim.amount.toFixed(4)} SOL
-                            </span>
-                            <span className="font-pixel text-gray-600 text-[8px]">
+                            <div>
+                              <span className="font-pixel text-bags-green text-[10px]">
+                                {claim.amount.toFixed(4)} SOL
+                              </span>
+                              <span className="font-pixel text-gray-600 text-[7px] ml-2">
+                                {truncateWallet(claim.claimer)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-pixel text-gray-600 text-[7px]">
                               {formatDate(claim.timestamp)}
                             </span>
-                          </div>
-                          <a
-                            href={`https://solscan.io/tx/${claim.signature}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-pixel text-[7px] text-gray-500 hover:text-bags-green transition-colors"
-                          >
-                            TX
-                            <svg
-                              className="w-2 h-2 inline ml-0.5"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
+                            <a
+                              href={`https://solscan.io/tx/${claim.signature}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-pixel text-[7px] text-gray-500 hover:text-bags-green transition-colors"
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                              />
-                            </svg>
-                          </a>
+                              TX
+                              <svg
+                                className="w-2 h-2 inline ml-0.5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                />
+                              </svg>
+                            </a>
+                          </div>
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-
-                {/* Token Lifetime Context */}
-                {feeData.tokenLifetimeFeesSol > 0 && (
-                  <div className="bg-black/30 rounded-lg p-3 border border-gray-700 flex items-center justify-between">
-                    <span className="font-pixel text-gray-500 text-[8px]">
-                      $BagsWorld Lifetime Fees
-                    </span>
-                    <span className="font-pixel text-bags-gold text-[10px]">
-                      <AnimatedNumber value={feeData.tokenLifetimeFeesSol} /> SOL
-                    </span>
                   </div>
                 )}
               </>
@@ -741,12 +641,13 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
             {!feeLoading &&
               !feeError &&
               feeData &&
-              feeData.ghostTotalClaimedSol === 0 &&
+              feeData.tokenLifetimeFeesSol === 0 &&
               feeData.recentClaims.length === 0 && (
                 <div className="bg-bags-darker rounded-lg p-4 border border-gray-700 text-center">
-                  <div className="text-2xl mb-2">👻</div>
+                  <div className="text-2xl mb-2">📱</div>
                   <p className="font-pixel text-gray-400 text-[9px]">
-                    No fee claims recorded yet. Check back soon!
+                    No fee activity recorded yet. Fees will appear here once $BagsWorld trading
+                    generates them.
                   </p>
                 </div>
               )}

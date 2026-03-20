@@ -31,6 +31,8 @@ export function setupMoltbookZone(scene: WorldScene): void {
 
   if (!elementsValid && scene.moltbookZoneCreated) {
     scene.moltbookElements = [];
+    scene.ambientCreatures = [];
+    scene.beachCrabs = [];
     scene.moltbookZoneCreated = false;
   }
 

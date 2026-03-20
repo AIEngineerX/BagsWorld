@@ -11,7 +11,6 @@ export const MAIN_ZONES: ZoneType[] = [
   "trending",
   "ballers",
   "founders",
-  "arena",
 ];
 
 export const ZONE_ORDER: ZoneType[] = ["ascension", ...MAIN_ZONES];

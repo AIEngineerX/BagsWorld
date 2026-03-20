@@ -7,7 +7,9 @@ import type {
   TradeQuote,
 } from "./types";
 
-const BAGS_API_URL = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
+import { BAGS_API_BASE_URL } from "./config";
+
+const BAGS_API_URL = BAGS_API_BASE_URL;
 
 interface ApiResponse<T> {
   success: boolean;

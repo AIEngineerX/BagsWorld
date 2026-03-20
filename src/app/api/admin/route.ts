@@ -1,11 +1,11 @@
 // Admin API - Protected endpoints for site management
 import { NextRequest, NextResponse } from "next/server";
-import { PublicKey } from "@solana/web3.js";
-import { isAdmin } from "@/lib/config";
+import { isAdmin, BAGS_API_BASE_URL } from "@/lib/config";
 import { getGlobalTokens, saveGlobalToken, isNeonConfigured, type GlobalToken } from "@/lib/neon";
 import { verifySessionToken } from "@/lib/wallet-auth";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
-import { sanitizeString, validateUrlSafe } from "@/lib/env-utils";
+import { sanitizeString, validateUrlSafe, isValidSolanaAddress } from "@/lib/env-utils";
+import { ZONES, type ZoneType } from "@/lib/types";
 import {
   unregisterExternalAgent,
   moveExternalAgent,
@@ -13,18 +13,6 @@ import {
   listExternalAgentsRaw,
   invalidateExternalCache,
 } from "@/lib/agent-economy/external-registry";
-
-/**
- * Validate that a string is a valid Solana public key
- */
-function isValidSolanaAddress(address: string): boolean {
-  try {
-    new PublicKey(address);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Get SQL connection for Neon database
@@ -412,7 +400,7 @@ async function handleDeleteToken(data: { mint: string }) {
   }
   if (!isValidSolanaAddress(data.mint)) {
     return NextResponse.json(
-      { error: `Invalid mint address: "${data.mint.slice(0, 20)}..."` },
+      { error: `Invalid mint address: "${String(data.mint).slice(0, 20)}..."` },
       { status: 400 }
     );
   }
@@ -586,16 +574,8 @@ async function handleSetHealth(data: { mint: string; health: number | null }) {
   }
 }
 
-// Valid zone types for zone override
-const VALID_ZONES = [
-  "labs",
-  "moltbook",
-  "main_city",
-  "trending",
-  "ballers",
-  "founders",
-  "arena",
-] as const;
+// Valid zone types for zone override — derived from canonical ZONES definition
+const VALID_ZONES = Object.keys(ZONES) as ZoneType[];
 
 // Handle set building zone override
 async function handleSetZone(data: { mint: string; zone: string | null }) {
@@ -603,7 +583,7 @@ async function handleSetZone(data: { mint: string; zone: string | null }) {
   if (validationError) return validationError;
 
   // Validate zone is valid or null
-  if (data.zone !== null && !VALID_ZONES.includes(data.zone as (typeof VALID_ZONES)[number])) {
+  if (data.zone !== null && !VALID_ZONES.includes(data.zone as ZoneType)) {
     return NextResponse.json(
       { error: `Invalid zone. Must be one of: ${VALID_ZONES.join(", ")} or null` },
       { status: 400 }
@@ -664,7 +644,7 @@ async function handleAddToken(data: { mint: string; name?: string; symbol?: stri
     // If DexScreener didn't find it, try Bags.fm API
     if (source === "manual" && process.env.BAGS_API_KEY) {
       try {
-        const bagsUrl = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
+        const bagsUrl = BAGS_API_BASE_URL;
         const bagsResponse = await fetch(
           `${bagsUrl}/token-launch/creator/v3?tokenMint=${data.mint}`,
           {
@@ -769,7 +749,7 @@ async function handleMoveAgent(data: { wallet: string; zone: string }) {
   const validationError = validateAgentWallet(data.wallet);
   if (validationError) return validationError;
 
-  if (!VALID_ZONES.includes(data.zone as (typeof VALID_ZONES)[number])) {
+  if (!VALID_ZONES.includes(data.zone as ZoneType)) {
     return NextResponse.json(
       { error: `Invalid zone. Must be one of: ${VALID_ZONES.join(", ")}` },
       { status: 400 }

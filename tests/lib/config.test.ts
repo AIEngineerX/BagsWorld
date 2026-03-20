@@ -1,5 +1,6 @@
 import {
   ECOSYSTEM_CONFIG,
+  BAGS_API_BASE_URL,
   isAdmin,
   isAdminConfigured,
   getBuildingTier,
@@ -178,5 +179,106 @@ describe("getEcosystemFeeShare", () => {
   it("returns an object with exactly the expected keys", () => {
     const feeShare = getEcosystemFeeShare();
     expect(Object.keys(feeShare).sort()).toEqual(["bps", "displayName", "provider", "providerUsername"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getBuildingTier — edge cases
+// ---------------------------------------------------------------------------
+describe("getBuildingTier — edge cases", () => {
+  it("returns level 1 fallback for NaN marketCap", () => {
+    const tier = getBuildingTier(NaN);
+    expect(tier.level).toBe(1);
+    expect(tier.name).toBe("Startup");
+  });
+
+  it("returns level 5 for Infinity marketCap", () => {
+    const tier = getBuildingTier(Infinity);
+    expect(tier.level).toBe(5);
+    expect(tier.name).toBe("Elite");
+  });
+
+  it("returns level 1 fallback for -Infinity marketCap", () => {
+    const tier = getBuildingTier(-Infinity);
+    expect(tier.level).toBe(1);
+    expect(tier.name).toBe("Startup");
+  });
+
+  it("returns level 2 (NOT level 3) at 499,999 — one below level 3 boundary", () => {
+    const tier = getBuildingTier(499_999);
+    expect(tier.level).toBe(2);
+    expect(tier.name).toBe("Growing");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isAdmin — edge cases
+// ---------------------------------------------------------------------------
+describe("isAdmin — edge cases", () => {
+  it("returns false for lowercase version of known admin wallet", () => {
+    expect(isAdmin("9luwe53r7v5ohs8dmconp38w9foksugbjvweppu8ifuc")).toBe(false);
+  });
+
+  it("returns false for admin wallet with surrounding whitespace", () => {
+    expect(isAdmin(" 9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC ")).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// BAGS_API_BASE_URL
+// ---------------------------------------------------------------------------
+describe("BAGS_API_BASE_URL", () => {
+  it("defaults to the public Bags.fm v1 API URL", () => {
+    expect(BAGS_API_BASE_URL).toBe("https://public-api-v2.bags.fm/api/v1");
+  });
+
+  it("is a valid URL string", () => {
+    expect(() => new URL(BAGS_API_BASE_URL)).not.toThrow();
+  });
+
+  it("ends with /v1 (no trailing slash)", () => {
+    expect(BAGS_API_BASE_URL).toMatch(/\/v1$/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ECOSYSTEM_CONFIG — deeper validation
+// ---------------------------------------------------------------------------
+describe("ECOSYSTEM_CONFIG — deeper validation", () => {
+  it("oracle.prizePool has defaultSol, minSol, and maxSol fields", () => {
+    const { prizePool } = ECOSYSTEM_CONFIG.oracle;
+    expect(prizePool).toHaveProperty("defaultSol");
+    expect(prizePool).toHaveProperty("minSol");
+    expect(prizePool).toHaveProperty("maxSol");
+    expect(prizePool.defaultSol).toBe(0.1);
+    expect(prizePool.minSol).toBe(0.1);
+    expect(prizePool.maxSol).toBe(1.0);
+  });
+
+  it("minSol <= defaultSol <= maxSol ordering", () => {
+    const { prizePool } = ECOSYSTEM_CONFIG.oracle;
+    expect(prizePool.minSol).toBeLessThanOrEqual(prizePool.defaultSol);
+    expect(prizePool.defaultSol).toBeLessThanOrEqual(prizePool.maxSol);
+  });
+
+  it("each building tier has level (number), name (string), and minMarketCap (number)", () => {
+    for (const tier of ECOSYSTEM_CONFIG.buildings.tiers) {
+      expect(typeof tier.level).toBe("number");
+      expect(typeof tier.name).toBe("string");
+      expect(typeof tier.minMarketCap).toBe("number");
+    }
+  });
+
+  it("ecosystem.wallet is a valid Solana address format (44 chars, base58)", () => {
+    const wallet = ECOSYSTEM_CONFIG.ecosystem.wallet;
+    expect(wallet).toHaveLength(44);
+    expect(wallet).toMatch(/^[1-9A-HJ-NP-Za-km-z]+$/);
+  });
+
+  it("decay.gracePeriod.durationMs is a positive number", () => {
+    const durationMs = ECOSYSTEM_CONFIG.buildings.decay.gracePeriod.durationMs;
+    expect(typeof durationMs).toBe("number");
+    expect(durationMs).toBeGreaterThan(0);
+    expect(durationMs).toBe(86_400_000);
   });
 });

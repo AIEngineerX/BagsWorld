@@ -1,25 +1,20 @@
 import { NextResponse } from "next/server";
 import { initBagsApi } from "@/lib/bags-api";
 import { lamportsToSol } from "@/lib/solana-utils";
-import { ECOSYSTEM_CONFIG } from "@/lib/config";
-import type { ClaimStats, ClaimEvent } from "@/lib/types";
+import type { ClaimEvent } from "@/lib/types";
 
 const BAGSWORLD_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
-const GHOST_WALLET = "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC";
-// BagsApp Marketplace now handles fee distribution (DividendsBot 30%, DEX Boosts 30%, etc.)
-// This route tracks overall $BagsWorld ecosystem claim activity
-const CONTRIBUTION_PERCENTAGE = 100; // All fees now route to marketplace apps
 
 interface CachedData {
-  ghostTotalClaimedSol: number;
-  communityContributionSol: number;
-  contributionPercentage: number;
   tokenLifetimeFeesSol: number;
   recentClaims: Array<{
+    claimer: string;
     amount: number;
     timestamp: number;
     signature: string;
   }>;
+  totalClaimsSol: number;
+  claimCount: number;
   lastUpdated: string;
 }
 
@@ -32,7 +27,6 @@ const ERROR_COOLDOWN = 30 * 1000; // 30s cooldown after total failure
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Try a call, return fallback on failure instead of throwing */
 async function tryCall<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   try {
     return await fn();
@@ -51,11 +45,6 @@ async function fetchFreshData(): Promise<CachedData> {
 
   const api = initBagsApi(apiKey);
 
-  // claimStats is the critical call — must succeed for meaningful data
-  const claimStats: ClaimStats[] = await api.getClaimStats(BAGSWORLD_MINT);
-
-  // These are nice-to-have — use fallbacks if rate-limited
-  await delay(1500);
   const lifetimeFeesLamports = await tryCall(() => api.getTokenLifetimeFees(BAGSWORLD_MINT), 0);
   await delay(1500);
   const claimEvents = await tryCall(
@@ -63,26 +52,22 @@ async function fetchFreshData(): Promise<CachedData> {
     [] as ClaimEvent[]
   );
 
-  const ghostStats = claimStats.find((s) => s.user.toLowerCase() === GHOST_WALLET.toLowerCase());
-  const ghostTotalClaimedSol = ghostStats ? lamportsToSol(ghostStats.totalClaimed) : 0;
-  const communityContributionSol = ghostTotalClaimedSol * (CONTRIBUTION_PERCENTAGE / 100);
   const tokenLifetimeFeesSol = lamportsToSol(lifetimeFeesLamports);
 
-  const ghostClaims = claimEvents
-    .filter((e) => e.claimer.toLowerCase() === GHOST_WALLET.toLowerCase())
-    .slice(0, 10)
-    .map((e) => ({
-      amount: lamportsToSol(e.amount),
-      timestamp: e.timestamp,
-      signature: e.signature,
-    }));
+  const totalClaimsSol = claimEvents.reduce((sum, e) => sum + lamportsToSol(e.amount), 0);
+
+  const recentClaims = claimEvents.slice(0, 20).map((e) => ({
+    claimer: e.claimer,
+    amount: lamportsToSol(e.amount),
+    timestamp: e.timestamp,
+    signature: e.signature,
+  }));
 
   return {
-    ghostTotalClaimedSol,
-    communityContributionSol,
-    contributionPercentage: CONTRIBUTION_PERCENTAGE,
     tokenLifetimeFeesSol,
-    recentClaims: ghostClaims,
+    recentClaims,
+    totalClaimsSol,
+    claimCount: claimEvents.length,
     lastUpdated: new Date().toISOString(),
   };
 }
@@ -90,19 +75,16 @@ async function fetchFreshData(): Promise<CachedData> {
 export async function GET() {
   const now = Date.now();
 
-  // Return fresh cache if available
   if (cachedResponse && now - cacheTime < CACHE_TTL) {
     return NextResponse.json(cachedResponse);
   }
 
-  // During error cooldown, return stale cache or error
   if (now - lastErrorTime < ERROR_COOLDOWN) {
     if (cachedResponse) return NextResponse.json(cachedResponse);
     return NextResponse.json({ error: "Rate limited — try again shortly" }, { status: 429 });
   }
 
   try {
-    // Deduplicate concurrent requests — reuse in-flight fetch
     if (!refreshInProgress) {
       refreshInProgress = fetchFreshData().finally(() => {
         refreshInProgress = null;
@@ -119,7 +101,6 @@ export async function GET() {
     console.error("[community-fund] API error:", err);
     lastErrorTime = now;
 
-    // Return stale cache on error
     if (cachedResponse) {
       return NextResponse.json(cachedResponse);
     }

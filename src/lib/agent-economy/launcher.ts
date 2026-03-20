@@ -15,7 +15,7 @@
 
 import { Connection, Keypair, Transaction, VersionedTransaction } from "@solana/web3.js";
 import bs58 from "bs58";
-import { BAGS_API } from "./types";
+import { BAGS_API, type ClaimablePosition } from "./types";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
 import { saveGlobalToken, isNeonConfigured, type GlobalToken } from "@/lib/neon";
 
@@ -453,20 +453,6 @@ export interface LaunchResult {
   explorerUrl?: string;
   resolvedWallet?: string; // The actual wallet used (from Moltbook lookup or direct)
   error?: string;
-}
-
-export interface ClaimablePosition {
-  baseMint: string;
-  quoteMint?: string;
-  virtualPoolAddress?: string;
-  virtualPool?: string;
-  virtualPoolClaimableAmount?: string;
-  virtualPoolClaimableLamportsUserShare?: string;
-  dammPoolClaimableAmount?: string;
-  totalClaimableLamportsUserShare?: string;
-  isCustomFeeVault: boolean;
-  isMigrated: boolean;
-  programId?: string;
 }
 
 export interface ClaimResult {

@@ -8,8 +8,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { PublicKey } from "@solana/web3.js";
 import { isAdmin } from "@/lib/config";
+import { isValidSolanaAddress } from "@/lib/env-utils";
 import {
   generateChallenge,
   verifySignature,
@@ -18,18 +18,6 @@ import {
   verifySessionToken,
 } from "@/lib/wallet-auth";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
-
-/**
- * Validate that a string is a valid Solana public key
- */
-function isValidSolanaAddress(address: string): boolean {
-  try {
-    new PublicKey(address);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * GET /api/admin/auth?wallet=<address>

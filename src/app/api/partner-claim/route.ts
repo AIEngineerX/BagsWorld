@@ -7,28 +7,18 @@
 // - "claim": Generate transactions to claim accumulated fees
 
 import { NextRequest, NextResponse } from "next/server";
-import { PublicKey } from "@solana/web3.js";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
 import { verifySessionToken } from "@/lib/wallet-auth";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
+import { isValidSolanaAddress } from "@/lib/env-utils";
 
-const BAGS_API_URL = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
+import { BAGS_API_BASE_URL } from "@/lib/config";
+
+const BAGS_API_URL = BAGS_API_BASE_URL;
 const BAGS_API_KEY = process.env.BAGS_API_KEY;
 
 // Partner wallet - same as ecosystem wallet for simplicity
 const PARTNER_WALLET = ECOSYSTEM_CONFIG.ecosystem.wallet;
-
-/**
- * Validate that a string is a valid Solana public key
- */
-function isValidSolanaAddress(address: string): boolean {
-  try {
-    new PublicKey(address);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Verify partner access via session token

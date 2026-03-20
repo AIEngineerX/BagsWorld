@@ -116,7 +116,6 @@ describe("MiniMap", () => {
       expect(grid.getByText("PARK")).toBeInTheDocument();
       expect(grid.getByText("CITY")).toBeInTheDocument();
       expect(grid.getByText("BALLERS")).toBeInTheDocument();
-      expect(grid.getByText("ARENA")).toBeInTheDocument();
       expect(grid.getByText("BEACH")).toBeInTheDocument();
       expect(grid.getByText("LAUNCH")).toBeInTheDocument();
     });
@@ -139,8 +138,8 @@ describe("MiniMap", () => {
       render(<MiniMap />);
       openMap();
 
-      fireEvent.click(screen.getByText("ARENA"));
-      expect(useGameStore.getState().currentZone).toBe("arena");
+      fireEvent.click(screen.getByText("BEACH"));
+      expect(useGameStore.getState().currentZone).toBe("moltbook");
     });
   });
 

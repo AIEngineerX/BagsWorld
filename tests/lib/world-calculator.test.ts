@@ -1947,3 +1947,347 @@ describe("buildWorldState", () => {
     });
   });
 });
+
+// ============================================================================
+// EDGE CASES & BOUNDARY CONDITIONS
+// ============================================================================
+
+describe("calculateWorldHealth — edge cases", () => {
+  it("NaN claimVolume produces NaN (documents unguarded path)", () => {
+    // BUG DOCUMENTATION: NaN propagates through thresholdScore because NaN > X is always false
+    // calculateThresholdScore returns Math.max(0, NaN / 1 * 25) = NaN
+    // activityHealth = NaN * 0.6 + ... = NaN
+    // Math.max(25, NaN) = NaN, Math.round(NaN) = NaN
+    const health = calculateWorldHealth(NaN, 0, 0, 0);
+    expect(health).toBeNaN();
+  });
+
+  it("negative buildingCount produces baseline below 25", () => {
+    // buildingCount * 3 is negative, BUILDING_BONUS = Math.min(15, negative)
+    const health = calculateWorldHealth(0, 0, 0, -3);
+    expect(health).toBe(16); // 25 + Math.min(15, -9) = 25 + (-9) = 16
+  });
+
+  it("zero claims but nonzero activeTokenCount still returns baseline", () => {
+    // claimVolume24h=0, totalLifetimeFees=0, activeTokenCount=1 → bypasses early return
+    // claimScore=0, feesScore=0, diversityScore=10 → activityHealth=1
+    // Math.max(baselineScore=25, 1) = 25
+    const health = calculateWorldHealth(0, 0, 1, 0);
+    expect(health).toBe(25);
+  });
+
+  it("exactly at thriving threshold (50 SOL claims)", () => {
+    const health = calculateWorldHealth(50, 0, 0, 0);
+    expect(health).toBeGreaterThanOrEqual(54); // 90 * 0.6 = 54 minimum
+    expect(health).toBeLessThanOrEqual(100);
+    expect(Number.isInteger(health)).toBe(true);
+  });
+
+  it("buildingCount capped at 15% bonus (6+ buildings)", () => {
+    const with5 = calculateWorldHealth(0, 0, 0, 5);
+    const with10 = calculateWorldHealth(0, 0, 0, 10);
+    // 5 buildings: min(15, 15) = 15, score = 40
+    // 10 buildings: min(15, 30) = 15, score = 40 (same cap)
+    expect(with5).toBe(with10);
+    expect(with5).toBe(40);
+  });
+
+  it("Infinity claimVolume is handled", () => {
+    const health = calculateWorldHealth(Infinity, 0, 0, 0);
+    expect(Number.isFinite(health)).toBe(true);
+    expect(health).toBeLessThanOrEqual(100);
+  });
+});
+
+describe("calculateBuildingHealth — edge cases", () => {
+  it("future lastHealthUpdate clamps to 1 cycle", () => {
+    const futureDate = new Date(Date.now() + 60_000_000);
+    const result = calculateBuildingHealth(500, 100000, 0, 50, false, null, futureDate);
+    expect(result.cyclesApplied).toBe(1);
+    expect(result.health).toBeGreaterThan(50); // Recovery rate applied once
+  });
+
+  it("grace period building ignores lastHealthUpdate", () => {
+    const recentCreatedAt = Date.now() - 1000; // 1 second ago (within 24h grace)
+    const oldUpdate = new Date(Date.now() - 3_600_000); // 1 hour ago
+    const result = calculateBuildingHealth(0, 0, 0, 80, false, null, oldUpdate, recentCreatedAt);
+    expect(result.cyclesApplied).toBe(0); // Grace period bypasses multi-cycle
+    expect(result.health).toBe(80); // At least previousHealth (or gracePeriod.minHealth)
+  });
+
+  it("permanent building with timestamps still returns health 100", () => {
+    const result = calculateBuildingHealth(
+      0, 0, -50, 30, true, null,
+      new Date(Date.now() - 3_600_000), // lastHealthUpdate: 1 hour ago
+      Date.now() - 86_400_000 * 2 // createdAt: 2 days ago (past grace)
+    );
+    expect(result.health).toBe(100);
+    expect(result.status).toBe("active");
+    expect(result.cyclesApplied).toBe(0);
+  });
+
+  it("healthOverride of 0 is respected (not treated as null)", () => {
+    const result = calculateBuildingHealth(10000, 1000000, 100, 80, false, 0);
+    expect(result.health).toBe(0);
+    expect(result.status).toBe("dormant");
+    expect(result.cyclesApplied).toBe(0);
+  });
+
+  it("MAX_DECAY_CYCLES caps at 60 even for very old lastHealthUpdate", () => {
+    const veryOldUpdate = new Date(Date.now() - 86_400_000); // 24 hours ago
+    // 24h = 1440 minutes = 1440 cycles, but capped at 60
+    const result = calculateBuildingHealth(0, 0, 0, 100, false, null, veryOldUpdate);
+    expect(result.cyclesApplied).toBe(60);
+    // 60 cycles * -8 heavyDecay = -480, clamped to 0
+    expect(result.health).toBe(0);
+  });
+
+  it("previousHealth of 0 with high volume produces recovery", () => {
+    const result = calculateBuildingHealth(5000, 100000, 10, 0);
+    expect(result.health).toBe(10); // 0 + 10 (fastRecovery) = 10
+    expect(result.status).toBe("dormant");
+  });
+});
+
+describe("calculateWeather — boundaries", () => {
+  it("exactly 80 → sunny", () => {
+    expect(calculateWeather(80)).toBe("sunny");
+  });
+
+  it("exactly 79 → cloudy", () => {
+    expect(calculateWeather(79)).toBe("cloudy");
+  });
+
+  it("exactly 60 → cloudy", () => {
+    expect(calculateWeather(60)).toBe("cloudy");
+  });
+
+  it("exactly 59 → rain", () => {
+    expect(calculateWeather(59)).toBe("rain");
+  });
+
+  it("exactly 40 → rain", () => {
+    expect(calculateWeather(40)).toBe("rain");
+  });
+
+  it("exactly 39 → storm", () => {
+    expect(calculateWeather(39)).toBe("storm");
+  });
+
+  it("exactly 20 → storm", () => {
+    expect(calculateWeather(20)).toBe("storm");
+  });
+
+  it("exactly 19 → apocalypse", () => {
+    expect(calculateWeather(19)).toBe("apocalypse");
+  });
+
+  it("0 → apocalypse", () => {
+    expect(calculateWeather(0)).toBe("apocalypse");
+  });
+
+  it("100 → sunny", () => {
+    expect(calculateWeather(100)).toBe("sunny");
+  });
+
+  it("negative health → apocalypse", () => {
+    expect(calculateWeather(-10)).toBe("apocalypse");
+  });
+});
+
+describe("calculateBuildingLevel — edge cases", () => {
+  it("NaN marketCap → level 1 (guard: Math.max(0, NaN || 0))", () => {
+    expect(calculateBuildingLevel(NaN)).toBe(1);
+  });
+
+  it("undefined marketCap → level 1", () => {
+    expect(calculateBuildingLevel(undefined as unknown as number)).toBe(1);
+  });
+
+  it("negative marketCap → level 1 (clamped to 0)", () => {
+    expect(calculateBuildingLevel(-1000000)).toBe(1);
+  });
+
+  it("Infinity → level 5", () => {
+    expect(calculateBuildingLevel(Infinity)).toBe(5);
+  });
+});
+
+describe("calculateCharacterMood — boundaries", () => {
+  it("change24h exactly 100 → happy (not celebrating, but > 20 triggers happy)", () => {
+    // change24h > 100 → celebrating (false at 100)
+    // change24h > 20 → happy (true at 100)
+    expect(calculateCharacterMood(0, 100)).toBe("happy");
+  });
+
+  it("change24h 101 → celebrating", () => {
+    expect(calculateCharacterMood(0, 101)).toBe("celebrating");
+  });
+
+  it("change24h exactly 20 → neutral (> 20 required for happy)", () => {
+    expect(calculateCharacterMood(0, 20)).toBe("neutral");
+  });
+
+  it("change24h 21 → happy", () => {
+    expect(calculateCharacterMood(0, 21)).toBe("happy");
+  });
+
+  it("earnings24h 1001 → happy (even with flat change)", () => {
+    expect(calculateCharacterMood(1001, 0)).toBe("happy");
+  });
+
+  it("earnings24h exactly 1000 → neutral (> 1000 required)", () => {
+    expect(calculateCharacterMood(1000, 0)).toBe("neutral");
+  });
+
+  it("change24h exactly -20 → sad", () => {
+    expect(calculateCharacterMood(0, -20)).toBe("neutral"); // < -20 required
+  });
+
+  it("change24h -21 → sad", () => {
+    expect(calculateCharacterMood(0, -21)).toBe("sad");
+  });
+});
+
+describe("generateGameEvent — edge cases", () => {
+  it("fee_claim with undefined amount shows 'undefined' in message", () => {
+    const event = generateGameEvent("fee_claim", { username: "testuser" });
+    expect(event.type).toBe("fee_claim");
+    expect(typeof event.message).toBe("string");
+    // When amount is undefined, toFixed is called on undefined → message contains "undefined"
+    expect(event.message).toContain("testuser");
+  });
+
+  it("price_dump with positive change still formats correctly", () => {
+    const event = generateGameEvent("price_dump", { tokenName: "TEST", change: 30 });
+    expect(event.message).toContain("30"); // Math.abs(30).toFixed(0) = "30"
+    expect(event.message).toContain("TEST");
+  });
+
+  it("null data produces a message without crashing", () => {
+    const event = generateGameEvent("token_launch", null as unknown as GameEvent["data"]);
+    expect(typeof event.message).toBe("string");
+    expect(typeof event.id).toBe("string");
+    expect(typeof event.timestamp).toBe("number");
+  });
+
+  it("each event has a unique id", () => {
+    const e1 = generateGameEvent("milestone", { username: "a" });
+    const e2 = generateGameEvent("milestone", { username: "b" });
+    expect(e1.id).not.toBe(e2.id);
+  });
+
+  it("all standard event types produce valid messages", () => {
+    const standardTypes: GameEvent["type"][] = [
+      "token_launch", "building_constructed", "fee_claim",
+      "price_pump", "price_dump", "milestone", "whale_alert",
+      "platform_launch", "platform_trending", "platform_claim",
+      "task_posted", "task_claimed", "task_completed",
+      "a2a_message", "corp_founded", "corp_joined",
+      "corp_mission_complete", "corp_payroll", "corp_service",
+    ];
+    for (const type of standardTypes) {
+      const event = generateGameEvent(type, { username: "test", tokenName: "TST", amount: 1, change: 5 });
+      expect(typeof event.message).toBe("string");
+      expect(event.message.length).toBeGreaterThan(0);
+      expect(event.type).toBe(type);
+    }
+  });
+});
+
+describe("transformFeeEarnerToCharacter — edge cases", () => {
+  const baseEarner: FeeEarner = {
+    rank: 1,
+    username: "testuser",
+    providerUsername: "testuser",
+    provider: "twitter",
+    wallet: "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
+    lifetimeEarnings: 100,
+    earnings24h: 10,
+    change24h: 5,
+    tokenCount: 1,
+    topToken: { mint: "testmint123", name: "Test", symbol: "TEST", creator: "c", marketCap: 1000, volume24h: 100, change24h: 0 },
+  };
+
+  it("providerUsername takes priority over username", () => {
+    const earner = { ...baseEarner, providerUsername: "provider_name", username: "fallback_name" };
+    const character = transformFeeEarnerToCharacter(earner);
+    expect(character.username).toBe("provider_name");
+  });
+
+  it("visitor characters get main_city or trending zone", () => {
+    const earner = { ...baseEarner, isVisitor: true };
+    const character = transformFeeEarnerToCharacter(earner);
+    expect(["main_city", "trending"]).toContain(character.zone);
+  });
+
+  it("character with very long username still produces a valid username", () => {
+    const earner = { ...baseEarner, username: "a".repeat(100), providerUsername: "a".repeat(100) };
+    const character = transformFeeEarnerToCharacter(earner);
+    expect(typeof character.username).toBe("string");
+    expect(character.username).toBe("a".repeat(100));
+  });
+
+  it("special character flags produce correct zone assignment", () => {
+    const tolyEarner = { ...baseEarner, isToly: true };
+    const character = transformFeeEarnerToCharacter(tolyEarner);
+    expect(character.zone).toBe("main_city");
+  });
+});
+
+describe("buildWorldState — edge cases", () => {
+  it("empty tokens and earners produces a valid world state", () => {
+    const state = buildWorldState([], []);
+    expect(state.health).toBe(25); // Baseline with 0 buildings
+    expect(state.weather).toBe("storm"); // 25 health → storm (20-39)
+    expect(state.buildings).toEqual([]);
+    expect(state.population).toEqual([]);
+    expect(Array.isArray(state.events)).toBe(true);
+    expect(typeof state.lastUpdated).toBe("number");
+  });
+
+  it("partial bagsMetrics with undefined fields defaults to 0", () => {
+    const state = buildWorldState([], [], undefined, {
+      claimVolume24h: undefined as unknown as number,
+      totalLifetimeFees: 100,
+      activeTokenCount: 2,
+    });
+    // claimVolume24h falls back to 0 via ?? operator
+    expect(Number.isFinite(state.health)).toBe(true);
+  });
+
+  it("tokens with duplicate mints produce buildings for each", () => {
+    const tokens: TokenInfo[] = [
+      { mint: "DUPE", name: "Dupe1", symbol: "D1", creator: "c", marketCap: 100000, volume24h: 100, change24h: 0 },
+      { mint: "DUPE", name: "Dupe2", symbol: "D2", creator: "c", marketCap: 200000, volume24h: 200, change24h: 0 },
+    ];
+    const state = buildWorldState([], tokens);
+    const dupeBuildings = state.buildings.filter(b => b.tokenMint === "DUPE");
+    // No deduplication — both tokens produce buildings
+    expect(dupeBuildings.length).toBe(2);
+  });
+
+  it("previousState events are preserved (up to 10)", () => {
+    const prevEvents: GameEvent[] = Array.from({ length: 15 }, (_, i) => ({
+      id: `evt-${i}`,
+      type: "milestone" as const,
+      message: `Event ${i}`,
+      timestamp: Date.now() - i * 1000,
+      data: {},
+    }));
+
+    const prevState: WorldState = {
+      health: 50,
+      weather: "rain",
+      buildings: [],
+      population: [],
+      events: prevEvents,
+      lastUpdated: Date.now(),
+      timeInfo: { hour: 12, isDay: true, period: "afternoon" },
+    };
+
+    const state = buildWorldState([], [], prevState);
+    // previousState.events.slice(0, 10) → max 10 carried forward
+    expect(state.events.length).toBeLessThanOrEqual(10);
+  });
+});

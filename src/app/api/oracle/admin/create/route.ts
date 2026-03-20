@@ -10,13 +10,13 @@ import {
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 import { getAllWorldTokensAsync, LaunchedToken } from "@/lib/token-registry";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
+import { LAMPORTS_PER_SOL } from "@/lib/solana-utils";
 
 export const dynamic = "force-dynamic";
 
 // Prize pool configuration from config
 const MIN_PRIZE_SOL = ECOSYSTEM_CONFIG.oracle.prizePool.minSol;
 const MAX_PRIZE_SOL = ECOSYSTEM_CONFIG.oracle.prizePool.maxSol;
-const LAMPORTS_PER_SOL = 1_000_000_000;
 
 interface DexScreenerPair {
   priceUsd?: string;

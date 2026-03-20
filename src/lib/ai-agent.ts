@@ -482,11 +482,6 @@ export function getAIAgent(): AIAgent {
   return aiAgent;
 }
 
-export function resetAIAgent(personality?: AIPersonality): AIAgent {
-  aiAgent = new AIAgent(personality);
-  return aiAgent;
-}
-
 // ============================================================================
 // COORDINATOR INTEGRATION
 // ============================================================================
@@ -675,17 +670,6 @@ export function connectToCoordinator(): () => void {
 
   console.log("[AI Agent] Connected to Agent Coordinator");
   return coordinatorUnsubscribe;
-}
-
-/**
- * Disconnect AI Agent from the coordinator
- */
-export function disconnectFromCoordinator(): void {
-  if (coordinatorUnsubscribe) {
-    coordinatorUnsubscribe();
-    coordinatorUnsubscribe = null;
-    console.log("[AI Agent] Disconnected from Agent Coordinator");
-  }
 }
 
 export { AIAgent, AI_PERSONALITIES };
