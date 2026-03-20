@@ -34,9 +34,10 @@ afterEach(() => {
 });
 
 describe("ZONE_ORDER constant", () => {
-  it("has no duplicates and matches ZONES keys", () => {
+  it("has no duplicates and all entries are valid ZONES keys", () => {
     expect(new Set(ZONE_ORDER).size).toBe(ZONE_ORDER.length);
-    expect(ZONE_ORDER).toHaveLength(Object.keys(ZONES).length);
+    // Arena is hidden from navigation but still exists in the type system
+    expect(ZONE_ORDER.length).toBeLessThanOrEqual(Object.keys(ZONES).length);
     ZONE_ORDER.forEach((zone) => expect(ZONES[zone]).toBeDefined());
   });
 
@@ -172,7 +173,6 @@ describe("ZoneNav zone-specific colors", () => {
     ["trending", "border-yellow-500/50", "text-bags-gold"],
     ["ballers", "border-yellow-500/50", "text-yellow-400"],
     ["founders", "border-amber-500/50", "text-amber-400"],
-    ["arena", "border-red-500/50", "text-red-400"],
     ["ascension", "border-cyan-500/50", "text-cyan-400"],
   ];
 

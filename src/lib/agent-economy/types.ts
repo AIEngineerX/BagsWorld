@@ -181,24 +181,15 @@ export const COMMON_TOKENS = {
   USDT: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
 } as const;
 
+import { BAGS_API_BASE_URL } from "@/lib/config";
+
 /**
- * Bags API base URLs
+ * Bags API base URLs — derived from canonical BAGS_API_BASE_URL
  */
 export const BAGS_API = {
-  AGENT_BASE: "https://public-api-v2.bags.fm/api/v1/agent",
-  PUBLIC_BASE: "https://public-api-v2.bags.fm/api/v1",
+  AGENT_BASE: `${BAGS_API_BASE_URL}/agent`,
+  PUBLIC_BASE: BAGS_API_BASE_URL,
 } as const;
 
-/**
- * Lamports conversion helpers
- */
-export const LAMPORTS_PER_SOL = 1_000_000_000;
-
-export function lamportsToSol(lamports: number | string): number {
-  const l = typeof lamports === "string" ? parseInt(lamports, 10) : lamports;
-  return l / LAMPORTS_PER_SOL;
-}
-
-export function solToLamports(sol: number): number {
-  return Math.floor(sol * LAMPORTS_PER_SOL);
-}
+// Re-export lamports utilities from canonical source
+export { LAMPORTS_PER_SOL, lamportsToSol, solToLamports } from "@/lib/solana-utils";

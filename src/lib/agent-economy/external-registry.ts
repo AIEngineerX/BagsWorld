@@ -240,7 +240,8 @@ const AGENT_ACTIVITY_TIERS = [
   { maxAgeMs: 7 * 24 * 60 * 60 * 1000, health: 50, status: "warning" as const }, // < 7 days
   { maxAgeMs: 30 * 24 * 60 * 60 * 1000, health: 25, status: "critical" as const }, // < 30 days
 ] as const;
-const AGENT_DORMANT_HEALTH = 12; // 30+ days inactive - dormant but never removed
+const AGENT_DORMANT_HEALTH = 8; // 30+ days inactive - below remove threshold, hidden from world
+const AGENT_REMOVE_THRESHOLD = 10; // Buildings with health at or below this are filtered out
 
 export function getAgentBuildingHealth(lastActiveAt: Date | null): {
   health: number;
@@ -311,7 +312,7 @@ function rowToBuilding(row: DbRow, index: number): GameBuilding {
     glowing: health >= 75, // Only glow when recently active
     ownerId: row.wallet,
     zone: row.zone as ZoneType,
-    isPermanent: true, // Agent buildings are never removed (but they DO visually decay)
+    isPermanent: false, // Agent buildings decay and can be removed when dormant
     tokenUrl, // Moltbook profile or Solscan — opens on click
     // Beach-themed buildings for moltbook zone
     styleOverride: isMoltbookZone ? -1 : 0, // -1 signals beach theme
@@ -647,7 +648,9 @@ async function refreshCache() {
       `;
 
       cachedAgents = rows.map((row) => rowToEntry(row as DbRow).character);
-      cachedBuildings = rows.map((row, index) => rowToBuilding(row as DbRow, index));
+      const allBuildings = rows.map((row, index) => rowToBuilding(row as DbRow, index));
+      // Filter out dormant agent buildings (health below remove threshold)
+      cachedBuildings = allBuildings.filter((b) => b.health > AGENT_REMOVE_THRESHOLD);
       lastCacheTime = Date.now();
     } catch (err) {
       console.error("[ExternalRegistry] Cache refresh failed:", err);

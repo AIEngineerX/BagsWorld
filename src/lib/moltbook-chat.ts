@@ -172,21 +172,6 @@ async function ensureChatPost(client: MoltbookClient): Promise<string | null> {
 }
 
 /**
- * Initialize the chat system
- * Returns true if initialization was successful
- */
-export async function initializeChat(): Promise<boolean> {
-  const client = getMoltbookOrNull();
-  if (!client) {
-    console.log("[MoltbookChat] MoltBook not configured");
-    return false;
-  }
-
-  const postId = await ensureChatPost(client);
-  return postId !== null;
-}
-
-/**
  * Fetch chat messages from the Molt Bar
  */
 export async function fetchChatMessages(limit: number = 50): Promise<{
@@ -380,24 +365,6 @@ export function formatChatTime(timestamp: Date): string {
   if (minutes > 0) return `${minutes}m ago`;
   if (seconds > 10) return `${seconds}s ago`;
   return "just now";
-}
-
-/**
- * Get recent messages from cache (no API call)
- */
-export function getCachedMessages(): ChatMessage[] {
-  return [...chatState.messages];
-}
-
-/**
- * Clear cached chat state (for testing/reset)
- */
-export function clearChatState(): void {
-  chatState.postId = null;
-  chatState.postTitle = null;
-  chatState.lastFetch = 0;
-  chatState.messages = [];
-  chatState.isInitialized = false;
 }
 
 // ============================================================================

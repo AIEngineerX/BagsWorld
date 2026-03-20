@@ -21,6 +21,8 @@ import {
   sanitizeString,
   isValidBps,
   validateUrlSafe,
+  getReadRpcUrl,
+  getWriteRpcUrl,
 } from "@/lib/env-utils";
 
 // ---------------------------------------------------------------------------
@@ -35,6 +37,9 @@ const ENV_KEYS = [
   "TEST_SECRET",
   "MY_VAR",
   "MY_LIST",
+  "SERVER_READ_RPC_URL",
+  "SOLANA_RPC_URL",
+  "NEXT_PUBLIC_SOLANA_RPC_URL",
 ] as const;
 
 type EnvSnapshot = Record<string, string | undefined>;
@@ -731,6 +736,144 @@ describe("env-utils", () => {
         const result = validateUrlSafe("https://203.0.113.1/");
         expect(result.isValid).toBe(true);
       });
+    });
+  });
+
+  // =========================================================================
+  // isProduction — edge cases
+  // =========================================================================
+
+  describe("isProduction — edge cases", () => {
+    it('returns false when NETLIFY="1" (only "true" triggers production)', () => {
+      process.env.NETLIFY = "1";
+      expect(isProduction()).toBe(false);
+    });
+
+    it('returns false when NETLIFY="yes"', () => {
+      process.env.NETLIFY = "yes";
+      expect(isProduction()).toBe(false);
+    });
+
+    it("returns true when both NODE_ENV=production AND NETLIFY_DATABASE_URL are set", () => {
+      process.env.NODE_ENV = "production";
+      process.env.NETLIFY_DATABASE_URL = "postgres://host/db";
+      expect(isProduction()).toBe(true);
+    });
+  });
+
+  // =========================================================================
+  // getRequiredSecret — edge cases
+  // =========================================================================
+
+  describe("getRequiredSecret — edge cases", () => {
+    it("uses fallback when env var is empty string (falsy)", () => {
+      process.env.TEST_SECRET = "";
+      const warnSpy = jest.spyOn(console, "warn").mockImplementation();
+
+      const result = getRequiredSecret("TEST_SECRET", "dev-fallback");
+
+      expect(result).toBe("dev-fallback");
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("TEST_SECRET not set")
+      );
+    });
+
+    it("returns whitespace-only env var as-is (truthy, NOT the fallback)", () => {
+      process.env.TEST_SECRET = "   ";
+
+      const result = getRequiredSecret("TEST_SECRET", "dev-fallback");
+
+      expect(result).toBe("   ");
+    });
+  });
+
+  // =========================================================================
+  // getReadRpcUrl
+  // =========================================================================
+
+  describe("getReadRpcUrl", () => {
+    it("returns SERVER_READ_RPC_URL when set", () => {
+      process.env.SERVER_READ_RPC_URL = "https://custom-read-rpc.example.com";
+      expect(getReadRpcUrl()).toBe("https://custom-read-rpc.example.com");
+    });
+
+    it("falls back to ankr endpoint when SERVER_READ_RPC_URL is not set", () => {
+      delete process.env.SERVER_READ_RPC_URL;
+      expect(getReadRpcUrl()).toBe("https://rpc.ankr.com/solana");
+    });
+  });
+
+  // =========================================================================
+  // getWriteRpcUrl
+  // =========================================================================
+
+  describe("getWriteRpcUrl", () => {
+    it("returns SOLANA_RPC_URL when set (highest priority)", () => {
+      process.env.SOLANA_RPC_URL = "https://helius-rpc.example.com";
+      expect(getWriteRpcUrl()).toBe("https://helius-rpc.example.com");
+    });
+
+    it("falls back to NEXT_PUBLIC_SOLANA_RPC_URL when SOLANA_RPC_URL is not set", () => {
+      delete process.env.SOLANA_RPC_URL;
+      process.env.NEXT_PUBLIC_SOLANA_RPC_URL = "https://public-rpc.example.com";
+      expect(getWriteRpcUrl()).toBe("https://public-rpc.example.com");
+    });
+
+    it("falls back to ankr endpoint when neither is set", () => {
+      delete process.env.SOLANA_RPC_URL;
+      delete process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
+      expect(getWriteRpcUrl()).toBe("https://rpc.ankr.com/solana");
+    });
+
+    it("SOLANA_RPC_URL takes priority over NEXT_PUBLIC_SOLANA_RPC_URL when both set", () => {
+      process.env.SOLANA_RPC_URL = "https://helius-rpc.example.com";
+      process.env.NEXT_PUBLIC_SOLANA_RPC_URL = "https://public-rpc.example.com";
+      expect(getWriteRpcUrl()).toBe("https://helius-rpc.example.com");
+    });
+  });
+
+  // =========================================================================
+  // validateUrlSafe — edge cases
+  // =========================================================================
+
+  describe("validateUrlSafe — edge cases", () => {
+    it("does not block bracketed IPv6 fc00 (URL.hostname includes brackets)", () => {
+      // URL("https://[fc00::1]/").hostname === "[fc00::1]"
+      // The regex /^fc00:/i does not match the leading bracket, so this passes.
+      // A bare "fc00::1" hostname (without brackets) would be caught.
+      const result = validateUrlSafe("https://[fc00::1]/");
+      expect(result.isValid).toBe(true);
+    });
+
+    it("does not block bracketed IPv6 fe80 (URL.hostname includes brackets)", () => {
+      // Same bracket issue — /^fe80:/i won't match "[fe80::1]"
+      const result = validateUrlSafe("https://[fe80::1]/");
+      expect(result.isValid).toBe(true);
+    });
+
+    it("blocks all protocols when allowedProtocols is empty array", () => {
+      const result = validateUrlSafe("https://example.com", {
+        allowedProtocols: [],
+      });
+      expect(result.isValid).toBe(false);
+      expect(result.error).toContain("Protocol not allowed");
+    });
+
+    it("accepts URL at exact maxLength (> check, not >=)", () => {
+      // Build a URL whose total length equals maxLength exactly
+      const maxLength = 50;
+      const base = "https://example.com/";
+      const padding = "a".repeat(maxLength - base.length);
+      const url = base + padding;
+      expect(url.length).toBe(maxLength);
+
+      const result = validateUrlSafe(url, { maxLength });
+      expect(result.isValid).toBe(true);
+    });
+
+    it("accepts URL with credentials (no SSRF risk)", () => {
+      const result = validateUrlSafe("https://user:pass@example.com");
+      expect(result.isValid).toBe(true);
     });
   });
 });

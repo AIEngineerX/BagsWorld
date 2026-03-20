@@ -3,8 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerBagsApiOrNull } from "@/lib/bags-api-server";
 import { getGlobalTokens, isNeonConfigured } from "@/lib/neon";
 
+import { BAGS_API_BASE_URL } from "@/lib/config";
+
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const BAGS_API_URL = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
+const BAGS_API_URL = BAGS_API_BASE_URL;
 const BAGS_API_KEY = process.env.BAGS_API_KEY;
 
 // Arena Agent Personalities with detailed trading styles

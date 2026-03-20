@@ -1,7 +1,8 @@
 export const LAMPORTS_PER_SOL = 1_000_000_000;
 
-export function lamportsToSol(lamports: number): number {
-  return lamports / LAMPORTS_PER_SOL;
+export function lamportsToSol(lamports: number | string): number {
+  const l = typeof lamports === "string" ? parseInt(lamports, 10) : lamports;
+  return l / LAMPORTS_PER_SOL;
 }
 
 export function solToLamports(sol: number): number {

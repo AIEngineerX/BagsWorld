@@ -17,6 +17,7 @@ import {
 } from "@/lib/agent-economy/external";
 import { getMarketState, makeTradeDecision, type StrategyType } from "@/lib/agent-economy";
 import { solToLamports, COMMON_TOKENS } from "@/lib/agent-economy/types";
+import { BAGS_API_BASE_URL } from "@/lib/config";
 import {
   registerExternalAgent,
   unregisterExternalAgent,
@@ -589,7 +590,7 @@ export async function GET(request: NextRequest) {
     if (!resolvedWallet && moltbookUsername) {
       try {
         const BAGS_API_KEY = process.env.BAGS_API_KEY;
-        const lookupUrl = `https://public-api-v2.bags.fm/api/v1/token-launch/fee-share/wallet/v2?provider=moltbook&username=${encodeURIComponent(moltbookUsername)}`;
+        const lookupUrl = `${BAGS_API_BASE_URL}/token-launch/fee-share/wallet/v2?provider=moltbook&username=${encodeURIComponent(moltbookUsername)}`;
         const lookupRes = await fetch(lookupUrl, {
           headers: { "x-api-key": BAGS_API_KEY || "" },
         });
@@ -1392,7 +1393,7 @@ export async function POST(request: NextRequest) {
       // Look up wallet from Moltbook username
       try {
         const BAGS_API_KEY = process.env.BAGS_API_KEY;
-        const lookupUrl = `https://public-api-v2.bags.fm/api/v1/token-launch/fee-share/wallet/v2?provider=moltbook&username=${encodeURIComponent(moltbookUsername)}`;
+        const lookupUrl = `${BAGS_API_BASE_URL}/token-launch/fee-share/wallet/v2?provider=moltbook&username=${encodeURIComponent(moltbookUsername)}`;
         const lookupRes = await fetch(lookupUrl, {
           headers: { "x-api-key": BAGS_API_KEY || "" },
         });
@@ -2765,7 +2766,7 @@ export async function POST(request: NextRequest) {
     let resolvedWallet = wallet;
     if (!resolvedWallet && moltbookUsername) {
       try {
-        const lookupUrl = `https://public-api-v2.bags.fm/api/v1/token-launch/fee-share/wallet/v2?provider=moltbook&username=${encodeURIComponent(moltbookUsername)}`;
+        const lookupUrl = `${BAGS_API_BASE_URL}/token-launch/fee-share/wallet/v2?provider=moltbook&username=${encodeURIComponent(moltbookUsername)}`;
         const lookupRes = await fetch(lookupUrl, {
           headers: { "x-api-key": process.env.BAGS_API_KEY || "" },
         });
@@ -2826,7 +2827,7 @@ export async function POST(request: NextRequest) {
     let resolvedWallet = wallet;
     if (!resolvedWallet && moltbookUsername) {
       try {
-        const lookupUrl = `https://public-api-v2.bags.fm/api/v1/token-launch/fee-share/wallet/v2?provider=moltbook&username=${encodeURIComponent(moltbookUsername)}`;
+        const lookupUrl = `${BAGS_API_BASE_URL}/token-launch/fee-share/wallet/v2?provider=moltbook&username=${encodeURIComponent(moltbookUsername)}`;
         const lookupRes = await fetch(lookupUrl, {
           headers: { "x-api-key": process.env.BAGS_API_KEY || "" },
         });

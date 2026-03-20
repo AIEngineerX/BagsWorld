@@ -180,7 +180,7 @@ describe("Character Registry", () => {
       expect(ghostCharacter.name).toBe("Ghost");
       expect(ghostCharacter.username).toBe("DaddyGhost");
       expect(ghostCharacter.system).toContain("Built BagsWorld");
-      expect(ghostCharacter.system).toContain("community fund");
+      expect(ghostCharacter.system).toContain("BagsApp Marketplace");
     });
 
     it("should be technical and on-chain focused", () => {

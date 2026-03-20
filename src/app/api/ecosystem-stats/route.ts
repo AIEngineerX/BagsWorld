@@ -3,7 +3,6 @@ import {
   getCreatorRewardsState,
   initCreatorRewardsAgent,
   startCreatorRewardsAgent,
-  getTimeUntilDistribution,
 } from "@/lib/creator-rewards-agent";
 // ECOSYSTEM_CONFIG import removed - rewards system deprecated
 import { isAgentWalletConfigured } from "@/lib/agent-wallet";

@@ -73,7 +73,7 @@ export class WorldScene extends Phaser.Scene {
   public decorations: Phaser.GameObjects.Sprite[] = [];
   public animals: Animal[] = [];
   public pokemon: Pokemon[] = []; // Pokemon in Founders zone
-  private beachCrabs: BeachCrab[] = []; // External agents wandering MoltBeach
+  public beachCrabs: BeachCrab[] = []; // External agents wandering MoltBeach
   public ambientCreatures: BeachCrab[] = []; // Ambient crabs/lobsters/hermit crabs (always present)
   public fountainWater: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   public ground!: Phaser.GameObjects.TileSprite;
@@ -1985,6 +1985,10 @@ export class WorldScene extends Phaser.Scene {
           el === this.tickerText;
         const isBallersElement = this.ballersElements.includes(el);
         const isFoundersElement = this.foundersElements.includes(el);
+        const isMoltbookElement = this.moltbookElements.includes(el);
+        const isLabsElement = this.labsElements.includes(el);
+        const isArenaElement = this.arenaElements.includes(el);
+        const isAscensionElement = this.ascensionElements.includes(el);
 
         if (
           !isDecoration &&
@@ -1992,6 +1996,10 @@ export class WorldScene extends Phaser.Scene {
           !isTrendingElement &&
           !isBallersElement &&
           !isFoundersElement &&
+          !isMoltbookElement &&
+          !isLabsElement &&
+          !isArenaElement &&
+          !isAscensionElement &&
           el &&
           (el as any).destroy &&
           (el as any).active !== false
@@ -8180,7 +8188,7 @@ export class WorldScene extends Phaser.Scene {
     } else {
       // Regular building tooltip
       // Agent beach buildings show activity status instead of market cap
-      const isAgentBuilding = building.isBeachTheme && building.isPermanent;
+      const isAgentBuilding = building.isBeachTheme && building.id.startsWith("agent-building-");
       const mcapDisplay = isAgentBuilding
         ? status === "active"
           ? "🟢 Active"

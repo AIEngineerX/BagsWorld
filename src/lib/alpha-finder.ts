@@ -65,8 +65,10 @@ const DEFAULT_CONFIG: AlphaFinderConfig = {
 // BAGS.FM API HELPERS
 // ============================================================================
 
+import { BAGS_API_BASE_URL } from "./config";
+
 const BAGS_API_KEY = process.env.BAGS_API_KEY;
-const BAGS_PUBLIC_API = "https://public-api-v2.bags.fm/api/v1";
+const BAGS_PUBLIC_API = BAGS_API_BASE_URL;
 
 interface BagsToken {
   mint: string;

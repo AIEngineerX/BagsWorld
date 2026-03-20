@@ -7,9 +7,11 @@ import { extractIntent, quickIntentCheck } from "@/lib/intent-extractor";
 // Each character has unique personality, knowledge, and response style
 // Neo has access to REAL on-chain data from Bags.fm API
 
+import { BAGS_API_BASE_URL } from "@/lib/config";
+
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const BAGS_API_KEY = process.env.BAGS_API_KEY;
-const BAGS_API_URL = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
+const BAGS_API_URL = BAGS_API_BASE_URL;
 
 // Fetch tokens from our global database (BagsWorld tokens)
 async function fetchRecentLaunches(): Promise<string> {

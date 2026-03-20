@@ -1,17 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import type { ZoneType } from "@/lib/types";
+import { ZONES, type ZoneType } from "@/lib/types";
 
-// Valid zones for override
-const VALID_ZONES: ZoneType[] = [
-  "labs",
-  "moltbook",
-  "main_city",
-  "trending",
-  "ballers",
-  "founders",
-];
+// Valid zones for override — derived from canonical ZONES definition
+const VALID_ZONES = Object.keys(ZONES) as ZoneType[];
 
 // Building style info with colors for preview
 const BUILDING_STYLES = [

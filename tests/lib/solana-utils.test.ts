@@ -606,3 +606,85 @@ describe("parseSolString", () => {
     });
   });
 });
+
+describe("lamportsToSol — string input branch", () => {
+  it("converts string '1000000000' to 1 SOL", () => {
+    expect(lamportsToSol("1000000000")).toBe(1);
+  });
+
+  it("converts string '500000000' to 0.5 SOL", () => {
+    expect(lamportsToSol("500000000")).toBe(0.5);
+  });
+
+  it("truncates decimal in string via parseInt: '500000000.5' becomes 500000000", () => {
+    expect(lamportsToSol("500000000.5")).toBe(0.5);
+  });
+
+  it("parseInt stops at first non-digit for scientific notation '1.5e9' yielding 1", () => {
+    // parseInt("1.5e9", 10) = 1, so 1 / 1e9 = 1e-9
+    expect(lamportsToSol("1.5e9")).toBe(1e-9);
+  });
+
+  it("returns NaN for non-numeric string 'abc'", () => {
+    expect(lamportsToSol("abc")).toBeNaN();
+  });
+
+  it("returns NaN for empty string ''", () => {
+    expect(lamportsToSol("")).toBeNaN();
+  });
+
+  it("converts string '0' to 0 SOL", () => {
+    expect(lamportsToSol("0")).toBe(0);
+  });
+});
+
+describe("formatSolCompact — edge cases", () => {
+  it("returns '0' for negative value -5 (fails all > 0 checks)", () => {
+    expect(formatSolCompact(-5)).toBe("0");
+  });
+
+  it("returns '0' for NaN (all comparisons are false)", () => {
+    expect(formatSolCompact(NaN)).toBe("0");
+  });
+
+  it("returns 'InfinityM' for Infinity (hits >= 1_000_000 branch)", () => {
+    expect(formatSolCompact(Infinity)).toBe("InfinityM");
+  });
+
+  it("returns '0' for -Infinity (fails all >= checks)", () => {
+    expect(formatSolCompact(-Infinity)).toBe("0");
+  });
+
+  it("formats 0.999999 via >= 0.1 branch, toFixed(2) rounds to '1.00'", () => {
+    expect(formatSolCompact(0.999999)).toBe("1.00");
+  });
+});
+
+describe("parseSolString — edge cases", () => {
+  it("returns NaN for 'K' alone (no number before suffix)", () => {
+    // parseFloat("") is NaN, NaN * 1000 = NaN
+    expect(parseSolString("K")).toBeNaN();
+  });
+
+  it("returns NaN for 'M' alone (no number before suffix)", () => {
+    // parseFloat("") is NaN, NaN * 1_000_000 = NaN
+    expect(parseSolString("M")).toBeNaN();
+  });
+
+  it("parses negative value '-5.00 SOL' as -5", () => {
+    expect(parseSolString("-5.00 SOL")).toBe(-5);
+  });
+
+  it("parses '5.00 SOL SOL' — first SOL removed, parseFloat handles rest", () => {
+    // regex replaces first " SOL" occurrence, leaving "5.00 SOL"
+    // .trim().toUpperCase() → "5.00 SOL"
+    // no K/M suffix, parseFloat("5.00 SOL") = 5
+    expect(parseSolString("5.00 SOL SOL")).toBe(5);
+  });
+
+  it("handles leading/trailing whitespace '  1.5K  ' correctly", () => {
+    // cleaned: "  1.5K  " → trim → "1.5K" → toUpperCase → "1.5K"
+    // endsWith("K") → parseFloat("1.5") * 1000 = 1500
+    expect(parseSolString("  1.5K  ")).toBe(1500);
+  });
+});
