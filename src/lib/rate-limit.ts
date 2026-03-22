@@ -52,7 +52,12 @@ export async function checkRateLimit(
       cleanupExpiredRateLimits().catch(() => {});
     }
 
-    return await checkDistributedRateLimit(identifier, config.limit, config.windowMs);
+    try {
+      return await checkDistributedRateLimit(identifier, config.limit, config.windowMs);
+    } catch {
+      // DB unreachable — fall back to in-memory instead of failing open
+      return checkRateLimitInMemory(identifier, config);
+    }
   }
 
   return checkRateLimitInMemory(identifier, config);

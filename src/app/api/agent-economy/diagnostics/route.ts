@@ -1,16 +1,26 @@
 // Trading Diagnostics API
 // Proxies GhostTrader status from ElizaOS server.
-// No auth required — only returns operational metadata (no secrets).
+// Requires ADMIN_API_SECRET — exposes trading positions and strategy.
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const AGENTS_API_URL = process.env.AGENTS_API_URL || "http://localhost:3001";
+
+function isAuthorized(request: NextRequest): boolean {
+  const secret = process.env.ADMIN_API_SECRET;
+  if (!secret) return false;
+  const auth = request.headers.get("authorization");
+  return auth === `Bearer ${secret}`;
+}
 
 // ============================================================================
 // HANDLER
 // ============================================================================
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
     // Fetch all three endpoints from ElizaOS in parallel
     let ghostRaw: Record<string, unknown> | null = null;

@@ -32,6 +32,13 @@ import {
 // ============================================================================
 
 export async function GET(request: NextRequest) {
+  // Auth check - alpha signals and brain state are sensitive
+  const authHeader = request.headers.get("Authorization");
+  const expectedToken = process.env.ADMIN_API_SECRET;
+  if (!expectedToken || authHeader !== `Bearer ${expectedToken}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const action = searchParams.get("action") || "status";
 

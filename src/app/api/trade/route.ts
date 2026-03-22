@@ -3,6 +3,7 @@ import { getServerBagsApiOrNull } from "@/lib/bags-api-server";
 import type { BagsApiClient } from "@/lib/bags-api";
 import type { TradeQuote } from "@/lib/types";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
+import { isValidSolanaAddress } from "@/lib/env-utils";
 
 // SOL mint address
 const SOL_MINT = "So11111111111111111111111111111111111111112";
@@ -79,6 +80,10 @@ async function handleQuote(
     );
   }
 
+  if (!isValidSolanaAddress(inputMint) || !isValidSolanaAddress(outputMint)) {
+    return NextResponse.json({ error: "Invalid mint address format" }, { status: 400 });
+  }
+
   try {
     const quote = await api.getTradeQuote(
       inputMint,
@@ -111,6 +116,10 @@ async function handleSwap(
       { error: "Missing required fields: quoteResponse, userPublicKey" },
       { status: 400 }
     );
+  }
+
+  if (!isValidSolanaAddress(userPublicKey)) {
+    return NextResponse.json({ error: "Invalid wallet address format" }, { status: 400 });
   }
 
   try {

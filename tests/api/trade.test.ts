@@ -116,7 +116,7 @@ describe("Trade API - Actual Route Handler Tests", () => {
           action: "quote",
           data: {
             inputMint: "So11111111111111111111111111111111111111112",
-            outputMint: "TokenMint1234567890123456789012345",
+            outputMint: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
             amount: 1000000000,
           },
         },
@@ -145,7 +145,7 @@ describe("Trade API - Actual Route Handler Tests", () => {
           action: "quote",
           data: {
             inputMint: "So11111111111111111111111111111111111111112",
-            outputMint: "TokenMint123456789012345678901234",
+            outputMint: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
             amount: 1000000000,
             slippageBps: 50,
           },
@@ -160,7 +160,7 @@ describe("Trade API - Actual Route Handler Tests", () => {
       expect(data.quote).toEqual(mockQuote);
       expect(mockBagsApi.getTradeQuote).toHaveBeenCalledWith(
         "So11111111111111111111111111111111111111112",
-        "TokenMint123456789012345678901234",
+        "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
         1000000000,
         50
       );
@@ -217,7 +217,11 @@ describe("Trade API - Actual Route Handler Tests", () => {
         method: "POST",
         body: {
           action: "quote",
-          data: { inputMint: "SOL", outputMint: "TEST", amount: 1000 },
+          data: {
+            inputMint: "So11111111111111111111111111111111111111112",
+            outputMint: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+            amount: 1000,
+          },
         },
       });
 
@@ -225,8 +229,8 @@ describe("Trade API - Actual Route Handler Tests", () => {
 
       // Verify default slippage of 50 bps was used
       expect(mockBagsApi.getTradeQuote).toHaveBeenCalledWith(
-        "SOL",
-        "TEST",
+        "So11111111111111111111111111111111111111112",
+        "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
         1000,
         50 // Default slippage
       );
@@ -239,7 +243,11 @@ describe("Trade API - Actual Route Handler Tests", () => {
         method: "POST",
         body: {
           action: "quote",
-          data: { inputMint: "SOL", outputMint: "INVALID", amount: 1000 },
+          data: {
+            inputMint: "So11111111111111111111111111111111111111112",
+            outputMint: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+            amount: 1000,
+          },
         },
       });
 
@@ -271,7 +279,7 @@ describe("Trade API - Actual Route Handler Tests", () => {
               outAmount: "5000000000",
               minOutAmount: "4750000000",
             },
-            userPublicKey: "UserWallet12345678901234567890123456",
+            userPublicKey: "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
           },
         },
       });
@@ -328,7 +336,7 @@ describe("Trade API - Actual Route Handler Tests", () => {
           action: "swap",
           data: {
             quoteResponse: { inAmount: "1000" },
-            userPublicKey: "Wallet123",
+            userPublicKey: "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
           },
         },
       });
@@ -388,8 +396,8 @@ describe("Trade API - Actual Route Handler Tests", () => {
         body: {
           action: "quote",
           data: {
-            inputMint: "TokenA",
-            outputMint: "TokenB",
+            inputMint: "So11111111111111111111111111111111111111112",
+            outputMint: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
             amount: 5000000,
             slippageBps: 100, // 1% slippage
           },
@@ -399,8 +407,8 @@ describe("Trade API - Actual Route Handler Tests", () => {
       await POST(request);
 
       expect(mockBagsApi.getTradeQuote).toHaveBeenCalledWith(
-        "TokenA",
-        "TokenB",
+        "So11111111111111111111111111111111111111112",
+        "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
         5000000,
         100
       );
@@ -426,7 +434,7 @@ describe("Trade API - Actual Route Handler Tests", () => {
           action: "swap",
           data: {
             quoteResponse,
-            userPublicKey: "MyWallet12345",
+            userPublicKey: "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
           },
         },
       });
@@ -435,7 +443,7 @@ describe("Trade API - Actual Route Handler Tests", () => {
 
       expect(mockBagsApi.createSwapTransaction).toHaveBeenCalledWith(
         quoteResponse,
-        "MyWallet12345"
+        "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC"
       );
     });
   });
