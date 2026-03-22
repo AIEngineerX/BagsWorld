@@ -24,7 +24,6 @@ export interface DailyReportData {
   activityStats: {
     arenaBattles: number;
     casinoPrizes: number;
-    oracleRounds: number;
     feeClaims: number;
     tokenLaunches: number;
   };
@@ -69,9 +68,6 @@ async function fetchReportData(): Promise<DailyReportData> {
     (e) => e.timestamp > twentyFourHoursAgo
   ).length;
   const casinoPrizes = getRecentEvents(100, "casino_win").filter(
-    (e) => e.timestamp > twentyFourHoursAgo
-  ).length;
-  const oracleRounds = getRecentEvents(100, "oracle_settle").filter(
     (e) => e.timestamp > twentyFourHoursAgo
   ).length;
   const feeClaims = getRecentEvents(100, "fee_claim").filter(
@@ -126,7 +122,6 @@ async function fetchReportData(): Promise<DailyReportData> {
     activityStats: {
       arenaBattles,
       casinoPrizes,
-      oracleRounds,
       feeClaims,
       tokenLaunches,
     },
@@ -180,14 +175,12 @@ function generateReportText(data: DailyReportData): string[] {
     statsTweet += `Active Runners: ${data.ecosystemStats.activeRunners}\n`;
 
     // Add 24h activity summary from coordinator events
-    const { arenaBattles, casinoPrizes, oracleRounds, feeClaims, tokenLaunches } =
-      data.activityStats;
+    const { arenaBattles, casinoPrizes, feeClaims, tokenLaunches } = data.activityStats;
     const activityParts: string[] = [];
     if (arenaBattles > 0) activityParts.push(`${arenaBattles} battles`);
     if (feeClaims > 0) activityParts.push(`${feeClaims} claims`);
     if (tokenLaunches > 0) activityParts.push(`${tokenLaunches} launches`);
     if (casinoPrizes > 0) activityParts.push(`${casinoPrizes} raffles`);
-    if (oracleRounds > 0) activityParts.push(`${oracleRounds} predictions`);
 
     if (activityParts.length > 0) {
       statsTweet += `24h Activity: ${activityParts.join(" | ")}\n`;

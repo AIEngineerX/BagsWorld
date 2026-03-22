@@ -26,7 +26,6 @@ export type AgentEventType =
   | "agent_insight" // AI Agent generated insight
   | "arena_victory" // Arena combat result
   | "casino_win" // Casino raffle/slot win
-  | "oracle_settle" // Oracle round settled
   | "task_posted" // A2A: agent posted a bounty
   | "task_claimed" // A2A: agent claimed a bounty
   | "task_completed" // A2A: bounty confirmed complete
@@ -46,7 +45,6 @@ export type AgentSource =
   | "world-state"
   | "price-monitor"
   | "casino"
-  | "oracle"
   | "arena"
   | "a2a"
   | "task-board"
@@ -414,20 +412,6 @@ function generateAnnouncement(event: AgentEvent): string {
         : "Someone";
       const prize = data.prizeSol ?? 0;
       return `CASINO: ${wallet} won ${formatSol(prize)} in the raffle!`;
-    }
-
-    case "oracle_settle": {
-      const data = event.data as {
-        winningSymbol?: string;
-        priceChange?: number;
-        winnersCount?: number;
-        prizePoolSol?: number;
-      };
-      const symbol = data.winningSymbol || "TOKEN";
-      const change = data.priceChange ?? 0;
-      const count = data.winnersCount ?? 0;
-      const prize = data.prizePoolSol ?? 0;
-      return `ORACLE: $${symbol} wins (+${change.toFixed(1)}%)! ${count} predictors share ${formatSol(prize)}`;
     }
 
     case "task_posted": {

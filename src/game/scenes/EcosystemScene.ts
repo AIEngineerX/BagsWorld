@@ -45,7 +45,7 @@ const ZONE_CLUSTERS: ZoneCluster[] = [
     x: 1300,
     scrollX: 900,
     color: 0xfbbf24,
-    features: ["Casino (1M gate)", "Trading Terminal", "Oracle Predictions"],
+    features: ["Casino (1M gate)", "Trading Terminal"],
   },
   {
     name: "Founders",
@@ -128,14 +128,6 @@ const BUILDINGS: BuildingDef[] = [
     x: 1200,
     scale: 1.0,
     labelColor: 0xfbbf24,
-  },
-  {
-    texture: "oracle_tower",
-    label: "PREDICTIONS",
-    route: "/?zone=trending",
-    x: 1440,
-    scale: 1.0,
-    labelColor: 0xa855f7,
   },
   // Founders cluster
   {
@@ -263,14 +255,14 @@ const AGENTS: AgentDef[] = [
     texture: "neo",
     name: "Neo",
     fromBuilding: buildingIndex("casino"),
-    toBuilding: buildingIndex("oracle_tower"),
+    toBuilding: buildingIndex("terminal"),
     duration: 5000,
   },
   {
     texture: "cj",
     name: "CJ",
     fromBuilding: buildingIndex("casino"),
-    toBuilding: buildingIndex("oracle_tower"),
+    toBuilding: buildingIndex("terminal"),
     duration: 5800,
   },
   {

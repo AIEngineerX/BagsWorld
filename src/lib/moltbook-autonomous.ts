@@ -198,7 +198,7 @@ function subscribeToGameEvents(): void {
   if (gameEventUnsubscribe) return; // Already subscribed
 
   gameEventUnsubscribe = subscribe(
-    ["arena_victory", "casino_win", "oracle_settle", "fee_claim"],
+    ["arena_victory", "casino_win", "fee_claim"],
     (event) => {
       // Only store high-priority events, and only if no pending event
       if (event.priority === "high" && !pendingGameEvent) {
@@ -448,13 +448,6 @@ async function checkAndPostGameEvent(): Promise<boolean> {
       console.log(`[MoltbookAutonomous] Posting about casino win: ${prize} SOL`);
       postHype(`someone just won ${prize} SOL in the Casino raffle`);
       recordPost("hype");
-      return true;
-    }
-    case "oracle_settle": {
-      const symbol = (event.data as any)?.winningSymbol || "a token";
-      console.log(`[MoltbookAutonomous] Posting about oracle settlement: ${symbol}`);
-      spotlightFeature("Oracle Tower");
-      recordPost("feature_spotlight");
       return true;
     }
     case "fee_claim": {

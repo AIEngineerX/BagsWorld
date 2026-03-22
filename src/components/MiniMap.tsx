@@ -109,7 +109,6 @@ const LOCATIONS: Record<
   ],
   trending: [
     { id: "casino", name: "Casino", desc: "Games & Raffle", event: "bagsworld-casino-click" },
-    { id: "oracle", name: "Oracle", desc: "Predictions", event: "bagsworld-oracle-click" },
   ],
   ballers: [
     { id: "mansions", name: "Mansions", desc: "Top Holders", event: null },

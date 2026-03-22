@@ -101,7 +101,7 @@ export default function PrivacyPolicyPage() {
                 <li>Display your token holdings and game state</li>
                 <li>Enable on-chain transactions you initiate (launches, trades, claims)</li>
                 <li>Provide AI character conversations</li>
-                <li>Enforce token gates (Casino, Oracle, Ballers Valley)</li>
+                <li>Enforce token gates (Casino, Ballers Valley)</li>
                 <li>Generate world state based on aggregate on-chain activity</li>
               </ul>
             </section>

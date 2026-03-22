@@ -14,7 +14,6 @@ describe("ECOSYSTEM_CONFIG", () => {
   it("has all top-level keys", () => {
     expect(ECOSYSTEM_CONFIG).toHaveProperty("ecosystem");
     expect(ECOSYSTEM_CONFIG).toHaveProperty("casino");
-    expect(ECOSYSTEM_CONFIG).toHaveProperty("oracle");
     expect(ECOSYSTEM_CONFIG).toHaveProperty("admin");
     expect(ECOSYSTEM_CONFIG).toHaveProperty("buildings");
     expect(ECOSYSTEM_CONFIG).toHaveProperty("citizens");
@@ -23,10 +22,6 @@ describe("ECOSYSTEM_CONFIG", () => {
 
   it("casino gate requires 1,000,000 tokens", () => {
     expect(ECOSYSTEM_CONFIG.casino.gateToken.minBalance).toBe(1_000_000);
-  });
-
-  it("oracle gate requires 2,000,000 tokens", () => {
-    expect(ECOSYSTEM_CONFIG.oracle.gateToken.minBalance).toBe(2_000_000);
   });
 
   it("has exactly 5 building tiers", () => {
@@ -245,22 +240,6 @@ describe("BAGS_API_BASE_URL", () => {
 // ECOSYSTEM_CONFIG — deeper validation
 // ---------------------------------------------------------------------------
 describe("ECOSYSTEM_CONFIG — deeper validation", () => {
-  it("oracle.prizePool has defaultSol, minSol, and maxSol fields", () => {
-    const { prizePool } = ECOSYSTEM_CONFIG.oracle;
-    expect(prizePool).toHaveProperty("defaultSol");
-    expect(prizePool).toHaveProperty("minSol");
-    expect(prizePool).toHaveProperty("maxSol");
-    expect(prizePool.defaultSol).toBe(0.1);
-    expect(prizePool.minSol).toBe(0.1);
-    expect(prizePool.maxSol).toBe(1.0);
-  });
-
-  it("minSol <= defaultSol <= maxSol ordering", () => {
-    const { prizePool } = ECOSYSTEM_CONFIG.oracle;
-    expect(prizePool.minSol).toBeLessThanOrEqual(prizePool.defaultSol);
-    expect(prizePool.defaultSol).toBeLessThanOrEqual(prizePool.maxSol);
-  });
-
   it("each building tier has level (number), name (string), and minMarketCap (number)", () => {
     for (const tier of ECOSYSTEM_CONFIG.buildings.tiers) {
       expect(typeof tier.level).toBe("number");
