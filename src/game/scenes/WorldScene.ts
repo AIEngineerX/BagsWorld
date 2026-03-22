@@ -1439,7 +1439,6 @@ export class WorldScene extends Phaser.Scene {
     // Simulate the exact same click behavior as building pointerdown handlers
     const isPokeCenter = building.id.includes("PokeCenter");
     const isCasino = building.id.includes("Casino");
-    const isOracle = building.id.includes("Oracle") || building.symbol === "ORACLE";
     const isArcade = building.id.includes("Arcade") || building.symbol === "ARCADE";
     const isStarterBuilding = building.id.startsWith("Starter");
     const isTreasuryBuilding = building.id.startsWith("Treasury");
@@ -1466,12 +1465,6 @@ export class WorldScene extends Phaser.Scene {
     } else if (isCasino) {
       window.dispatchEvent(
         new CustomEvent("bagsworld-casino-click", {
-          detail: { buildingId: building.id, name: building.name },
-        })
-      );
-    } else if (isOracle) {
-      window.dispatchEvent(
-        new CustomEvent("bagsworld-oracle-click", {
           detail: { buildingId: building.id, name: building.name },
         })
       );
@@ -6758,7 +6751,6 @@ export class WorldScene extends Phaser.Scene {
     // Special buildings have fixed textures - no need to update
     const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
     const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
-    const isOracle = building.id.includes("Oracle") || building.symbol === "ORACLE";
     const isArcade = building.id.includes("Arcade") || building.symbol === "ARCADE";
     const isBagsHQ = building.isFloating || building.symbol === "BAGSWORLD";
     const isTreasury = building.id.startsWith("Treasury");
@@ -6770,7 +6762,7 @@ export class WorldScene extends Phaser.Scene {
     const isAgentBuilding = building.id.startsWith("agent-building-");
 
     // Skip texture updates for special buildings (they don't change)
-    if (isPokeCenter || isCasino || isOracle || isArcade || isBagsHQ || isTreasury || isMansion) {
+    if (isPokeCenter || isCasino || isArcade || isBagsHQ || isTreasury || isMansion) {
       return;
     }
 
@@ -6853,10 +6845,9 @@ export class WorldScene extends Phaser.Scene {
       container.add(shadow);
     }
 
-    // Use special texture for PokeCenter/Casino/Oracle/HQ/Mansions, otherwise use level-based building with style
+    // Use special texture for PokeCenter/Casino/HQ/Mansions, otherwise use level-based building with style
     const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
     const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
-    const isOracle = building.id.includes("Oracle") || building.symbol === "ORACLE";
     const isArcade = building.id.includes("Arcade") || building.symbol === "ARCADE";
     const isTreasury = building.id.startsWith("Treasury");
     const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSWORLD";
@@ -6890,15 +6881,13 @@ export class WorldScene extends Phaser.Scene {
           ? "pokecenter"
           : isCasino
             ? "casino"
-            : isOracle
-              ? "oracle_tower"
-              : isArcade
-                ? "arcade_building"
-                : isTreasury
-                  ? "treasury"
-                  : isBeachBuilding
-                    ? `beach_building_${beachBuildingLevel}`
-                    : `building_${building.level}_${styleIndex}`;
+            : isArcade
+              ? "arcade_building"
+              : isTreasury
+                ? "treasury"
+                : isBeachBuilding
+                  ? `beach_building_${beachBuildingLevel}`
+                  : `building_${building.level}_${styleIndex}`;
     const sprite = this.add.sprite(0, 0, buildingTexture);
     sprite.setOrigin(0.5, 1);
     // HQ is larger and floating, mansions use rank-based scaling from building data
@@ -6914,13 +6903,11 @@ export class WorldScene extends Phaser.Scene {
             ? 1.0
             : isCasino
               ? 1.0
-              : isOracle
+              : isArcade
                 ? 1.0
-                : isArcade
+                : isTreasury
                   ? 1.0
-                  : isTreasury
-                    ? 1.0
-                    : buildingScale
+                  : buildingScale
     );
     container.add(sprite);
 
@@ -7097,7 +7084,6 @@ export class WorldScene extends Phaser.Scene {
       }
       const isPokeCenter = building.id.includes("PokeCenter");
       const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
-      const isOracle = building.id.includes("Oracle") || building.symbol === "ORACLE";
       const isArcade = building.id.includes("Arcade") || building.symbol === "ARCADE";
       const isStarterBuilding = building.id.startsWith("Starter");
       const isTreasuryBuilding = building.id.startsWith("Treasury");
@@ -7127,13 +7113,6 @@ export class WorldScene extends Phaser.Scene {
         // Casino opens the gambling modal with raffle and wheel
         window.dispatchEvent(
           new CustomEvent("bagsworld-casino-click", {
-            detail: { buildingId: building.id, name: building.name },
-          })
-        );
-      } else if (isOracle) {
-        // Oracle Tower opens the prediction market modal
-        window.dispatchEvent(
-          new CustomEvent("bagsworld-oracle-click", {
             detail: { buildingId: building.id, name: building.name },
           })
         );
@@ -8283,17 +8262,12 @@ export class WorldScene extends Phaser.Scene {
       }
 
       // Different action text for special buildings
-      const isOracleBuilding = building.id.includes("Oracle") || building.symbol === "ORACLE";
       const isCasinoBuilding = building.id.includes("Casino") || building.symbol === "CASINO";
       const isArcadeBuilding = building.id.includes("Arcade") || building.symbol === "ARCADE";
       const actionText =
-        building.isMansion || isOracleBuilding || isCasinoBuilding || isArcadeBuilding
-          ? "Enter"
-          : "Click to trade";
+        building.isMansion || isCasinoBuilding || isArcadeBuilding ? "Enter" : "Click to trade";
       const actionColor =
-        building.isMansion || isOracleBuilding || isCasinoBuilding || isArcadeBuilding
-          ? "#fbbf24"
-          : "#6b7280";
+        building.isMansion || isCasinoBuilding || isArcadeBuilding ? "#fbbf24" : "#6b7280";
       const clickText = this.add.text(0, statusText ? 40 : 32, actionText, {
         fontFamily: "monospace",
         fontSize: "9px",

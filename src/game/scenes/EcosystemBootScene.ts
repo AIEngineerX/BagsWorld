@@ -29,7 +29,7 @@ export class EcosystemBootScene extends Phaser.Scene {
     // Core: grass, path tiles
     generateCoreAssets(this);
 
-    // Buildings: pokecenter, casino, terminal, oracle_tower, bagshq
+    // Buildings: pokecenter, casino, terminal, bagshq
     generateSpecialBuildings(this);
 
     // Labs HQ + props

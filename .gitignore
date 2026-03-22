@@ -105,3 +105,6 @@ eliza-agents/data/
 # Publishing build artifacts
 publishing/pnpm-lock.yaml
 publishing/banner.html
+
+# Archived design docs (moved to neo-trader repo)
+docs/archive/

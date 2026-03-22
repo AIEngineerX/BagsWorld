@@ -67,13 +67,6 @@ const FEATURES: FeatureItem[] = [
     zone: "trending",
   },
   {
-    name: "Oracle Tower",
-    icon: "[O]",
-    description: "Predict token outcomes",
-    zone: "trending",
-    gate: "2M $BW",
-  },
-  {
     name: "Professor Oak",
     icon: "[P]",
     description: "AI token name & art generator",

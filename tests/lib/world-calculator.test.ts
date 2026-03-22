@@ -1344,17 +1344,6 @@ describe("transformTokenToBuilding", () => {
       expect(building.zone).toBe("trending");
     });
 
-    it("should identify Oracle as permanent in trending zone", () => {
-      const oracleToken: TokenInfo = {
-        ...baseToken,
-        mint: "OracleTower-123",
-        symbol: "ORACLE",
-      };
-      const building = transformTokenToBuilding(oracleToken, 0);
-      expect(building.isPermanent).toBe(true);
-      expect(building.zone).toBe("trending");
-    });
-
     it("should identify Arcade as permanent in trending zone", () => {
       const arcadeToken: TokenInfo = {
         ...baseToken,

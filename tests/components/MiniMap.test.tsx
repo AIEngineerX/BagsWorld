@@ -164,7 +164,6 @@ describe("MiniMap", () => {
       expandZone("CITY");
 
       expect(screen.getByText("Casino")).toBeInTheDocument();
-      expect(screen.getByText("Oracle")).toBeInTheDocument();
     });
 
     it("shows HQ locations when HQ tile is expanded", () => {

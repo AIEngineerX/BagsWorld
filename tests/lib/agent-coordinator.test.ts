@@ -276,16 +276,6 @@ describe("agent-coordinator — unit tests", () => {
       expect(event!.announcement).toContain("ABCD");
     });
 
-    it("oracle_settle with 0 winners", async () => {
-      const event = await emitEvent("oracle_settle", "oracle", {
-        winningSymbol: "ETH",
-        priceChange: 15.3,
-        winnersCount: 0,
-        prizePoolSol: 10,
-      });
-      expect(event!.announcement).toContain("0 predictors");
-    });
-
     it("corp_service completed vs posted produces different messages", async () => {
       const posted = await emitEvent("corp_service", "task-board", {
         agentName: "Ghost",

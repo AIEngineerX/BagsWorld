@@ -152,10 +152,6 @@ const MoltbookHQModal = dynamic(
 const CasinoAdmin = dynamic(() => import("@/components/CasinoAdmin").then((m) => m.CasinoAdmin), {
   ssr: false,
 });
-const OracleTowerModal = dynamic(
-  () => import("@/components/OracleTowerModal").then((m) => m.OracleTowerModal),
-  { ssr: false }
-);
 const LauncherHub = dynamic(() => import("@/components/LauncherHub").then((m) => m.LauncherHub), {
   ssr: false,
 });
@@ -287,7 +283,6 @@ export default function Home() {
     | "feeClaim"
     | "communityFund"
     | "casino"
-    | "oracle"
     | "launcherHub"
     | "casinoAdmin"
     | "mansion"
@@ -373,7 +368,6 @@ export default function Home() {
       "bagsworld-pokecenter-click": (() => openModal("pokeCenter")) as EventListener,
       "bagsworld-treasury-click": (() => openModal("communityFund")) as EventListener,
       "bagsworld-casino-click": (() => openModal("casino")) as EventListener,
-      "bagsworld-oracle-click": (() => openModal("oracle")) as EventListener,
       "bagsworld-mansion-click": ((
         e: CustomEvent<{
           name?: string;
@@ -829,7 +823,6 @@ export default function Home() {
         )}
         {activeModal === "communityFund" && <CommunityFundModal onClose={closeModal} />}
         {activeModal === "casino" && <CasinoModal onClose={closeModal} />}
-        {activeModal === "oracle" && <OracleTowerModal onClose={closeModal} />}
         {activeModal === "mansion" && mansionData && (
           <MansionModal
             onClose={() => {

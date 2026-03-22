@@ -534,7 +534,7 @@ const EDUCATION_TASKS: ServiceTaskTemplate[] = [
   },
   {
     title: "Explain token gates",
-    description: "How Casino (1M tokens) and Oracle (2M tokens) gates work",
+    description: "How Casino (1M tokens) token gates work",
     capability: "content",
     outputType: "guide",
     category: "education",

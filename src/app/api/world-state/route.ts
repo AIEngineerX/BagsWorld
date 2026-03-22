@@ -835,16 +835,6 @@ const STARTER_BUILDINGS: RegisteredToken[] = [
     createdAt: Date.now() - 86400000 * 7, // 7 days ago
   },
   {
-    mint: "StarterOracleTower11111111111111111111111111",
-    name: "Oracle's Tower",
-    symbol: "ORACLE",
-    description:
-      "Predict which token will perform best! Token-gated prediction market with SOL prize pools for winners.",
-    imageUrl: "/assets/buildings/oracle.png",
-    creator: "BagsWorld",
-    createdAt: Date.now() - 86400000 * 7, // 7 days ago
-  },
-  {
     mint: "StarterArcade111111111111111111111111111111",
     name: "Arcade",
     symbol: "ARCADE",
@@ -1469,15 +1459,10 @@ export async function POST(request: NextRequest) {
     const casinoEvents24h = getRecentEvents(100, "casino_win").filter(
       (e) => e.timestamp > twentyFourHoursAgo
     );
-    const oracleEvents24h = getRecentEvents(100, "oracle_settle").filter(
-      (e) => e.timestamp > twentyFourHoursAgo
-    );
-
-    // Calculate game activity bonus (0-5 points, treated as SOL-equivalent at 0.5 SOL per point)
+    // Calculate game activity bonus (0-3 points, treated as SOL-equivalent at 0.5 SOL per point)
     const arenaBonus = Math.min(2, arenaEvents24h.length * 0.5);
     const casinoBonus = Math.min(1, casinoEvents24h.length * 1);
-    const oracleBonus = Math.min(2, oracleEvents24h.length * 1);
-    const gameActivityBonus = arenaBonus + casinoBonus + oracleBonus;
+    const gameActivityBonus = arenaBonus + casinoBonus;
     const gameActivitySolEquivalent = gameActivityBonus * 0.5;
 
     const totalClaimVolume24h = onChainClaimVolume + agentClaimVolume + gameActivitySolEquivalent;
