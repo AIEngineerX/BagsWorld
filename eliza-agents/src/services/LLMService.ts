@@ -11,7 +11,6 @@ export interface ConversationContext {
   worldState?: string;
   tokenData?: string;
   agentContext?: string;
-  oracleState?: string;
   tradingState?: string;
   memoryContext?: string;
   relationshipContext?: string;
@@ -158,10 +157,6 @@ ${bio}`;
 
     if (context?.agentContext) {
       systemPrompt += `\n\nOTHER AGENTS:\n${context.agentContext}`;
-    }
-
-    if (context?.oracleState) {
-      systemPrompt += `\n\nORACLE PREDICTION MARKET:\n${context.oracleState}`;
     }
 
     if (context?.tradingState) {

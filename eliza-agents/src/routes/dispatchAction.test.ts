@@ -56,15 +56,6 @@ vi.mock("../services/BagsApiService.js", () => ({
   })),
 }));
 
-// Mock oracle fetch to prevent real HTTP calls
-vi.mock("../actions/oracle/types.js", async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>;
-  return {
-    ...actual,
-    fetchOracle: vi.fn().mockResolvedValue({ data: null, error: "mocked" }),
-  };
-});
-
 // Mock LLMService (shillToken action uses it)
 vi.mock("../services/LLMService.js", () => ({
   getLLMService: vi.fn(() => ({
@@ -86,9 +77,6 @@ vi.mock("../providers/worldState.js", () => ({
 }));
 vi.mock("../providers/agentContext.js", () => ({
   agentContextProvider: { get: vi.fn().mockResolvedValue(null) },
-}));
-vi.mock("../providers/oracleData.js", () => ({
-  oracleDataProvider: { get: vi.fn().mockResolvedValue(null) },
 }));
 vi.mock("../providers/ghostTrading.js", () => ({
   ghostTradingProvider: { get: vi.fn().mockResolvedValue(null) },
@@ -149,20 +137,6 @@ describe("dispatchAction", () => {
     });
   });
 
-  describe("oracle query routing", () => {
-    it("attempts oracle action for oracle-related messages", async () => {
-      // Oracle actions will fail because fetchOracle is mocked to return error,
-      // but the evaluator should still fire and attempt dispatch
-      const result = await dispatchAction(
-        createCharacter("Neo"),
-        "what is the current oracle prediction round?"
-      );
-      // Oracle actions return null because fetchOracle returns { error: 'mocked' }
-      // This is expected — the evaluator fires but the action handler fails gracefully
-      expect(result === null || typeof result === "string").toBe(true);
-    });
-  });
-
   describe("character-specific actions", () => {
     it("dispatches claimFeesReminder for fee-related messages", async () => {
       const result = await dispatchAction(
@@ -218,20 +192,6 @@ describe("dispatchAction", () => {
       // in dispatchAction should prevent crashes
       const result = await dispatchAction(createCharacter("Finn"), "some message");
       // Should not throw — returns null when nothing matches
-      expect(result === null || typeof result === "string").toBe(true);
-    });
-  });
-
-  describe("wallet forwarding", () => {
-    it("passes wallet to memory.content for oracle actions", async () => {
-      // enterPrediction requires wallet — verify the code path doesn't crash
-      // when wallet is provided (even though oracle API is mocked to fail)
-      const result = await dispatchAction(
-        createCharacter("Neo"),
-        "I predict $TEST will win the oracle round",
-        { wallet: "TestWallet12345678901234567890123456789012" }
-      );
-      // Doesn't throw — that's the test
       expect(result === null || typeof result === "string").toBe(true);
     });
   });

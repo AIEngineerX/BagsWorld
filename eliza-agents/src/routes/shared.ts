@@ -18,7 +18,6 @@ import type { Character, Memory, State, IAgentRuntime } from "../types/elizaos.j
 import { Message, ConversationContext } from "../services/LLMService.js";
 import { worldStateProvider } from "../providers/worldState.js";
 import { agentContextProvider } from "../providers/agentContext.js";
-import { oracleDataProvider } from "../providers/oracleData.js";
 import { ghostTradingProvider } from "../providers/ghostTrading.js";
 import { getBagsApiService } from "../services/BagsApiService.js";
 import { getMemoryService } from "../services/MemoryService.js";
@@ -29,17 +28,10 @@ import {
   launchQueryEvaluator,
   worldStatusEvaluator,
   creatorQueryEvaluator,
-  oracleQueryEvaluator,
 } from "../evaluators/index.js";
 import type { Action, ActionResult } from "../types/elizaos.js";
 import { checkWorldHealthAction } from "../actions/checkWorldHealth.js";
 import { getTopCreatorsAction } from "../actions/getTopCreators.js";
-import { getOracleRoundAction } from "../actions/getOracleRound.js";
-import { enterPredictionAction } from "../actions/enterPrediction.js";
-import { checkPredictionAction } from "../actions/checkPrediction.js";
-import { getOracleHistoryAction } from "../actions/getOracleHistory.js";
-import { getOracleLeaderboardAction } from "../actions/getOracleLeaderboard.js";
-import { getOraclePricesAction } from "../actions/getOraclePrices.js";
 import { claimFeesReminderAction } from "../actions/claimFeesReminderAction.js";
 import { shillTokenAction } from "../actions/shillTokenAction.js";
 
@@ -53,9 +45,6 @@ const WORLD_STATE_CACHE_TTL = 60000; // 1 minute
 // Pattern to detect if user is asking about other agents
 const AGENT_MENTION_PATTERN =
   /\b(toly|finn|ash|ghost|neo|cj|shaw|bags.?bot|who|which agent|talk to|ask)\b/i;
-
-// Pattern to detect Oracle-related queries
-const ORACLE_PATTERN = /\b(oracle|predict|prediction|forecast|tower|bet|pick|winner|round)\b/i;
 
 // Pattern to detect trading-related queries
 const TRADING_PATTERN =
@@ -215,13 +204,7 @@ export async function buildConversationContext(
     }
   }
 
-  // Include Oracle context when user asks about predictions
-  if (ORACLE_PATTERN.test(userMessage)) {
-    const oracleResult = await oracleDataProvider.get(runtime, memory, state);
-    if (oracleResult?.text) {
-      context.oracleState = oracleResult.text;
-    }
-  }
+
 
   // Include Ghost trading context when talking to Ghost or asking about trading
   const isGhost = character.name.toLowerCase() === "ghost";
@@ -384,17 +367,11 @@ export async function buildConversationContext(
 //      the autonomous tick pipeline (AgentTickService), not the chat pipeline.
 //
 // 2. DISPATCH (dispatchAction, below)
-//    - Runs evaluators: worldStatus, creatorQuery, oracleQuery
+//    - Runs evaluators: worldStatus, creatorQuery
 //    - On match, calls the corresponding action's validate() + handler() and
 //      injects the result into context.actionData.
 //    - Also handles character-specific actions: claimFeesReminder (any character),
 //      shillToken (Finn only).
-//
-// WALLET LIMITATION:
-//    Oracle actions (enterPrediction, checkPrediction) require a wallet address
-//    passed via message.content.wallet. The chat route forwards the optional
-//    `wallet` field from the request body. If the game client doesn't send a
-//    wallet, these actions will return "connect your wallet" — this is expected.
 //
 // MOCK RUNTIME:
 //    All actions receive a mock IAgentRuntime where getService() returns null.
@@ -406,22 +383,12 @@ export async function buildConversationContext(
 // Minimum evaluator score to trigger action dispatch
 const ACTION_DISPATCH_THRESHOLD = 0.5;
 
-// Oracle actions ordered by specificity — most specific first so we pick the best match
-const ORACLE_ACTIONS_BY_PRIORITY: Action[] = [
-  enterPredictionAction, // "I predict $X will win" — most specific intent
-  checkPredictionAction, // "Did I win?" / "Check my prediction"
-  getOracleLeaderboardAction, // "Who are the top predictors?"
-  getOraclePricesAction, // "Which token is winning?" / live prices
-  getOracleHistoryAction, // "Show past oracle rounds"
-  getOracleRoundAction, // "What's the oracle round?" — most general
-];
-
 /**
  * Dispatch actions based on evaluator scoring for queries not already handled
  * by the data enrichment pipeline in buildConversationContext.
  *
  * Enrichment already handles: tokenMention, feeQuery, launchQuery.
- * This function handles: worldStatus, creatorQuery, oracleQuery,
+ * This function handles: worldStatus, creatorQuery,
  * plus character-specific actions (claimFeesReminder, shillToken).
  *
  * Returns the action result text to inject into ConversationContext.actionData,
@@ -442,17 +409,13 @@ export async function dispatchAction(
   // Run evaluators that aren't covered by the enrichment pipeline, in parallel.
   // Each evaluator is individually guarded so one failure doesn't block the others.
   const noMatch = { score: 0, reason: "evaluator failed" };
-  const [worldResult, creatorResult, oracleResult] = await Promise.all([
+  const [worldResult, creatorResult] = await Promise.all([
     worldStatusEvaluator.evaluate(runtime, memory, state).catch((err: Error) => {
       console.warn("[shared] worldStatusEvaluator failed:", err.message);
       return noMatch;
     }),
     creatorQueryEvaluator.evaluate(runtime, memory, state).catch((err: Error) => {
       console.warn("[shared] creatorQueryEvaluator failed:", err.message);
-      return noMatch;
-    }),
-    oracleQueryEvaluator.evaluate(runtime, memory, state).catch((err: Error) => {
-      console.warn("[shared] oracleQueryEvaluator failed:", err.message);
       return noMatch;
     }),
   ]);
@@ -483,31 +446,6 @@ export async function dispatchAction(
       priority: 10,
       preValidated: false,
     });
-  }
-
-  // Oracle: pick the most specific action that validates
-  if (oracleResult.score >= ACTION_DISPATCH_THRESHOLD) {
-    for (const oracleAction of ORACLE_ACTIONS_BY_PRIORITY) {
-      try {
-        if (oracleAction.validate) {
-          const valid = await oracleAction.validate(runtime, memory, state);
-          if (valid) {
-            candidates.push({
-              action: oracleAction,
-              score: oracleResult.score,
-              priority: 5,
-              preValidated: true,
-            });
-            break;
-          }
-        }
-      } catch (err) {
-        console.warn(
-          `[shared] Oracle action ${oracleAction.name} validate failed:`,
-          err instanceof Error ? err.message : err
-        );
-      }
-    }
   }
 
   // Character-specific actions: claimFeesReminder works for any character,
@@ -552,7 +490,7 @@ export async function dispatchAction(
   // Try each candidate until one validates and executes successfully
   for (const candidate of candidates) {
     try {
-      // Only validate if we haven't already (oracle/character actions were pre-validated)
+      // Only validate if we haven't already (character actions were pre-validated)
       if (!candidate.preValidated && candidate.action.validate) {
         const valid = await candidate.action.validate(runtime, memory, state);
         if (!valid) continue;

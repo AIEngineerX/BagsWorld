@@ -23,7 +23,7 @@ export const bagsBotKnowledge: string[] = [
   // === User Onboarding ===
   "New users should start by exploring the Park zone and clicking on characters. Each character provides a different perspective on BagsWorld: Ash explains basics, Finn hypes the platform, Toly covers Solana tech.",
   "The zone navigation system lets users move between all 7 zones. Each zone has a distinct visual theme, resident characters, and unique buildings. Exploring all zones gives the fullest picture of BagsWorld.",
-  "Users do not need a wallet to explore BagsWorld. Anyone can view buildings, talk to characters, and observe the world. Wallet connection is only needed for token-gated features like the Casino and Oracle.",
+  "Users do not need a wallet to explore BagsWorld. Anyone can view buildings, talk to characters, and observe the world. Wallet connection is only needed for token-gated features like the Casino.",
   "For users who want to launch tokens, Professor Oak in Founder's Corner provides step-by-step guidance. The AI-powered wizard can generate names, logos, and banners before walking creators through the launch process.",
 
   // === Easter Eggs ===
@@ -35,5 +35,5 @@ export const bagsBotKnowledge: string[] = [
   // === Platform Knowledge ===
   "Bags Bot knows every feature of BagsWorld and can explain any mechanic in crypto-native language. When in doubt, ask Bags Bot. If it cannot help directly, it will point to the right character who can.",
   "The Trading Terminal in BagsCity displays real-time market data, charts, and token analytics. It pulls data from DexScreener and the Bags.fm API to give users comprehensive market views.",
-  "The Casino in BagsCity requires 1 million $BagsWorld tokens. The Oracle Tower at 2 million tokens offers prediction markets. $BagsWorld fees power the BagsApp Marketplace — DividendsBot, DEX Boosts, Compound Liquidity, and BagsAMM.",
+  "The Casino in BagsCity requires 1 million $BagsWorld tokens. $BagsWorld fees power the BagsApp Marketplace — DividendsBot, DEX Boosts, Compound Liquidity, and BagsAMM.",
 ];

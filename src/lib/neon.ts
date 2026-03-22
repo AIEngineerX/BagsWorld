@@ -1723,9 +1723,6 @@ export async function cleanupExpiredRateLimits(): Promise<number> {
 // ============================================================================
 // ADMIN SETTINGS (Simple key-value store for global settings)
 // ============================================================================
-// ============================================================================
-// ADMIN SETTINGS (Simple key-value store for global settings)
-// ============================================================================
 
 // Initialize admin settings table
 async function initializeSettingsTable(): Promise<void> {

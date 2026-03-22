@@ -300,87 +300,6 @@ export const creatorQueryEvaluator: Evaluator = {
 };
 
 /**
- * Scores higher when user asks about Oracle predictions or prediction markets.
- * Associated with: getOracleRound, enterPrediction, checkPrediction, getOracleHistory actions
- */
-export const oracleQueryEvaluator: Evaluator = {
-  name: 'oracleQuery',
-  description: 'Detects queries about Oracle prediction market',
-  relatedActions: ['getOracleRound', 'enterPrediction', 'checkPrediction', 'getOracleHistory', 'getOracleLeaderboard', 'getOraclePrices'],
-
-  evaluate: async (
-    runtime: IAgentRuntime,
-    message: Memory,
-    state?: State
-  ): Promise<EvaluatorResult> => {
-    const text = message.content?.text?.toLowerCase() || '';
-
-    // Primary Oracle keywords (high signal)
-    const primaryKeywords = ['oracle', 'prediction', 'predict', 'forecast', 'tower'];
-    const primaryMatches = primaryKeywords.filter(k => text.includes(k));
-
-    // Betting/picking keywords (medium signal)
-    const pickKeywords = ['pick', 'bet', 'winner', 'win', 'guess', 'call'];
-    const pickMatches = pickKeywords.filter(k => text.includes(k));
-
-    // Leaderboard keywords
-    const leaderboardKeywords = ['leaderboard', 'top', 'ranking', 'leaders', 'best predictors'];
-    const leaderboardMatches = leaderboardKeywords.filter(k => text.includes(k));
-
-    // Price keywords
-    const priceKeywords = ['price', 'prices', 'leading', 'winning', 'pump', 'dump', 'up', 'down'];
-    const priceMatches = priceKeywords.filter(k => text.includes(k));
-
-    // Action patterns
-    const actionPatterns = [
-      /(?:what|show|check).*(?:oracle|prediction|round)/,
-      /(?:enter|submit|make).*(?:prediction|pick|bet)/,
-      /(?:did i|my).*(?:win|prediction|pick)/,
-      /(?:history|past|previous).*(?:oracle|prediction|round)/,
-      /which.*(?:token|coin).*(?:win|best|pump)/,
-      /(?:who|top).*(?:predict|won|winning)/,
-      /(?:live|current).*(?:price|prices)/,
-    ];
-    const hasActionPattern = actionPatterns.some(p => p.test(text));
-
-    let score = 0;
-    const reasons: string[] = [];
-
-    if (primaryMatches.length > 0) {
-      score += Math.min(primaryMatches.length * 0.3, 0.6);
-      reasons.push(`oracle: ${primaryMatches.join(', ')}`);
-    }
-    if (pickMatches.length > 0 && primaryMatches.length > 0) {
-      score += 0.2;
-      reasons.push(`pick: ${pickMatches.join(', ')}`);
-    }
-    if (leaderboardMatches.length > 0) {
-      score += 0.25;
-      reasons.push(`leaderboard: ${leaderboardMatches.join(', ')}`);
-    }
-    if (priceMatches.length > 0 && primaryMatches.length > 0) {
-      score += 0.2;
-      reasons.push(`prices: ${priceMatches.join(', ')}`);
-    }
-    if (hasActionPattern) {
-      score += 0.3;
-      reasons.push('action pattern');
-    }
-
-    return {
-      score: Math.min(score, 1),
-      reason: reasons.length ? reasons.join(', ') : 'no oracle reference',
-      data: {
-        primaryKeywords: primaryMatches,
-        pickKeywords: pickMatches,
-        leaderboardKeywords: leaderboardMatches,
-        priceKeywords: priceMatches,
-      },
-    };
-  },
-};
-
-/**
  * Scores higher when user asks for explanations or how things work.
  * Useful for routing to educational responses.
  */
@@ -448,7 +367,6 @@ export const allEvaluators: Evaluator[] = [
   launchQueryEvaluator,
   worldStatusEvaluator,
   creatorQueryEvaluator,
-  oracleQueryEvaluator,
   explanationQueryEvaluator,
 ];
 

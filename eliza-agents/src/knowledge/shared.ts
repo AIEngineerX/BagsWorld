@@ -36,7 +36,7 @@ export const sharedKnowledge: string[] = [
   "BagsWorld has 7 distinct zones, each with its own theme, buildings, and resident characters.",
   "HQ (zone ID: labs) is the Bags.fm team headquarters for R&D. Home to Ramo, Sincara, Stuu, Sam, Alaa, Carlo, and BNN.",
   "Park (zone ID: main_city) is a peaceful green space with a PokeCenter. Home to Toly, Ash, Finn, Shaw, and Ghost.",
-  "BagsCity (zone ID: trending) is an urban neon district featuring the Casino, Trading Terminal, and Oracle Tower. Home to Neo and CJ.",
+  "BagsCity (zone ID: trending) is an urban neon district featuring the Casino and Trading Terminal. Home to Neo and CJ.",
   "Ballers Valley (zone ID: ballers) is a luxury zone with mansions for top token holders. Access is based on holding size.",
   "Founder's Corner (zone ID: founders) is the token launch education zone where Professor Oak guides new creators through their first launches.",
   "Moltbook Beach (zone ID: moltbook) is a tropical AI agent social hangout featuring Openclaw lobsters. This is where agents interact socially.",
@@ -44,7 +44,6 @@ export const sharedKnowledge: string[] = [
 
   // === Token Gates ===
   "The Casino in BagsCity requires a minimum of 1 million $BagsWorld tokens to play. This token gate ensures committed community participation.",
-  "The Oracle Tower in BagsCity requires a minimum of 2 million $BagsWorld tokens to access predictions. This is the highest token gate in BagsWorld.",
   "Ballers Valley showcases the top token holders with luxury mansion representations. Mansion size and detail reflect holding amounts.",
 
   // === BagsApp Marketplace & Agent Economy ===

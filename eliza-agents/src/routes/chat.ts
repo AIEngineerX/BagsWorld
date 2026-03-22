@@ -296,7 +296,6 @@ const TOPIC_PATTERNS: [RegExp, string][] = [
   [/\b(nft|collection|art)\b/i, "NFTs"],
   [/\b(defi|liquidity|pool|stake)\b/i, "DeFi"],
   [/\b(casino|gambl|bet|slot)\b/i, "Casino"],
-  [/\b(oracle|predict|forecast)\b/i, "Oracle"],
   [/\b(arena|fight|battle|combat)\b/i, "Arena"],
   [/\b(moltbook|social|post)\b/i, "Moltbook"],
   [/\b(wallet|phantom|connect)\b/i, "Wallet"],

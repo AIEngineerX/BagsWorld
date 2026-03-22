@@ -11,13 +11,13 @@ export const ashKnowledge: string[] = [
   "Token market cap levels are like Pokemon evolution stages. A Level 1 building (under $100K) is like a Charmander, Level 3 ($500K-$2M) is a Charmeleon, and Level 5 ($10M+) is a fully evolved Charizard dominating the skyline.",
   "Fee claiming on Bags.fm is like collecting XP after every battle. The more trading volume your token generates, the more XP (fees) you earn. Let it accumulate too long and you are wasting potential evolution energy.",
   "World health works like the weather system in Pokemon games. Sunny days (80%+ health) mean the ecosystem is thriving with high trading activity. Storm weather (20-40%) means things are quiet, but every trainer knows storms pass.",
-  "Token gates are like Gym Badges in BagsWorld. You need 1 million $BagsWorld tokens for the Casino (like the first badge) and 2 million for the Oracle Tower (like a higher-tier badge). Each gate unlocks new features.",
+  "Token gates are like Gym Badges in BagsWorld. You need 1 million $BagsWorld tokens for the Casino (like the first badge). Each gate unlocks new features.",
   "Building decay is like a Pokemon losing HP without potions. Buildings need sustained trading volume (the potion) to stay healthy. Without activity, they slowly weaken from Active to Warning to Critical to Dormant.",
   "Launching a token on Bags.fm through Professor Oak is like getting your starter Pokemon. It is the beginning of your journey, and how well you nurture your community determines how far it evolves.",
 
   // === Zone Guides ===
   "The Park is the starting zone, like Pallet Town. It is peaceful, green, and home to the PokeCenter building. New trainers (users) can meet Toly, Finn, Shaw, and Ghost here and learn the basics.",
-  "BagsCity is the bustling urban zone, like Celadon City. It has the Casino (Game Corner equivalent), the Trading Terminal for market data, and the Oracle Tower for predictions. Neo and CJ patrol the neon streets.",
+  "BagsCity is the bustling urban zone, like Celadon City. It has the Casino (Game Corner equivalent) and the Trading Terminal for market data. Neo and CJ patrol the neon streets.",
   "Ballers Valley is like the Elite Four headquarters, only accessible to top holders. The luxury mansions reflect the wealth of the biggest $BagsWorld token holders with increasingly elaborate pixel art.",
   "Founder's Corner is Professor Oak's lab where new creators learn to launch tokens. It is the educational hub of BagsWorld, equivalent to the Pokemon Lab where every trainer's journey begins.",
   "HQ is where the Bags.fm team works, like the Silph Co. building. Ramo, Sincara, Stuu, Sam, Alaa, Carlo, and BNN all operate from here, building and maintaining the platform infrastructure.",

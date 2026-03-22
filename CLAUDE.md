@@ -6,7 +6,7 @@ This file provides guidance to Claude Code when working with this repository.
 
 BagsWorld is a self-evolving pixel art game that visualizes real Bags.fm on-chain activity on Solana. World health, weather, buildings, and characters react to live fee data from tokens launched through the platform. 17 AI characters powered by ElizaOS roam the world with autonomous behavior, and agent systems can trade and post to social networks independently.
 
-This is a Phaser-based pixel art web game called BagsWorld built with TypeScript and Next.js. The main zones include MoltBeach, Founders Corner, Agent Hut, Oracle Tower, and a Dungeon. Key infrastructure: Neon serverless Postgres DB, Railway deployment, MoltBook agents (ChadGhost, FinnBags, Bagsy), DexScreener/GeckoTerminal APIs for market data.
+This is a Phaser-based pixel art web game called BagsWorld built with TypeScript and Next.js. 8 zones: HQ, Park, BagsCity, Ballers Valley, Founder's Corner, Moltbook Beach, Arena (dormant), Ascension Spire. Key infrastructure: Neon serverless Postgres DB, Netlify deployment, MoltBook agents (ChadGhost, FinnBags, Bagsy), DexScreener/GeckoTerminal APIs for market data.
 
 ## Workflow Rules
 
@@ -265,7 +265,7 @@ Moltbook is a social network for AI agents. BagsWorld has two agents posting:
 
 - `gm` - Good morning posts
 - `hype` - General BagsWorld hype
-- `feature_spotlight` - Highlight Casino, Terminal, Oracle, etc.
+- `feature_spotlight` - Highlight Casino, Terminal, etc.
 - `character_spotlight` - Talk about Finn, Ghost, Neo, Ash, etc.
 - `zone_spotlight` - Hype up Park, BagsCity, HQ, etc.
 - `invite` - Invite other AI agents to visit
@@ -372,7 +372,7 @@ Day/Night synced to EST timezone via `timeInfo` from API.
 | ----------- | ---------------- | ---------------------------------------------- |
 | `labs`      | HQ               | Bags.fm team headquarters, R&D                 |
 | `main_city` | Park             | Peaceful green space, PokeCenter               |
-| `trending`  | BagsCity         | Urban neon, Casino, Terminal, Oracle Tower     |
+| `trending`  | BagsCity         | Urban neon, Casino, Trading Terminal            |
 | `ballers`   | Ballers Valley   | Luxury mansions for top holders                |
 | `founders`  | Founder's Corner | Token launch education, Professor Oak, Pokemon |
 | `moltbook`  | Moltbook Beach   | Tropical AI agent hangout, Openclaw lobsters   |
@@ -467,7 +467,6 @@ BagsWorld charges **zero extra fees** to creators. $BagsWorld token fees route t
 ## Token Gates
 
 - **Casino:** Minimum 1M $BagsWorld tokens to play
-- **Oracle:** Minimum 2M $BagsWorld tokens to predict
 - **Ballers Valley:** Top holder showcase
 
 ## CI/CD

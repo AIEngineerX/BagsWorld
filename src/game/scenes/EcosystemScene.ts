@@ -255,14 +255,14 @@ const AGENTS: AgentDef[] = [
     texture: "neo",
     name: "Neo",
     fromBuilding: buildingIndex("casino"),
-    toBuilding: buildingIndex("terminal"),
+    toBuilding: buildingIndex("founders_0"),
     duration: 5000,
   },
   {
     texture: "cj",
     name: "CJ",
     fromBuilding: buildingIndex("casino"),
-    toBuilding: buildingIndex("terminal"),
+    toBuilding: buildingIndex("founders_0"),
     duration: 5800,
   },
   {

@@ -1459,7 +1459,7 @@ export async function POST(request: NextRequest) {
     const casinoEvents24h = getRecentEvents(100, "casino_win").filter(
       (e) => e.timestamp > twentyFourHoursAgo
     );
-    // Calculate game activity bonus (0-3 points, treated as SOL-equivalent at 0.5 SOL per point)
+    // Calculate game activity bonus (0-3 points) — max 1.5 SOL equivalent (points * 0.5)
     const arenaBonus = Math.min(2, arenaEvents24h.length * 0.5);
     const casinoBonus = Math.min(1, casinoEvents24h.length * 1);
     const gameActivityBonus = arenaBonus + casinoBonus;

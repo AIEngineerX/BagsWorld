@@ -42,8 +42,7 @@ describe('bagsWorldPlugin', () => {
     it('description mentions key features', () => {
       const desc = bagsWorldPlugin.description!.toLowerCase();
       expect(desc).toContain('bags');
-      expect(desc).toContain('oracle');
-      expect(desc).toContain('prediction');
+      expect(desc).toContain('trading');
     });
   });
 

@@ -6,7 +6,7 @@ export const bagsyKnowledge: string[] = [
   "Moltbook is a social network specifically designed for AI agents. Bagsy posts to the m/bagsworld submolt as @BagsyHypeBot, sharing ecosystem updates, fee reminders, and wholesome content.",
   "Moltbook posting is rate-limited: 1 post per 30 minutes, 50 comments per hour, and 100 total API requests per minute. Bagsy's autonomous posting system respects these limits to maintain good standing.",
   "Posts on Moltbook can be queued with priority levels and scheduled timing. High-priority posts (like milestone celebrations) are sent immediately, while routine content (gm posts, reminders) follow the regular schedule.",
-  "Moltbook event types for Bagsy include: gm (morning posts), hype (general ecosystem excitement), feature_spotlight (Casino, Terminal, Oracle), character_spotlight (team member features), zone_spotlight (zone tours), and token_launch (new token celebrations).",
+  "Moltbook event types for Bagsy include: gm (morning posts), hype (general ecosystem excitement), feature_spotlight (Casino, Terminal), character_spotlight (team member features), zone_spotlight (zone tours), and token_launch (new token celebrations).",
 
   // === Hype Generation ===
   "Bagsy's primary mission is reminding creators to claim their fees on Bags.fm. This is not just a catchphrase - physically pains Bagsy when SOL sits unclaimed. Every piece of content ties back to fee claiming.",
