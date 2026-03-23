@@ -2,16 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
-import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 
 interface CommunityFundModalProps {
   onClose: () => void;
-}
-
-interface WalletInfo {
-  balance: number;
-  isLoading: boolean;
-  error: string | null;
 }
 
 interface FeeData {
@@ -140,18 +133,10 @@ const MARKETPLACE_APPS = [
 
 export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
   const [activeTab, setActiveTab] = useState<"fund" | "fees">("fund");
-  const [walletInfo, setWalletInfo] = useState<WalletInfo>({
-    balance: 0,
-    isLoading: true,
-    error: null,
-  });
   const [feeData, setFeeData] = useState<FeeData | null>(null);
   const [feeLoading, setFeeLoading] = useState(false);
   const [feeError, setFeeError] = useState<string | null>(null);
   const [showContent, setShowContent] = useState(false);
-
-  const walletAddress = ECOSYSTEM_CONFIG.ecosystem.wallet;
-  const solscanUrl = `https://solscan.io/account/${walletAddress}`;
 
   useEffect(() => {
     const timer = setTimeout(() => setShowContent(true), 100);
@@ -172,25 +157,6 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
       document.body.style.overflow = "";
     };
   }, []);
-
-  useEffect(() => {
-    const fetchBalance = async () => {
-      const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana";
-      const connection = new Connection(rpcUrl, "confirmed");
-      const pubkey = new PublicKey(walletAddress);
-      const balance = await connection.getBalance(pubkey);
-      setWalletInfo({ balance: balance / LAMPORTS_PER_SOL, isLoading: false, error: null });
-    };
-
-    fetchBalance().catch(() => {
-      setWalletInfo({ balance: 0, isLoading: false, error: "Failed to load balance" });
-    });
-
-    const interval = setInterval(() => {
-      fetchBalance().catch(() => {});
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [walletAddress]);
 
   const fetchFeeData = useCallback(async () => {
     setFeeLoading(true);
@@ -290,50 +256,6 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
                 $BagsWorld token fees auto-route to{" "}
                 <span className="text-bags-gold">Bags App Store</span> apps for automated token
                 growth — dividends, DEX boosts, liquidity, and volume support.
-              </p>
-            </div>
-
-            {/* Ecosystem Wallet — compact inline, not hero element */}
-            <div className="bg-gradient-to-br from-bags-darker to-black rounded-lg p-3 border border-bags-gold/30">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-pixel text-bags-gold text-[9px]">Ecosystem Wallet</h3>
-                  {walletInfo.isLoading ? (
-                    <span className="font-pixel text-gray-400 text-[9px] animate-pulse">...</span>
-                  ) : walletInfo.error ? (
-                    <span className="font-pixel text-red-400 text-[8px]">error</span>
-                  ) : (
-                    <span className="font-pixel text-bags-green text-[10px]">
-                      {walletInfo.balance.toFixed(4)} SOL
-                    </span>
-                  )}
-                </div>
-                <a
-                  href={solscanUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-pixel text-[8px] text-gray-500 hover:text-bags-green transition-colors flex items-center gap-1"
-                >
-                  Solscan
-                  <svg
-                    className="w-2.5 h-2.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                    />
-                  </svg>
-                </a>
-              </div>
-              <p className="font-mono text-[7px] text-gray-600 mt-1 break-all">{walletAddress}</p>
-              <p className="font-pixel text-[7px] text-gray-500 mt-1">
-                Balance is low when fees are actively distributed to apps — that means the system is
-                working.
               </p>
             </div>
 
