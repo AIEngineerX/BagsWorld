@@ -24,7 +24,7 @@ import { ZoneNav } from "@/components/ZoneNav";
 import { MobileCharacterMenu } from "@/components/MobileCharacterMenu";
 import { ScoutAlerts } from "@/components/ScoutAlerts";
 import { MiniMap } from "@/components/MiniMap";
-import { QuestTracker } from "@/components/QuestTracker";
+import { SpotlightTutorial } from "@/components/SpotlightTutorial";
 
 // Shared loading fallback for lazy-loaded components
 const ModalLoader = () => (
@@ -351,6 +351,7 @@ export default function Home() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<"leaderboard" | "market">("market");
   const [isImmersive, setIsImmersive] = useState(false);
+  const [tutorialActive, setTutorialActive] = useState(false);
   const [encounterCreature, setEncounterCreature] = useState<Creature | null>(null);
 
   // Listen for wild encounter events
@@ -374,13 +375,35 @@ export default function Home() {
   // Listen for player enter/exit to toggle immersive mode
   useEffect(() => {
     const onEnter = () => setIsImmersive(true);
-    const onExit = () => setIsImmersive(false);
+    const onExit = () => {
+      setIsImmersive(false);
+      setTutorialActive(false);
+    };
     window.addEventListener("bagsworld-player-entered", onEnter);
     window.addEventListener("bagsworld-player-exited", onExit);
     return () => {
       window.removeEventListener("bagsworld-player-entered", onEnter);
       window.removeEventListener("bagsworld-player-exited", onExit);
     };
+  }, []);
+
+  // Listen for customize character request from ImmersiveHUD
+  const [showCustomize, setShowCustomize] = useState(false);
+  useEffect(() => {
+    const onCustomize = () => setShowCustomize(true);
+    window.addEventListener("bagsworld-customize-character", onCustomize);
+    return () => window.removeEventListener("bagsworld-customize-character", onCustomize);
+  }, []);
+
+  // Tutorial complete/skip handlers
+  const handleTutorialComplete = useCallback(() => {
+    localStorage.setItem("bagsworld_tutorial_done", "true");
+    setTutorialActive(false);
+  }, []);
+
+  const handleTutorialSkip = useCallback(() => {
+    localStorage.setItem("bagsworld_tutorial_done", "true");
+    setTutorialActive(false);
   }, []);
 
   // After UI collapse/expand transition, trigger resize so Phaser recalculates canvas
@@ -684,14 +707,18 @@ export default function Home() {
               <TradingDiagnostics />
             </ErrorBoundary>
 
-            {/* Mobile character menu - floating button */}
-            <MobileCharacterMenu />
+            {/* Mobile character menu - floating button (hidden during tutorial) */}
+            {!tutorialActive && <MobileCharacterMenu />}
 
-            {/* Mini Map - quick access to world features */}
-            <MiniMap />
+            {/* Mini Map - quick access to world features (hidden during tutorial) */}
+            {!tutorialActive && <MiniMap />}
 
-            {/* Quest Tracker - first-time onboarding */}
-            <QuestTracker />
+            {/* Spotlight Tutorial - guided first-time onboarding */}
+            <SpotlightTutorial
+              active={tutorialActive}
+              onComplete={handleTutorialComplete}
+              onSkip={handleTutorialSkip}
+            />
           </div>
         </div>
 
@@ -900,7 +927,30 @@ export default function Home() {
         {/* Oak Intro Wizard - Pokemon-style guided token launch */}
         {activeModal === "oakIntro" && (
           <OakIntroWizard
-            onClose={closeModal}
+            onClose={() => {
+              closeModal();
+              // Auto-enter world on first visit after wizard
+              if (!localStorage.getItem("bagsworld_first_entry_done")) {
+                localStorage.setItem("bagsworld_first_entry_done", "true");
+                const randomSprite = Math.floor(Math.random() * 5);
+                setTimeout(() => {
+                  window.dispatchEvent(
+                    new CustomEvent("bagsworld-zone-change", { detail: { zone: "main_city" } })
+                  );
+                  window.dispatchEvent(
+                    new CustomEvent("bagsworld-enter-world", {
+                      detail: { spriteVariant: randomSprite },
+                    })
+                  );
+                  // Start tutorial after player enters
+                  setTimeout(() => {
+                    if (!localStorage.getItem("bagsworld_tutorial_done")) {
+                      setTutorialActive(true);
+                    }
+                  }, 1000);
+                }, 300);
+              }
+            }}
             onLaunchSuccess={() => {
               closeModal();
               refreshAfterLaunch();

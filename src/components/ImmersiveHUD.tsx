@@ -119,13 +119,29 @@ export function ImmersiveHUD({ visible, worldHealth }: ImmersiveHUDProps) {
         </button>
       </div>
 
-      {/* Exit button — top right */}
-      <button
-        onClick={handleExit}
-        className="absolute top-3 right-3 pointer-events-auto font-pixel text-[10px] px-3 py-1.5 bg-red-900/70 border border-red-500/50 text-red-300 hover:bg-red-800/80 hover:text-red-200 hover:border-red-400/60 transition-all"
-      >
-        EXIT
-      </button>
+      {/* Top right — customize + exit */}
+      <div className="absolute top-3 right-3 flex items-center gap-2 pointer-events-auto">
+        <button
+          onClick={() => window.dispatchEvent(new Event("bagsworld-customize-character"))}
+          className="font-pixel text-[10px] px-2.5 py-1.5 bg-purple-900/70 border border-purple-500/50 text-purple-300 hover:bg-purple-800/80 hover:text-purple-200 hover:border-purple-400/60 transition-all"
+          title="Customize Character"
+        >
+          <svg className="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+            />
+          </svg>
+        </button>
+        <button
+          onClick={handleExit}
+          className="font-pixel text-[10px] px-3 py-1.5 bg-red-900/70 border border-red-500/50 text-red-300 hover:bg-red-800/80 hover:text-red-200 hover:border-red-400/60 transition-all"
+        >
+          EXIT
+        </button>
+      </div>
 
       {/* Control hint — bottom center, fades after 4s */}
       <div

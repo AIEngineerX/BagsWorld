@@ -1226,6 +1226,18 @@ export class WorldScene extends Phaser.Scene {
       nameLabel.setPosition(this.localPlayer.x, this.localPlayer.y + 10);
     }
 
+    // Emit player position for tutorial spotlight system
+    if (isMoving) {
+      window.dispatchEvent(
+        new CustomEvent("bagsworld-player-position", {
+          detail: { x: this.localPlayer.x, y: this.localPlayer.y },
+        })
+      );
+    }
+
+    // Emit Ash's screen position for tutorial targeting (only when tutorial overlay is active)
+    this.emitTutorialTarget();
+
     // Check zone boundaries for transition
     this.checkZoneBoundaries();
 
@@ -1241,6 +1253,28 @@ export class WorldScene extends Phaser.Scene {
         this.interactWithNPC(this.nearbyNPC);
       } else if (this.nearbyBuilding) {
         this.interactWithBuilding(this.nearbyBuilding);
+      }
+    }
+  }
+
+  private tutorialTargetThrottle = 0;
+  private emitTutorialTarget(): void {
+    // Throttle to every 10 frames (~6 updates/sec at 60fps)
+    this.tutorialTargetThrottle++;
+    if (this.tutorialTargetThrottle % 10 !== 0) return;
+
+    // Find Ash's sprite and emit her screen position for the tutorial spotlight
+    for (const [, sprite] of this.characterSprites) {
+      if ((sprite as any).isAsh) {
+        const cam = this.cameras.main;
+        const screenX = sprite.x - cam.scrollX;
+        const screenY = sprite.y - cam.scrollY;
+        window.dispatchEvent(
+          new CustomEvent("bagsworld-tutorial-target", {
+            detail: { x: screenX, y: screenY },
+          })
+        );
+        return;
       }
     }
   }

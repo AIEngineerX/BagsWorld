@@ -149,7 +149,7 @@ export function EnterWorldButton({ className = "" }: EnterWorldButtonProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Listen for player enter/exit events + Escape key to close modal
+  // Listen for player enter/exit events + Escape key to close modal + customize request
   useEffect(() => {
     const handleEntered = () => {
       setIsInWorld(true);
@@ -164,15 +164,21 @@ export function EnterWorldButton({ className = "" }: EnterWorldButtonProps) {
         setShowSelector(false);
       }
     };
+    const handleCustomize = () => {
+      resetModal();
+      setShowSelector(true);
+    };
 
     window.addEventListener("bagsworld-player-entered", handleEntered);
     window.addEventListener("bagsworld-player-exited", handleExited);
     window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("bagsworld-customize-character", handleCustomize);
 
     return () => {
       window.removeEventListener("bagsworld-player-entered", handleEntered);
       window.removeEventListener("bagsworld-player-exited", handleExited);
       window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("bagsworld-customize-character", handleCustomize);
       // Cancel any in-flight sprite generation on unmount
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
