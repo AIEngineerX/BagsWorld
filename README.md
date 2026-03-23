@@ -281,7 +281,7 @@ BagsWorld/
 |   |   +-- CasinoModal.tsx         # Casino games UI
 |   |   +-- OracleTowerModal.tsx    # Prediction market UI
 |   |   +-- ArenaModal.tsx          # Arena combat UI
-|   |   +-- TradingTerminal.tsx     # Market data terminal
+|   |   +-- TradingDiagnostics.tsx  # Market data diagnostics
 |   |   +-- AgentDashboard.tsx      # Agent monitoring
 |   |   +-- MoltbookFeed.tsx        # Social feed display
 |   |   +-- ProfessorOakChat.tsx    # AI token generation wizard

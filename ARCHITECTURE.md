@@ -765,8 +765,7 @@ src/
     CasinoModal.tsx                    # Casino games
     CasinoAdmin.tsx                    # Casino admin panel
     OracleTowerModal.tsx               # Prediction market
-    TradingTerminal.tsx                # Market data terminal
-    TradingTerminalModal.tsx           # Terminal in modal
+    TradingDiagnostics.tsx             # Market data diagnostics
     MoltbookFeed.tsx                   # Social feed display
     MoltbookDashboard.tsx              # Moltbook dashboard
     ProfessorOakChat.tsx               # AI token generation wizard

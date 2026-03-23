@@ -1,8 +1,9 @@
 // Scout Agent - Real-time new token launch scanner
-// Monitors pump.fun WebSocket for new token launches
+// Monitors Bags.fm native feed + pump.fun WebSocket for new token launches
 
 import WebSocket from "ws";
 import { emitTokenLaunch } from "./agent-coordinator";
+import { BAGS_API_BASE_URL } from "./config";
 
 // Scout configuration
 export interface ScoutConfig {
@@ -79,10 +80,12 @@ let scoutState: ScoutState = {
 let scoutConfig: ScoutConfig = { ...DEFAULT_CONFIG };
 let ws: WebSocket | null = null;
 let reconnectTimeout: NodeJS.Timeout | null = null;
+let bagsFeedInterval: NodeJS.Timeout | null = null;
 let alertCallbacks: ScoutAlertCallback[] = [];
 let consecutiveFailures = 0;
 const MAX_RECONNECT_DELAY_MS = 60000; // Cap at 60s
 let alertTimestamps: number[] = [];
+let knownBagsMints: Set<string> = new Set();
 
 // Initialize the scout agent
 export function initScoutAgent(config?: Partial<ScoutConfig>): boolean {
@@ -114,8 +117,9 @@ export function startScoutAgent(): boolean {
   scoutState.isRunning = true;
 
   connectPumpFunWebSocket();
+  startBagsFeedPolling();
 
-  console.log("[Scout Agent] Started - scanning for new tokens");
+  console.log("[Scout Agent] Started - scanning Bags.fm feed + pump.fun WebSocket");
   return true;
 }
 
@@ -126,6 +130,11 @@ export function stopScoutAgent(): void {
   if (reconnectTimeout) {
     clearTimeout(reconnectTimeout);
     reconnectTimeout = null;
+  }
+
+  if (bagsFeedInterval) {
+    clearInterval(bagsFeedInterval);
+    bagsFeedInterval = null;
   }
 
   if (ws) {
@@ -192,6 +201,66 @@ function connectPumpFunWebSocket(): void {
     console.error("[Scout Agent] Connection error:", error);
     addError(`Connection error: ${error instanceof Error ? error.message : String(error)}`);
     scheduleReconnect();
+  }
+}
+
+// Bags.fm native launch feed polling (30s interval)
+const BAGS_FEED_POLL_MS = 30000;
+
+function startBagsFeedPolling(): void {
+  // Initial fetch to seed known mints
+  pollBagsFeed().catch((err) => {
+    console.error("[Scout Agent] Initial Bags feed poll failed:", err);
+  });
+
+  bagsFeedInterval = setInterval(() => {
+    if (!scoutState.isRunning) return;
+    pollBagsFeed().catch((err) => {
+      addError(`Bags feed poll error: ${err instanceof Error ? err.message : String(err)}`);
+    });
+  }, BAGS_FEED_POLL_MS);
+}
+
+async function pollBagsFeed(): Promise<void> {
+  const apiKey = process.env.BAGS_API_KEY;
+  if (!apiKey) return;
+
+  const response = await fetch(`${BAGS_API_BASE_URL}/token-launch/feed`, {
+    headers: { "x-api-key": apiKey },
+  });
+
+  if (!response.ok) return;
+
+  const data = await response.json();
+  const tokens: Array<{
+    tokenMint: string;
+    name?: string;
+    symbol?: string;
+    status?: string;
+    creator?: string;
+  }> = data.response ?? data ?? [];
+
+  if (!Array.isArray(tokens)) return;
+
+  for (const token of tokens) {
+    if (!token.tokenMint || knownBagsMints.has(token.tokenMint)) continue;
+    knownBagsMints.add(token.tokenMint);
+
+    // Skip the initial seed — only alert on tokens appearing after first poll
+    if (knownBagsMints.size <= tokens.length) continue;
+
+    const launch: TokenLaunch = {
+      mint: token.tokenMint,
+      name: token.name || "Unknown",
+      symbol: token.symbol || "???",
+      creator: token.creator || "unknown",
+      liquidity: 0,
+      supply: 0,
+      timestamp: Date.now(),
+      platform: "bags",
+    };
+
+    handleTokenData(launch);
   }
 }
 

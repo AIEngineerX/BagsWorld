@@ -1093,7 +1093,7 @@ export async function generateClaimTxForWallet(wallet: string): Promise<ClaimRes
         JSON.stringify(claimBody)
       );
 
-      const claimUrl = `${BAGS_API.PUBLIC_BASE}/token-launch/claim-txs/v2`;
+      const claimUrl = `${BAGS_API.PUBLIC_BASE}/token-launch/claim-txs/v3`;
       const claimRes = await fetch(claimUrl, {
         method: "POST",
         headers: {

@@ -222,7 +222,7 @@ class BagsApiClient {
     transactions: string[];
     computeUnitLimit: number;
   }> {
-    return this.fetch("/token-launch/claim-txs/v2", {
+    return this.fetch("/token-launch/claim-txs/v3", {
       method: "POST",
       body: JSON.stringify({ wallet, positions }),
     });
@@ -669,6 +669,31 @@ class BagsApiClient {
       }
       throw error;
     }
+  }
+
+  async getLaunchFeed(): Promise<
+    Array<{
+      tokenMint: string;
+      name: string;
+      symbol: string;
+      status: "PRE_LAUNCH" | "PRE_GRAD" | "MIGRATING" | "MIGRATED";
+      poolKeys?: { dbcPoolKey?: string; dammV2PoolKey?: string };
+      configKey?: string;
+      creator?: string;
+      createdAt?: number;
+    }>
+  > {
+    return this.fetch("/token-launch/feed");
+  }
+
+  async getPoolByTokenMint(tokenMint: string): Promise<{
+    tokenMint: string;
+    dbcConfigKey: string;
+    dbcPoolKey: string;
+    dammV2PoolKey?: string;
+  } | null> {
+    const params = new URLSearchParams({ tokenMint });
+    return this.fetch(`/solana/bags/pools/token-mint?${params}`);
   }
 
   async getBagsPools(): Promise<

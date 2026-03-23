@@ -150,7 +150,7 @@ Get your API key via `/agent/dev/keys/create` or from [dev.bags.fm](https://dev.
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/token-launch/claimable-positions` | GET | Check your earnings |
-| `/token-launch/claim-txs/v2` | POST | Generate claim transactions |
+| `/token-launch/claim-txs/v3` | POST | Generate claim transactions |
 | `/token-launch/lifetime-fees` | GET | Total fees for a token |
 
 **Trading:**

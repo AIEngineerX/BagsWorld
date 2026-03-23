@@ -151,7 +151,7 @@ echo "💰 Total Claimable: $BAGS_TOTAL_SOL SOL ($BAGS_TOTAL_LAMPORTS lamports)"
 Request transactions to claim your fees:
 
 ```bash
-curl -s -X POST "https://public-api-v2.bags.fm/api/v1/token-launch/claim-txs/v2" \
+curl -s -X POST "https://public-api-v2.bags.fm/api/v1/token-launch/claim-txs/v3" \
   -H "x-api-key: $BAGS_API_KEY" \
   -H "Content-Type: application/json" \
   -d "{
@@ -306,7 +306,7 @@ BAGS_POSITIONS_ARRAY=$(echo "$BAGS_POSITIONS" | jq '[.response[] | {baseMint, vi
 
 echo ""
 echo "🎯 Generating claim transactions..."
-BAGS_CLAIM_RESPONSE=$(curl -s -X POST "https://public-api-v2.bags.fm/api/v1/token-launch/claim-txs/v2" \
+BAGS_CLAIM_RESPONSE=$(curl -s -X POST "https://public-api-v2.bags.fm/api/v1/token-launch/claim-txs/v3" \
   -H "x-api-key: $BAGS_API_KEY" \
   -H "Content-Type: application/json" \
   -d "{\"wallet\": \"$BAGS_WALLET\", \"positions\": $BAGS_POSITIONS_ARRAY}")

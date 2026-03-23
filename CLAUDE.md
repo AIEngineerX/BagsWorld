@@ -92,7 +92,7 @@ Agent discovery must be dynamic, never hardcoded. API endpoints should discover 
 | `src/lib/x-oauth.ts`                  | X OAuth implementation                                         |
 | `src/components/ProfessorOakChat.tsx` | AI-powered token generation wizard                             |
 | `src/components/AgentDashboard.tsx`   | Agent monitoring dashboard                                     |
-| `src/components/TradingTerminal.tsx`  | In-game market terminal                                        |
+| `src/components/TradingDiagnostics.tsx` | Market data diagnostics                                      |
 | `src/components/ArenaModal.tsx`       | Arena combat UI                                                |
 
 ### Pages

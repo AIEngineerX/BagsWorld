@@ -118,7 +118,7 @@ const PLATFORM_INFO = {
       auth: "API Key (x-api-key header)",
       endpoints: [
         "GET /token-launch/claimable-positions - Check claimable fees",
-        "POST /token-launch/claim-txs/v2 - Generate claim transactions",
+        "POST /token-launch/claim-txs/v3 - Generate claim transactions",
         "GET /trade/quote - Get swap quotes",
         "POST /trade/swap - Execute token swaps",
         "POST /token-launch/create-token-info - Create token metadata",

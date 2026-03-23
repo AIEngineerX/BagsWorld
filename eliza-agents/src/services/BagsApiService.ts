@@ -806,7 +806,7 @@ export class BagsApiService extends Service {
     wallet: string,
     positions: string[]
   ): Promise<ClaimTransactionsResult> {
-    return this.fetch("/token-launch/claim-txs/v2", {
+    return this.fetch("/token-launch/claim-txs/v3", {
       method: "POST",
       body: JSON.stringify({ wallet, positions }),
     });

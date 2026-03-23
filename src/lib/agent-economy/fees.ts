@@ -98,7 +98,7 @@ export async function generateClaimTransactions(
 
   const wallet = await getPrimaryWallet(agentId);
 
-  const response = await fetch(`${BAGS_API.PUBLIC_BASE}/token-launch/claim-txs/v2`, {
+  const response = await fetch(`${BAGS_API.PUBLIC_BASE}/token-launch/claim-txs/v3`, {
     method: "POST",
     headers: {
       "x-api-key": credentials.apiKey,
