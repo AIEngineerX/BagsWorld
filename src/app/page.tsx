@@ -26,145 +26,177 @@ import { ScoutAlerts } from "@/components/ScoutAlerts";
 import { MiniMap } from "@/components/MiniMap";
 import { QuestTracker } from "@/components/QuestTracker";
 
+// Shared loading fallback for lazy-loaded components
+const ModalLoader = () => (
+  <div className="flex items-center justify-center p-8">
+    <span className="font-pixel text-xs text-bags-green animate-pulse">Loading...</span>
+  </div>
+);
+
 // Lazy-loaded chat components — only downloaded when character is clicked
-const AIChat = dynamic(() => import("@/components/AIChat").then((m) => m.AIChat), { ssr: false });
+const AIChat = dynamic(() => import("@/components/AIChat").then((m) => m.AIChat), {
+  ssr: false,
+  loading: ModalLoader,
+});
 const AshChat = dynamic(() => import("@/components/AshChat").then((m) => m.AshChat), {
   ssr: false,
+  loading: ModalLoader,
 });
 const TolyChat = dynamic(() => import("@/components/TolyChat").then((m) => m.TolyChat), {
   ssr: false,
+  loading: ModalLoader,
 });
 const FinnbagsChat = dynamic(
   () => import("@/components/FinnbagsChat").then((m) => m.FinnbagsChat),
-  { ssr: false }
+  { ssr: false, loading: ModalLoader }
 );
 const DevChat = dynamic(() => import("@/components/DevChat").then((m) => m.DevChat), {
   ssr: false,
+  loading: ModalLoader,
 });
 const NeoChat = dynamic(() => import("@/components/NeoChat").then((m) => m.NeoChat), {
   ssr: false,
+  loading: ModalLoader,
 });
-const CJChat = dynamic(() => import("@/components/CJChat").then((m) => m.CJChat), { ssr: false });
+const CJChat = dynamic(() => import("@/components/CJChat").then((m) => m.CJChat), {
+  ssr: false,
+  loading: ModalLoader,
+});
 const ShawChat = dynamic(() => import("@/components/ShawChat").then((m) => m.ShawChat), {
   ssr: false,
+  loading: ModalLoader,
 });
 const RamoChat = dynamic(() => import("@/components/RamoChat").then((m) => m.RamoChat), {
   ssr: false,
+  loading: ModalLoader,
 });
 const SincaraChat = dynamic(() => import("@/components/SincaraChat").then((m) => m.SincaraChat), {
   ssr: false,
+  loading: ModalLoader,
 });
 const StuuChat = dynamic(() => import("@/components/StuuChat").then((m) => m.StuuChat), {
   ssr: false,
+  loading: ModalLoader,
 });
 const SamChat = dynamic(() => import("@/components/SamChat").then((m) => m.SamChat), {
   ssr: false,
+  loading: ModalLoader,
 });
 const AlaaChat = dynamic(() => import("@/components/AlaaChat").then((m) => m.AlaaChat), {
   ssr: false,
+  loading: ModalLoader,
 });
 const CarloChat = dynamic(() => import("@/components/CarloChat").then((m) => m.CarloChat), {
   ssr: false,
+  loading: ModalLoader,
 });
 const BNNChat = dynamic(() => import("@/components/BNNChat").then((m) => m.BNNChat), {
   ssr: false,
+  loading: ModalLoader,
 });
 const ProfessorOakChat = dynamic(
   () => import("@/components/ProfessorOakChat").then((m) => m.ProfessorOakChat),
-  { ssr: false }
+  { ssr: false, loading: ModalLoader }
 );
 const BagsyChat = dynamic(() => import("@/components/BagsyChat").then((m) => m.BagsyChat), {
   ssr: false,
+  loading: ModalLoader,
 });
 const AgentDashboard = dynamic(
   () => import("@/components/AgentDashboard").then((m) => m.AgentDashboard),
-  { ssr: false }
+  { ssr: false, loading: ModalLoader }
 );
 const AdminConsole = dynamic(
   () => import("@/components/AdminConsole").then((m) => m.AdminConsole),
-  { ssr: false }
+  { ssr: false, loading: ModalLoader }
 );
 const TradingDiagnostics = dynamic(
   () => import("@/components/TradingDiagnostics").then((m) => m.TradingDiagnostics),
-  { ssr: false }
+  { ssr: false, loading: ModalLoader }
 );
 const GhostTraderButton = dynamic(
   () => import("@/components/TradingDiagnostics").then((m) => m.GhostTraderButton),
-  { ssr: false }
+  { ssr: false, loading: ModalLoader }
 );
 
 // Wild encounter overlay — only downloaded when encounter triggers
 const EncounterOverlay = dynamic(
   () => import("@/components/EncounterOverlay").then((m) => m.EncounterOverlay),
-  { ssr: false }
+  { ssr: false, loading: ModalLoader }
 );
 
 // Lazy-loaded modal components — only downloaded when modal is opened
 const BuildingModal = dynamic(
   () => import("@/components/BuildingModal").then((m) => m.BuildingModal),
-  { ssr: false }
+  { ssr: false, loading: ModalLoader }
 );
 const LaunchModal = dynamic(() => import("@/components/LaunchModal").then((m) => m.LaunchModal), {
   ssr: false,
+  loading: ModalLoader,
 });
 const PokeCenterModal = dynamic(
   () => import("@/components/PokeCenterModal").then((m) => m.PokeCenterModal),
-  { ssr: false }
+  { ssr: false, loading: ModalLoader }
 );
 const FeeClaimModal = dynamic(
   () => import("@/components/FeeClaimModal").then((m) => m.FeeClaimModal),
-  { ssr: false }
+  { ssr: false, loading: ModalLoader }
 );
 const CommunityFundModal = dynamic(
   () => import("@/components/CommunityFundModal").then((m) => m.CommunityFundModal),
-  { ssr: false }
+  { ssr: false, loading: ModalLoader }
 );
 const CasinoModal = dynamic(() => import("@/components/CasinoModal").then((m) => m.CasinoModal), {
   ssr: false,
+  loading: ModalLoader,
 });
 const ArenaModal = dynamic(() => import("@/components/ArenaModal").then((m) => m.ArenaModal), {
   ssr: false,
+  loading: ModalLoader,
 });
 const AgentHutModal = dynamic(
   () => import("@/components/AgentHutModal").then((m) => m.AgentHutModal),
-  { ssr: false }
+  { ssr: false, loading: ModalLoader }
 );
 const AgentBarModal = dynamic(
   () => import("@/components/AgentBarModal").then((m) => m.AgentBarModal),
-  { ssr: false }
+  { ssr: false, loading: ModalLoader }
 );
 const IncineratorModal = dynamic(
   () => import("@/components/IncineratorModal").then((m) => m.IncineratorModal),
-  { ssr: false }
+  { ssr: false, loading: ModalLoader }
 );
 const BountyBoardModal = dynamic(
   () => import("@/components/BountyBoardModal").then((m) => m.BountyBoardModal),
-  { ssr: false }
+  { ssr: false, loading: ModalLoader }
 );
 const CorpBoardModal = dynamic(
   () => import("@/components/CorpBoardModal").then((m) => m.CorpBoardModal),
-  { ssr: false }
+  { ssr: false, loading: ModalLoader }
 );
 const MoltbookHQModal = dynamic(
   () => import("@/components/MoltbookHQModal").then((m) => m.MoltbookHQModal),
-  { ssr: false }
+  { ssr: false, loading: ModalLoader }
 );
 const CasinoAdmin = dynamic(() => import("@/components/CasinoAdmin").then((m) => m.CasinoAdmin), {
   ssr: false,
+  loading: ModalLoader,
 });
 const LauncherHub = dynamic(() => import("@/components/LauncherHub").then((m) => m.LauncherHub), {
   ssr: false,
+  loading: ModalLoader,
 });
 const MansionModal = dynamic(
   () => import("@/components/MansionModal").then((m) => m.MansionModal),
-  { ssr: false }
+  { ssr: false, loading: ModalLoader }
 );
 const ArcadeModal = dynamic(() => import("@/components/ArcadeModal").then((m) => m.ArcadeModal), {
   ssr: false,
+  loading: ModalLoader,
 });
 const OakIntroWizard = dynamic(
   () => import("@/components/OakIntroWizard").then((m) => m.OakIntroWizard),
-  { ssr: false }
+  { ssr: false, loading: ModalLoader }
 );
 
 import { useGameStore } from "@/lib/store";

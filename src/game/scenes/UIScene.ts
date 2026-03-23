@@ -15,8 +15,8 @@ export class UIScene extends Phaser.Scene {
 
   private addCornerDecorations(): void {
     const graphics = this.add.graphics();
-    const width = 1280;
-    const height = 960;
+    const width = this.cameras.main.width;
+    const height = this.cameras.main.height;
 
     // Top-left corner
     graphics.lineStyle(2, 0x4ade80, 1);

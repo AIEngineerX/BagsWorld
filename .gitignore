@@ -93,6 +93,11 @@ data/alpha-wallets.json
 # Autonomous trading bot (local dev, contains financial data)
 tmp-bagbot/
 
+# Abandoned local projects (not part of BagsWorld)
+bagsworld-server/
+dist/
+public/sprites/
+
 # Playwright MCP browser automation logs
 .playwright-mcp/
 

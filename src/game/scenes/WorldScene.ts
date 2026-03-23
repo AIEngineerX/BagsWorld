@@ -28,6 +28,27 @@ import {
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 960;
 
+/** All character glow sprite property keys — single source of truth */
+const GLOW_KEYS = [
+  "tolyGlow",
+  "ashGlow",
+  "finnGlow",
+  "devGlow",
+  "scoutGlow",
+  "cjGlow",
+  "shawGlow",
+  "ramoGlow",
+  "sincaraGlow",
+  "stuuGlow",
+  "samGlow",
+  "alaaGlow",
+  "carloGlow",
+  "bnnGlow",
+  "professorOakGlow",
+  "bagsyGlow",
+  "openClawGlow",
+] as const;
+
 interface Animal {
   sprite: Phaser.GameObjects.Sprite;
   type: "dog" | "cat" | "bird" | "butterfly" | "squirrel";
@@ -82,6 +103,7 @@ export class WorldScene extends Phaser.Scene {
   private timeOfDay = 0;
   private overlay!: Phaser.GameObjects.Rectangle;
   private sunSprite: Phaser.GameObjects.Sprite | null = null;
+  private sunRays: Phaser.GameObjects.Graphics | null = null;
   private fireflies: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private ambientParticles: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   public skyGradient: Phaser.GameObjects.Graphics | null = null;
@@ -340,9 +362,6 @@ export class WorldScene extends Phaser.Scene {
 
     // Create ambient particles (pollen/leaves)
     this.createAmbientParticles();
-
-    // Start day/night cycle
-    this.startDayNightCycle();
 
     // Add subtle ground animation
     this.tweens.add({
@@ -3276,6 +3295,7 @@ export class WorldScene extends Phaser.Scene {
     const starAlphaMap: Record<string, number> = { night: 0.6, dusk: 0.35, dawn: 0.15, day: 0 };
     const targetAlpha = starAlphaMap[timeState];
     this.stars.forEach((star) => {
+      this.tweens.killTweensOf(star);
       this.tweens.add({
         targets: star,
         alpha: targetAlpha,
@@ -3318,6 +3338,7 @@ export class WorldScene extends Phaser.Scene {
       night: 0,
     };
     if (this.skylineHazeLayer) {
+      this.tweens.killTweensOf(this.skylineHazeLayer);
       this.tweens.add({
         targets: this.skylineHazeLayer,
         alpha: hazeAlpha[timeState],
@@ -3334,6 +3355,7 @@ export class WorldScene extends Phaser.Scene {
       night: 0.6,
     };
     if (this.skylineWindowsLayer) {
+      this.tweens.killTweensOf(this.skylineWindowsLayer);
       this.tweens.add({
         targets: this.skylineWindowsLayer,
         alpha: windowAlpha[timeState],
@@ -3350,6 +3372,7 @@ export class WorldScene extends Phaser.Scene {
       night: 0.5,
     };
     if (this.skylineGlowLayer) {
+      this.tweens.killTweensOf(this.skylineGlowLayer);
       this.tweens.add({
         targets: this.skylineGlowLayer,
         alpha: glowAlpha[timeState],
@@ -3361,6 +3384,7 @@ export class WorldScene extends Phaser.Scene {
     // Flicker rects: match window visibility
     const flickerAlpha = windowAlpha[timeState];
     this.skylineFlickerRects.forEach((rect) => {
+      this.tweens.killTweensOf(rect);
       this.tweens.add({
         targets: rect,
         alpha: timeState === "day" ? 0 : flickerAlpha * (rect.alpha > 0 ? 1 : 0.5),
@@ -5739,11 +5763,6 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  private startDayNightCycle(): void {
-    // Day/night state is driven by EST time via API in updateDayNightFromEST.
-    // No fallback timer needed — removed to prevent leaked empty timer.
-  }
-
   private updateWeather(weather: WorldState["weather"]): void {
     // Clear existing weather effects
     if (this.weatherEmitter) {
@@ -5755,6 +5774,11 @@ export class WorldScene extends Phaser.Scene {
     if (this.sunSprite) {
       this.sunSprite.destroy();
       this.sunSprite = null;
+    }
+    if (this.sunRays) {
+      this.tweens.killTweensOf(this.sunRays);
+      this.sunRays.destroy();
+      this.sunRays = null;
     }
 
     // Clean up weather-specific timers to prevent accumulation
@@ -5853,12 +5877,12 @@ export class WorldScene extends Phaser.Scene {
     });
 
     // Sun rays
-    const rays = this.add.graphics();
-    rays.setDepth(-1);
-    rays.fillStyle(0xfbbf24, 0.1);
+    this.sunRays = this.add.graphics();
+    this.sunRays.setDepth(-1);
+    this.sunRays.fillStyle(0xfbbf24, 0.1);
     for (let i = 0; i < 8; i++) {
       const angle = (i / 8) * Math.PI * 2;
-      rays.fillTriangle(
+      this.sunRays.fillTriangle(
         700,
         70,
         700 + Math.cos(angle) * 150,
@@ -5869,7 +5893,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.tweens.add({
-      targets: rays,
+      targets: this.sunRays,
       alpha: 0.5,
       angle: 360,
       duration: 30000,
@@ -5981,30 +6005,7 @@ export class WorldScene extends Phaser.Scene {
       if (s._mobileLabelBg) s._mobileLabelBg.setVisible(shouldShow);
 
       // Handle associated glow sprites (including Shaw and Academy characters)
-      const glowKeys = [
-        "tolyGlow",
-        "ashGlow",
-        "finnGlow",
-        "devGlow",
-        "scoutGlow",
-        "cjGlow",
-        "shawGlow",
-        // Academy character glows
-        "ramoGlow",
-        "sincaraGlow",
-        "stuuGlow",
-        "samGlow",
-        "alaaGlow",
-        "carloGlow",
-        "bnnGlow",
-        // Founder's Corner
-        "professorOakGlow",
-        // Mascots
-        "bagsyGlow",
-        // External agents (OpenClaws)
-        "openClawGlow",
-      ];
-      glowKeys.forEach((key) => {
+      GLOW_KEYS.forEach((key) => {
         const glow = (sprite as any)[key];
         if (glow) glow.setVisible(shouldShow);
       });
@@ -6016,24 +6017,7 @@ export class WorldScene extends Phaser.Scene {
     this.characterSprites.forEach((sprite, id) => {
       if (!currentIds.has(id)) {
         // Clean up associated glow sprites before destroying (including Academy characters)
-        const glowKeys = [
-          "tolyGlow",
-          "ashGlow",
-          "finnGlow",
-          "devGlow",
-          "scoutGlow",
-          "cjGlow",
-          "shawGlow",
-          // Academy character glows
-          "ramoGlow",
-          "sincaraGlow",
-          "stuuGlow",
-          "samGlow",
-          "alaaGlow",
-          "carloGlow",
-          "bnnGlow",
-        ];
-        glowKeys.forEach((key) => {
+        GLOW_KEYS.forEach((key) => {
           const glow = (sprite as any)[key];
           if (glow) {
             this.tweens.killTweensOf(glow); // Stop any running tweens
@@ -6115,30 +6099,7 @@ export class WorldScene extends Phaser.Scene {
     sprite: Phaser.GameObjects.Sprite
   ): void {
     // Update special character glow positions if they exist (including Academy characters)
-    const glowKeys = [
-      "tolyGlow",
-      "ashGlow",
-      "finnGlow",
-      "devGlow",
-      "scoutGlow",
-      "cjGlow",
-      "shawGlow",
-      // Academy character glows
-      "ramoGlow",
-      "sincaraGlow",
-      "stuuGlow",
-      "samGlow",
-      "alaaGlow",
-      "carloGlow",
-      "bnnGlow",
-      // Founder's Corner
-      "professorOakGlow",
-      // Mascots
-      "bagsyGlow",
-      // External agents (OpenClaws)
-      "openClawGlow",
-    ];
-    glowKeys.forEach((key) => {
+    GLOW_KEYS.forEach((key) => {
       const glow = (sprite as any)[key];
       if (glow) {
         glow.x = sprite.x;
@@ -9379,8 +9340,7 @@ export class WorldScene extends Phaser.Scene {
 
     // Update glow helper
     const updateGlow = () => {
-      const glowKeys = ["tolyGlow", "ashGlow", "finnGlow", "devGlow", "scoutGlow"];
-      glowKeys.forEach((key) => {
+      GLOW_KEYS.forEach((key) => {
         const glow = (sprite as any)[key];
         if (glow && glow.active) {
           glow.setX(sprite.x);
