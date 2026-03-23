@@ -109,7 +109,8 @@ const MARKETPLACE_APPS = [
     pct: 30,
     emoji: "💰",
     color: "from-green-600 to-green-400",
-    description: "Auto-pays top 100 holders daily",
+    description: "Auto-pays top 100 holders daily when 10+ SOL unclaimed",
+    verified: true,
   },
   {
     name: "DEX Boosts",
@@ -117,6 +118,7 @@ const MARKETPLACE_APPS = [
     emoji: "📈",
     color: "from-blue-600 to-blue-400",
     description: "Auto-buys DexScreener visibility",
+    verified: false,
   },
   {
     name: "Compound Liquidity",
@@ -124,6 +126,7 @@ const MARKETPLACE_APPS = [
     emoji: "💧",
     color: "from-cyan-600 to-cyan-400",
     description: "Deepens token liquidity pool",
+    verified: false,
   },
   {
     name: "BagsAMM",
@@ -131,6 +134,7 @@ const MARKETPLACE_APPS = [
     emoji: "🤖",
     color: "from-purple-600 to-purple-400",
     description: "Automated market maker for volume",
+    verified: false,
   },
 ] as const;
 
@@ -238,7 +242,7 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
             <div>
               <h2 className="font-pixel text-white text-xs sm:text-sm">COMMUNITY BUILDING</h2>
               <p className="font-pixel text-green-200 text-[7px] sm:text-[8px]">
-                Powered by BagsApp Marketplace
+                Powered by Bags App Store
               </p>
             </div>
           </div>
@@ -328,10 +332,10 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
             {/* Main Message */}
             <div className="bg-bags-darker rounded-lg p-4 border border-bags-green/30 text-center">
               <div className="text-3xl mb-2">⚡</div>
-              <h3 className="font-pixel text-bags-green text-[11px] mb-2">BagsApp Marketplace</h3>
+              <h3 className="font-pixel text-bags-green text-[11px] mb-2">Bags App Store</h3>
               <p className="font-pixel text-gray-300 text-[9px] leading-relaxed">
                 $BagsWorld token fees auto-route to{" "}
-                <span className="text-bags-gold">BagsApp Marketplace apps</span> for automated token
+                <span className="text-bags-gold">Bags App Store</span> apps for automated token
                 growth — dividends, DEX boosts, liquidity, and volume support.
               </p>
             </div>
@@ -379,7 +383,7 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
               </div>
             </div>
 
-            {/* BagsApp Marketplace Split */}
+            {/* Bags App Store Split */}
             <div className="bg-bags-darker rounded-lg p-3 border border-purple-500/30">
               <h3 className="font-pixel text-purple-400 text-xs mb-3">Fee Distribution</h3>
               <div className="space-y-2">
@@ -500,7 +504,7 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
                     Where Fees Go
                   </h3>
                   <p className="font-pixel text-gray-500 text-[7px]">
-                    100% of $BagsWorld trading fees route to BagsApp Marketplace apps
+                    100% of $BagsWorld trading fees route to Bags App Store apps
                   </p>
 
                   {MARKETPLACE_APPS.map((app, i) => (
@@ -560,8 +564,8 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
 
                     <div className="text-center flex-shrink-0">
                       <div className="text-2xl mb-1">📱</div>
-                      <div className="font-pixel text-[7px] text-bags-green">BagsApp</div>
-                      <div className="font-pixel text-[7px] text-gray-500">Marketplace</div>
+                      <div className="font-pixel text-[7px] text-bags-green">Bags</div>
+                      <div className="font-pixel text-[7px] text-gray-500">App Store</div>
                     </div>
                   </div>
                 </div>
