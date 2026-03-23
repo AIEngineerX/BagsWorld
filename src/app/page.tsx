@@ -527,7 +527,7 @@ export default function Home() {
       </Suspense>
       {/* Header - responsive, collapses in immersive mode */}
       <header
-        className={`h-14 md:h-16 bg-bags-dark hud-border-bottom hud-panel flex items-center justify-between px-1.5 md:px-4 relative z-50 safe-area-top shrink-0 transition-transform duration-500 ease-in-out ${isImmersive ? "-translate-y-full" : ""}`}
+        className={`bg-bags-dark hud-border-bottom hud-panel flex items-center justify-between px-1.5 md:px-4 relative z-50 safe-area-top shrink-0 transition-all duration-500 ease-in-out ${isImmersive ? "h-0 overflow-hidden opacity-0" : "h-14 md:h-16"}`}
       >
         {/* Left side - Logo and health */}
         <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
@@ -725,11 +725,11 @@ export default function Home() {
         {/* Sidebar - hidden on mobile, slide-in drawer on tablet, always visible on desktop. Slides right in immersive mode. */}
         <aside
           className={`
-          ${mobileSidebarOpen && !isImmersive ? "translate-x-0" : isImmersive ? "translate-x-full" : "translate-x-full lg:translate-x-0"}
+          ${mobileSidebarOpen && !isImmersive ? "translate-x-0" : isImmersive ? "translate-x-full lg:hidden" : "translate-x-full lg:translate-x-0"}
           fixed lg:relative right-0 top-14 md:top-16 lg:top-0
-          w-[85vw] sm:w-80 h-[calc(100dvh-3.5rem)] md:h-[calc(100dvh-4rem)] lg:h-full
+          ${isImmersive ? "w-0" : "w-[85vw] sm:w-80"} h-[calc(100dvh-3.5rem)] md:h-[calc(100dvh-4rem)] lg:h-full
           sidebar-panel hud-border-left flex flex-col
-          transition-transform duration-500 ease-in-out z-40
+          transition-all duration-500 ease-in-out z-40
           pb-safe
         `}
         >
@@ -804,7 +804,7 @@ export default function Home() {
 
       {/* Footer status bar - simplified on mobile, collapses in immersive mode */}
       <footer
-        className={`min-h-[36px] sm:min-h-[36px] hud-panel hud-border-top flex items-center justify-between px-2 md:px-4 font-pixel text-[10px] sm:text-[9px] md:text-[10px] safe-area-bottom shrink-0 overflow-hidden transition-transform duration-500 ease-in-out ${isImmersive ? "translate-y-full" : ""}`}
+        className={`hud-panel hud-border-top flex items-center justify-between px-2 md:px-4 font-pixel text-[10px] sm:text-[9px] md:text-[10px] safe-area-bottom shrink-0 overflow-hidden transition-all duration-500 ease-in-out ${isImmersive ? "h-0 opacity-0" : "min-h-[36px]"}`}
       >
         <div className="flex items-center gap-2 md:gap-4">
           <span className="text-gray-400">
