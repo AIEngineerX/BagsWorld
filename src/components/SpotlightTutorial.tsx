@@ -10,14 +10,14 @@ const STEPS: {
   hint: string;
 }[] = [
   {
-    desktop: "Use WASD to walk around the world",
-    mobile: "Use the joystick to walk around the world",
+    desktop: "Use WASD to walk around",
+    mobile: "Use the joystick to walk",
     hint: "Try moving in any direction",
   },
   {
-    desktop: "Walk to Ash and press E to talk",
-    mobile: "Walk to Ash and tap the interact button",
-    hint: "Ash is the green character nearby",
+    desktop: "Walk to a character and press E to talk",
+    mobile: "Walk to a character and tap the interact button",
+    hint: "Look for the bouncing arrow above them",
   },
   {
     desktop: "Click a building to see its token data",
@@ -25,14 +25,13 @@ const STEPS: {
     hint: "Buildings represent real tokens on Bags.fm",
   },
   {
-    desktop:
-      "You\u2019re ready! Explore zones with the arrows, talk to characters, and launch your own token.",
-    mobile: "You\u2019re ready! Swipe zones above, talk to characters, and launch your own token.",
+    desktop: "You\u2019re ready! Explore zones, talk to characters, launch your own token.",
+    mobile: "You\u2019re ready! Explore zones, talk to characters, launch your own token.",
     hint: "",
   },
 ];
 
-const MOVE_THRESHOLD = 50; // pixels of cumulative movement to complete step 0
+const MOVE_THRESHOLD = 50;
 
 interface SpotlightTutorialProps {
   active: boolean;
@@ -43,29 +42,36 @@ interface SpotlightTutorialProps {
 export function SpotlightTutorial({ active, onComplete, onSkip }: SpotlightTutorialProps) {
   const [step, setStep] = useState<TutorialStep>(0);
   const [visible, setVisible] = useState(false);
-  const [targetPos, setTargetPos] = useState<{ x: number; y: number } | null>(null);
   const isMobile = useRef(false);
   const cumulativeMove = useRef(0);
   const lastPlayerPos = useRef<{ x: number; y: number } | null>(null);
   const completedRef = useRef(false);
 
-  // Detect mobile once on mount
   useEffect(() => {
     isMobile.current =
       /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
       window.matchMedia("(pointer: coarse)").matches;
   }, []);
 
-  // Fade in on activation
+  // Fade in
   useEffect(() => {
     if (active) {
-      const timer = setTimeout(() => setVisible(true), 100);
+      const timer = setTimeout(() => setVisible(true), 300);
       return () => clearTimeout(timer);
     }
     setVisible(false);
   }, [active]);
 
-  // Step 0 completion: track player movement
+  // Tell Phaser which tutorial step we're on so it can show quest markers
+  useEffect(() => {
+    if (!active) {
+      window.dispatchEvent(new CustomEvent("bagsworld-tutorial-step", { detail: { step: -1 } }));
+      return;
+    }
+    window.dispatchEvent(new CustomEvent("bagsworld-tutorial-step", { detail: { step } }));
+  }, [active, step]);
+
+  // Step 0: track movement
   useEffect(() => {
     if (!active || step !== 0) return;
 
@@ -77,68 +83,49 @@ export function SpotlightTutorial({ active, onComplete, onSkip }: SpotlightTutor
         cumulativeMove.current += Math.sqrt(dx * dx + dy * dy);
       }
       lastPlayerPos.current = { x, y };
-
-      if (cumulativeMove.current >= MOVE_THRESHOLD) {
-        setStep(1);
-      }
+      if (cumulativeMove.current >= MOVE_THRESHOLD) setStep(1);
     };
 
     window.addEventListener("bagsworld-player-position", handlePosition);
     return () => window.removeEventListener("bagsworld-player-position", handlePosition);
   }, [active, step]);
 
-  // Step 1 completion: NPC interaction (any character click event from Ash)
+  // Step 1: any NPC interaction
   useEffect(() => {
     if (!active || step !== 1) return;
 
-    const handleNpcClick = () => setStep(2);
-
-    // Listen for Ash specifically, but accept any NPC interaction
+    const advance = () => setStep(2);
     const events = [
       "bagsworld-ash-click",
       "bagsworld-toly-click",
       "bagsworld-finn-click",
       "bagsworld-shaw-click",
       "bagsworld-dev-click",
+      "bagsworld-neo-click",
+      "bagsworld-cj-click",
+      "bagsworld-ramo-click",
+      "bagsworld-bagsy-click",
     ];
-    events.forEach((e) => window.addEventListener(e, handleNpcClick));
-    return () => events.forEach((e) => window.removeEventListener(e, handleNpcClick));
+    events.forEach((e) => window.addEventListener(e, advance));
+    return () => events.forEach((e) => window.removeEventListener(e, advance));
   }, [active, step]);
 
-  // Step 2 completion: building click
+  // Step 2: building click
   useEffect(() => {
     if (!active || step !== 2) return;
 
-    const handleBuildingClick = () => setStep(3);
-    window.addEventListener("bagsworld-building-click", handleBuildingClick);
-    return () => window.removeEventListener("bagsworld-building-click", handleBuildingClick);
+    const advance = () => setStep(3);
+    window.addEventListener("bagsworld-building-click", advance);
+    return () => window.removeEventListener("bagsworld-building-click", advance);
   }, [active, step]);
 
-  // Step 3: auto-dismiss after 5 seconds
+  // Step 3: auto-dismiss
   useEffect(() => {
     if (!active || step !== 3 || completedRef.current) return;
     completedRef.current = true;
-    const timer = setTimeout(() => {
-      onComplete();
-    }, 5000);
+    const timer = setTimeout(onComplete, 5000);
     return () => clearTimeout(timer);
   }, [active, step, onComplete]);
-
-  // Listen for target position updates (Ash's position from Phaser)
-  useEffect(() => {
-    if (!active || step !== 1) {
-      setTargetPos(null);
-      return;
-    }
-
-    const handleTarget = (e: Event) => {
-      const { x, y } = (e as CustomEvent<{ x: number; y: number }>).detail;
-      setTargetPos({ x, y });
-    };
-
-    window.addEventListener("bagsworld-tutorial-target", handleTarget);
-    return () => window.removeEventListener("bagsworld-tutorial-target", handleTarget);
-  }, [active, step]);
 
   // ESC to skip
   useEffect(() => {
@@ -165,83 +152,50 @@ export function SpotlightTutorial({ active, onComplete, onSkip }: SpotlightTutor
 
   return (
     <div
-      className={`fixed inset-0 z-[60] pointer-events-none transition-opacity duration-500 ${
-        visible ? "opacity-100" : "opacity-0"
+      className={`fixed bottom-20 sm:bottom-12 left-1/2 -translate-x-1/2 z-[55] w-[92vw] max-w-md transition-all duration-500 ${
+        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
       }`}
     >
-      {/* Dark overlay — pointer-events none so joystick/game still works */}
-      <div className="absolute inset-0 bg-black/60" />
-
-      {/* Spotlight cutout for step 1 (target NPC) */}
-      {step === 1 && targetPos && (
-        <>
-          {/* Pulsing arrow above target */}
-          <div
-            className="absolute z-[62] animate-bounce"
-            style={{
-              left: targetPos.x - 10,
-              top: targetPos.y - 50,
-            }}
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M10 16L4 6h12L10 16z" fill="#22c55e" />
-            </svg>
-          </div>
-          {/* Glow ring around target */}
-          <div
-            className="absolute z-[61] rounded-full border-2 border-green-400 animate-pulse"
-            style={{
-              left: targetPos.x - 30,
-              top: targetPos.y - 30,
-              width: 60,
-              height: 60,
-              boxShadow: "0 0 20px rgba(34,197,94,0.4), inset 0 0 20px rgba(34,197,94,0.1)",
-            }}
-          />
-        </>
-      )}
-
-      {/* Bottom speech bubble */}
-      <div className="absolute bottom-20 sm:bottom-16 left-1/2 -translate-x-1/2 z-[63] pointer-events-auto w-[90vw] max-w-sm">
-        <div className="bg-black/90 border-2 border-green-500 rounded-lg px-5 py-4 backdrop-blur-sm shadow-[0_0_30px_rgba(34,197,94,0.15)]">
-          {/* Step counter */}
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-pixel text-[10px] text-green-400">
-              {step < 3 ? `STEP ${step + 1} of ${STEPS.length}` : "READY!"}
-            </span>
-            {/* Progress dots */}
-            <div className="flex gap-1.5">
-              {STEPS.map((_, i) => (
-                <div
-                  key={i}
-                  className={`w-2 h-2 rounded-full transition-colors duration-300 ${
-                    i <= step ? "bg-green-400" : "bg-gray-600"
-                  }`}
-                />
-              ))}
+      <div className="bg-black/85 border border-green-500/60 rounded-lg px-4 py-3 backdrop-blur-sm shadow-[0_0_20px_rgba(34,197,94,0.1)]">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            {/* Step counter + dots */}
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="font-pixel text-[9px] text-green-400 shrink-0">
+                {step < 3 ? `${step + 1}/${STEPS.length}` : "DONE"}
+              </span>
+              <div className="flex gap-1">
+                {STEPS.map((_, i) => (
+                  <div
+                    key={i}
+                    className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
+                      i <= step ? "bg-green-400" : "bg-gray-700"
+                    }`}
+                  />
+                ))}
+              </div>
             </div>
+
+            {/* Instruction */}
+            <p className="font-pixel text-[10px] sm:text-[11px] text-white leading-relaxed">
+              {text}
+            </p>
+
+            {/* Hint */}
+            {currentStep.hint && (
+              <p className="font-pixel text-[7px] text-gray-500 mt-1">{currentStep.hint}</p>
+            )}
           </div>
 
-          {/* Instruction */}
-          <p className="font-pixel text-[11px] text-white leading-relaxed mb-2">{text}</p>
-
-          {/* Hint */}
-          {currentStep.hint && (
-            <p className="font-pixel text-[8px] text-gray-500 mb-3">{currentStep.hint}</p>
-          )}
-
-          {/* Skip / controls hint */}
-          <div className="flex items-center justify-between">
+          {/* Skip button */}
+          {step < 3 && (
             <button
               onClick={handleSkipClick}
-              className="font-pixel text-[9px] text-gray-500 hover:text-gray-300 transition-colors min-w-[44px] min-h-[44px] flex items-center"
+              className="font-pixel text-[8px] text-gray-600 hover:text-gray-400 transition-colors shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
             >
-              {step < 3 ? "SKIP TUTORIAL" : ""}
+              SKIP
             </button>
-            <span className="font-pixel text-[7px] text-gray-600">
-              {!isMobile.current && step < 3 ? "ESC to skip" : ""}
-            </span>
-          </div>
+          )}
         </div>
       </div>
     </div>

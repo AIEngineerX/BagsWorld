@@ -327,47 +327,47 @@ export function EnterWorldButton({ className = "" }: EnterWorldButtonProps) {
     setUseDefaultSprite(false);
   };
 
-  if (isInWorld) {
-    return (
-      <button
-        onClick={handleExitWorld}
-        className={`
-          font-pixel text-xs px-4 py-2
-          bg-gradient-to-b from-red-600 to-red-800
-          border-2 border-red-400
-          text-white shadow-lg
-          hover:from-red-500 hover:to-red-700
-          active:scale-95 transition-all
-          ${className}
-        `}
-      >
-        EXIT WORLD
-      </button>
-    );
-  }
+  const mainButton = isInWorld ? (
+    <button
+      onClick={handleExitWorld}
+      className={`
+        font-pixel text-xs px-4 py-2
+        bg-gradient-to-b from-red-600 to-red-800
+        border-2 border-red-400
+        text-white shadow-lg
+        hover:from-red-500 hover:to-red-700
+        active:scale-95 transition-all
+        ${className}
+      `}
+    >
+      EXIT WORLD
+    </button>
+  ) : (
+    <button
+      onClick={() => {
+        resetModal();
+        setShowSelector(true);
+      }}
+      className={`
+        font-pixel text-xs px-4 py-2
+        bg-gradient-to-b from-green-500 to-green-700
+        border-2 border-green-300
+        text-white shadow-lg
+        hover:from-green-400 hover:to-green-600
+        active:scale-95 transition-all
+        animate-pulse hover:animate-none
+        ${className}
+      `}
+    >
+      ENTER WORLD
+    </button>
+  );
 
   return (
     <>
-      <button
-        onClick={() => {
-          resetModal();
-          setShowSelector(true);
-        }}
-        className={`
-          font-pixel text-xs px-4 py-2
-          bg-gradient-to-b from-green-500 to-green-700
-          border-2 border-green-300
-          text-white shadow-lg
-          hover:from-green-400 hover:to-green-600
-          active:scale-95 transition-all
-          animate-pulse hover:animate-none
-          ${className}
-        `}
-      >
-        ENTER WORLD
-      </button>
+      {mainButton}
 
-      {/* Meme Sprite Selector Modal */}
+      {/* Meme Sprite Selector Modal — renders even when in-world for customize access */}
       {showSelector && (
         <div
           className="fixed inset-0 bg-black/95 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"

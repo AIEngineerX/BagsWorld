@@ -436,6 +436,9 @@ export class WorldScene extends Phaser.Scene {
     this.createVirtualJoystick();
     this.createMobileInteractButton();
 
+    // Listen for tutorial step changes from React
+    this.initTutorialListener();
+
     // Connect to agent server for bidirectional communication
     this.connectToAgentServer();
 
@@ -1235,8 +1238,10 @@ export class WorldScene extends Phaser.Scene {
       );
     }
 
-    // Emit Ash's screen position for tutorial targeting (only when tutorial overlay is active)
-    this.emitTutorialTarget();
+    // Keep tutorial arrow positions synced with NPC sprites
+    if (this.tutorialStep === 1 && this.tutorialArrows.length > 0) {
+      this.updateTutorialArrows();
+    }
 
     // Check zone boundaries for transition
     this.checkZoneBoundaries();
@@ -1257,26 +1262,65 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  private tutorialTargetThrottle = 0;
-  private emitTutorialTarget(): void {
-    // Throttle to every 10 frames (~6 updates/sec at 60fps)
-    this.tutorialTargetThrottle++;
-    if (this.tutorialTargetThrottle % 10 !== 0) return;
+  private tutorialStep = -1;
+  private tutorialArrows: Phaser.GameObjects.Text[] = [];
 
-    // Find Ash's sprite and emit her screen position for the tutorial spotlight
-    for (const [, sprite] of this.characterSprites) {
-      if ((sprite as any).isAsh) {
-        const cam = this.cameras.main;
-        const screenX = sprite.x - cam.scrollX;
-        const screenY = sprite.y - cam.scrollY;
-        window.dispatchEvent(
-          new CustomEvent("bagsworld-tutorial-target", {
-            detail: { x: screenX, y: screenY },
-          })
-        );
-        return;
+  private initTutorialListener(): void {
+    window.addEventListener("bagsworld-tutorial-step", ((e: CustomEvent<{ step: number }>) => {
+      const prev = this.tutorialStep;
+      this.tutorialStep = e.detail.step;
+
+      // Clean up arrows when leaving step 1 or when tutorial ends
+      if (prev === 1 && this.tutorialStep !== 1) {
+        this.clearTutorialArrows();
+      }
+
+      // Add bouncing arrows above all NPCs when entering step 1
+      if (this.tutorialStep === 1 && prev !== 1) {
+        this.showTutorialNpcArrows();
+      }
+    }) as EventListener);
+  }
+
+  private showTutorialNpcArrows(): void {
+    this.clearTutorialArrows();
+    this.characterSprites.forEach((sprite) => {
+      if (!sprite.visible) return;
+      const arrow = this.add.text(sprite.x, sprite.y - 45, "\u25BC", {
+        fontSize: "18px",
+        color: "#22c55e",
+        fontFamily: "monospace",
+      });
+      arrow.setOrigin(0.5, 1);
+      arrow.setDepth(200);
+      this.tweens.add({
+        targets: arrow,
+        y: sprite.y - 55,
+        duration: 600,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+      (arrow as any)._tutorialTarget = sprite;
+      this.tutorialArrows.push(arrow);
+    });
+  }
+
+  private updateTutorialArrows(): void {
+    for (const arrow of this.tutorialArrows) {
+      const target = (arrow as any)._tutorialTarget as Phaser.GameObjects.Sprite;
+      if (target && target.active) {
+        arrow.setX(target.x);
       }
     }
+  }
+
+  private clearTutorialArrows(): void {
+    for (const arrow of this.tutorialArrows) {
+      this.tweens.killTweensOf(arrow);
+      arrow.destroy();
+    }
+    this.tutorialArrows = [];
   }
 
   private checkZoneBoundaries(): void {
@@ -2981,6 +3025,9 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private cleanup(): void {
+    // Clean up tutorial
+    this.clearTutorialArrows();
+
     // Remove window event listeners
     if (this.boundToggleMusic) {
       window.removeEventListener("bagsworld-toggle-music", this.boundToggleMusic);
