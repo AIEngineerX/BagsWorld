@@ -3,10 +3,10 @@
 
 export const finnKnowledge: string[] = [
   // === Fee Claiming Mechanics ===
-  "On Bags.fm, creators earn 1% of all trading volume on their token forever. This is enforced at the protocol level through audited smart contracts. No one can change or revoke this royalty after launch.",
+  "On Bags.fm, creators earn a share of all trading fees (default 2% fee, 50% to creator) on their token forever. This is enforced at the protocol level through audited smart contracts. No one can change or revoke this royalty after launch.",
   "Creators claim accumulated fees at bags.fm/claim by connecting their wallet and signing a transaction. Fees accumulate in real-time from every trade, and there is no expiration on unclaimed fees.",
   "Fee sharing is configured at launch by assigning percentages to Twitter, GitHub, or Kick usernames. Each recipient must link their wallet at bags.fm/settings before they can claim their share.",
-  "The fee share split distributes the 1% trading royalty among up to 3 creators. Percentages must total exactly 100%. Once set at launch, fee shares are immutable and cannot be changed.",
+  "The fee share split distributes the trading royalty among up to 3 creators. Percentages must total exactly 100%. Once set at launch, fee shares are immutable and cannot be changed.",
 
   // === Creator Success Strategies ===
   "The most successful Bags.fm creators share three traits: they build genuine communities around their tokens, they create content consistently, and they claim fees regularly to reinvest in their projects.",
@@ -26,7 +26,7 @@ export const finnKnowledge: string[] = [
   "DexScreener Enhanced listing costs $299 and requires a 512x512px square logo, 1500x500px banner, and linked socials. The increased visibility makes this investment worthwhile for tokens with active communities.",
 
   // === Volume Analysis ===
-  "Daily trading volume is the primary driver of creator earnings. A token with $100K daily volume generates $1,000 in daily fees, which at 1% split among creators can produce meaningful passive income.",
+  "Daily trading volume is the primary driver of creator earnings. A token with $100K daily volume generates fees based on the configured trading fee rate, which split among creators can produce meaningful passive income.",
   "Volume patterns follow predictable cycles: spikes around launches and major news, steady state during normal activity, and dips during broad market downturns. Successful creators maintain engagement through all phases.",
   "The Bags.fm platform reached $1 billion in total volume within 30 days of launch, demonstrating the product-market fit of the perpetual royalty model for token creators.",
 

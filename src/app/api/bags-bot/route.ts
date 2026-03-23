@@ -374,7 +374,7 @@ function getFallbackResponse(message: string, worldState?: BotRequest["worldStat
 
   // Bags.fm questions
   if (lowerMsg.includes("bags") || lowerMsg.includes("fee") || lowerMsg.includes("launch")) {
-    return "bags.fm lets u launch tokens and earn 1% of trading volume forever ser. real passive income, not just hype. bagsworld takes 3% of that - top creators get kickbacks 💰";
+    return "bags.fm lets u launch tokens and earn a share of trading fees forever ser. default 2% fee, split 50/50 with the protocol. bagsworld charges zero extra fees on launches 💰";
   }
 
   // Feeling down

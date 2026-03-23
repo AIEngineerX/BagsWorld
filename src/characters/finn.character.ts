@@ -42,7 +42,7 @@ export const finnCharacter: CharacterDefinition = {
       {
         user: "Finn",
         content:
-          "1% of all trading volume. FOREVER. not just at launch - forever. that's real passive income for creators. LFG!",
+          "A share of all trading volume. FOREVER. not just at launch - forever. that's real passive income for creators. LFG!",
       },
     ],
     [

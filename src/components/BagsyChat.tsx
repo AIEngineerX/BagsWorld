@@ -29,7 +29,7 @@ const BAGSY_TOPICS = [
     title: "Why Claim",
     icon: "❓",
     content:
-      "those fees are UR money! every time someone trades ur token, u earn 1%. but u gotta claim it or its just... sitting there. makes me sad tbh",
+      "those fees are UR money! every time someone trades ur token, u earn a share of the trading fee. but u gotta claim it or its just... sitting there. makes me sad tbh",
   },
   {
     title: "bags.fm/claim",
@@ -41,13 +41,13 @@ const BAGSY_TOPICS = [
     title: "Fee FAQs",
     icon: "📚",
     content:
-      "Q: how much do i earn?\nA: 1% of every trade, forever\n\nQ: when can i claim?\nA: anytime! no lockup\n\nQ: is there a minimum?\nA: nope! claim any amount",
+      "Q: how much do i earn?\nA: ur share of trading fees, forever (default 2% fee, split 50/50 with protocol)\n\nQ: when can i claim?\nA: anytime! no lockup\n\nQ: is there a minimum?\nA: nope! claim any amount",
   },
   {
     title: "What are Fees",
     icon: "💰",
     content:
-      "when u launch on @BagsFM, u get 1% of every single trade. FOREVER. not just at launch - forever. this is why bags is different. creators actually eating here",
+      "when u launch on @BagsFM, u earn trading fees on every single trade. FOREVER. not just at launch - forever. this is why bags is different. creators actually eating here",
   },
 ];
 

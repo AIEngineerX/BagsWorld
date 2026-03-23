@@ -171,7 +171,7 @@ function getFallbackResponse(character: string, userMessage: string): string {
         "gotta catch em all... tokens that is! let me show you around BagsWorld!",
       ],
       fees: [
-        "fees here are like experience points! creators earn 1% of all volume forever - like winning a Pokemon league!",
+        "fees here are like experience points! creators earn trading fees on all volume forever - like winning a Pokemon league!",
         "think of fee shares like Pokemon badges - once you earn them, they're yours forever!",
       ],
       default: [
@@ -185,7 +185,7 @@ function getFallbackResponse(character: string, userMessage: string): string {
         "yo! im Finn, built Bags.fm. every building here is a real token earning real fees. LFG.",
       ],
       bags: [
-        "Bags.fm is simple: launch a token, earn 1% of all volume forever. no rugs, locked fee shares. this is the way.",
+        "Bags.fm is simple: launch a token, earn trading fees forever. configurable at launch, locked permanently. this is the way.",
         "we built this so creators actually get paid. $1B volume in under 30 days. the numbers speak.",
       ],
       default: [

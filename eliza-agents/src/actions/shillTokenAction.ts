@@ -77,7 +77,7 @@ bags.fm/token/${token.mint}`);
   // Short tweet
   templates.push(`${symbol} on @BagsFM 🔥
 
-Creator earns 1% forever. Not just at launch - FOREVER.
+Creator earns trading fees forever. Not just at launch - FOREVER.
 
 $${mcap} MC | ${fees} SOL in fees already
 

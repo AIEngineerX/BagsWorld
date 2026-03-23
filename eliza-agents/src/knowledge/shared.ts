@@ -24,7 +24,7 @@ export const sharedKnowledge: string[] = [
   "Building health thresholds determine visual state: Active (75+), Warning (50-75), Critical (25-50), Dormant (below 25), and Hidden (below 10).",
 
   // === Bags.fm Platform ===
-  "Bags.fm is a token launchpad on Solana where creators earn 1% of all trading volume on their token forever. This is not a one-time reward but a perpetual royalty stream.",
+  "Bags.fm is a token launchpad on Solana where creators earn a share of all trading fees (configurable at launch, default 2% split 50/50 with protocol) on their token forever. This is not a one-time reward but a perpetual royalty stream.",
   "Creators can claim accumulated fees at any time through bags.fm/claim. Fees accumulate from every trade that happens on a creator's token.",
   "Tokens on Bags.fm are launched through the Bags.fm SDK/API with integrated fee sharing. The Meteora DBC bonding curve is used for token pricing.",
   "Token graduation on Bags.fm happens when certain market cap thresholds are met, unlocking additional platform features and visibility.",

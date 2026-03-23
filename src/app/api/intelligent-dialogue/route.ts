@@ -148,7 +148,7 @@ function extractCreators(tokens: TokenData[]): CreatorData[] {
         seenUsernames.add(match[1]);
         creators.push({
           username: match[1],
-          lifetimeEarnings: token.volume24h * 0.01, // Estimate 1% fees
+          lifetimeEarnings: token.volume24h * 0.01, // Estimate: default 2% fee × 50% creator share = ~1% effective
           tokenCount: 1,
           topToken: token.symbol,
         });
@@ -220,7 +220,7 @@ async function fetchRealWorldData(): Promise<RealWorldData> {
     data.ecosystemStats.totalVolume24h = data.topTokens.reduce((sum, t) => sum + t.volume24h, 0);
     data.ecosystemStats.activeTokens = data.topTokens.length;
     if (data.ecosystemStats.totalFees24h === 0) {
-      data.ecosystemStats.totalFees24h = data.ecosystemStats.totalVolume24h * 0.01; // 1% fees
+      data.ecosystemStats.totalFees24h = data.ecosystemStats.totalVolume24h * 0.01; // ~1% effective creator share (default 2% fee × 50%)
     }
   }
 

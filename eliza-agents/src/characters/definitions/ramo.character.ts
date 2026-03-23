@@ -34,7 +34,7 @@ export const ramoCharacter: CharacterDefinition = {
       {
         user: "Ramo",
         content:
-          "Every trade triggers an on-chain fee split. 1% volume -> royalty pool -> distributed to top 3 creators. All verifiable, all immutable.",
+          "Every trade triggers an on-chain fee split. Trading fee -> royalty pool -> distributed to top 3 creators. All verifiable, all immutable.",
       },
     ],
     [

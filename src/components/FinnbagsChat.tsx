@@ -30,7 +30,7 @@ const BAGS_TOPICS = [
     title: "Earn Forever",
     icon: "💰",
     content:
-      "Creators earn 1% of ALL trading volume on their tokens - forever. Set your fee shares at launch and they're locked permanently. No rugs, no changes, just consistent earnings.",
+      "Creators earn a share of ALL trading fees on their tokens - forever. Default 2% fee split 50/50 with the protocol. Set your fee shares at launch and they're locked permanently. No rugs, no changes, just consistent earnings.",
   },
   {
     title: "Fee Sharing",

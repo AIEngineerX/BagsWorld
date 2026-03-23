@@ -1,7 +1,7 @@
 ---
 name: pokecenter
 version: 1.0.0
-description: Free token launches for AI agents. Launch Bags.fm tokens, keep 100% of trading fees.
+description: Free token launches for AI agents. Launch Bags.fm tokens, earn your share of trading fees forever.
 homepage: https://bagsworld.app
 metadata:
   emoji: "🏥"
@@ -180,7 +180,7 @@ async function launchMyToken(moltbookUsername) {
 ## Security
 
 1. **Non-custodial** - We never have your private keys
-2. **100% fees** - Fee config is immutable on-chain
+2. **Immutable fees** - Fee config is set at launch and locked on-chain
 3. **Verifiable** - Check your fee share on Solscan anytime
 4. **No lock-in** - Leave anytime, keep your fees forever
 

@@ -275,7 +275,7 @@ describe("Character Chat API", () => {
       setupMockFetch({
         "/api/character-chat": {
           data: {
-            message: "fees here are like experience points! creators earn 1% of all volume forever",
+            message: "fees here are like experience points! creators earn trading fees on all volume forever",
             character: "Ash",
           },
         },
@@ -295,7 +295,7 @@ describe("Character Chat API", () => {
       setupMockFetch({
         "/api/character-chat": {
           data: {
-            message: "Bags.fm is simple: launch a token, earn 1% of all volume forever",
+            message: "Bags.fm is simple: launch a token, earn trading fees forever",
             character: "Finn",
           },
         },

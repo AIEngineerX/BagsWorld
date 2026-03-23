@@ -114,7 +114,7 @@ export const getRecentLaunchesAction: Action = {
         `i see them all. every deployment leaves a trace.`;
     } else if (characterName === 'finn') {
       responseText = `fresh off the launchpad:\n\n${launchList}\n\n` +
-        `every token launched on bags.fm = 1% trading fees to creators forever. that's the model.`;
+        `every token launched on bags.fm = trading fees to creators forever. that's the model.`;
     } else if (characterName === 'ghost') {
       responseText = `recent deployments:\n\n${launchList}\n\n` +
         `each one's on-chain and verifiable. dyor - check the contracts.`;
@@ -132,7 +132,7 @@ export const getRecentLaunchesAction: Action = {
         `sub-second finality. all settled and ready to trade.`;
     } else {
       responseText = `recent launches on bags.fm:\n\n${launchList}\n\n` +
-        `creators earn 1% of all trading volume forever on their tokens. lfg!`;
+        `creators earn trading fees on all volume forever on their tokens. lfg!`;
     }
 
     const response = { text: responseText };

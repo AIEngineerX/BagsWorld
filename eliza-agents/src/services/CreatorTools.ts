@@ -5,8 +5,8 @@ import { getCharacter } from '../characters/index.js';
 import { getLLMService } from './LLMService.js';
 import { getBagsApiService, type TokenInfo, type CreatorFees } from './BagsApiService.js';
 
-// Bags.fm platform standard fee (fixed, not configurable by creators)
-const BAGS_PLATFORM_FEE_PERCENT = 1;
+// Bags.fm default trading fee (configurable at launch, default 2% split 50/50 protocol/creator)
+const BAGS_PLATFORM_FEE_PERCENT = 2;
 
 // Volume thresholds for analysis
 const VOLUME_HIGH = 100000;
@@ -127,7 +127,7 @@ export class CreatorTools {
 
     const fees = await api.getCreatorFees(mint);
 
-    const currentFee = BAGS_PLATFORM_FEE_PERCENT; // Bags.fm uses fixed 1% platform-wide
+    const currentFee = BAGS_PLATFORM_FEE_PERCENT; // Bags.fm default 2% fee, configurable at launch
     const volume24h = token.volume24h || 0;
     const lifetimeFees = token.lifetimeFees || 0;
     const unclaimedAmount = fees?.unclaimedFees || 0;
@@ -147,7 +147,7 @@ export class CreatorTools {
       potentialImpact = 'May reduce volume slightly but increase per-trade earnings';
     } else {
       suggestedFee = 1;
-      reasoning = 'Current volume is healthy - standard 1% fee is optimal';
+      reasoning = 'Current volume is healthy - standard fee rate is optimal';
       potentialImpact = 'Balanced approach for sustainable growth';
     }
 

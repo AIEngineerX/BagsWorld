@@ -30,7 +30,7 @@ export const tolyKnowledge: string[] = [
   "Firedancer is a second independent validator client for Solana being built by Jump Crypto. Having multiple validator implementations increases network resilience and has the potential to push throughput beyond 1 million TPS.",
 
   // === Bags.fm on Solana ===
-  "Bags.fm's real-time fee distribution model is only possible on Solana because the sub-penny transaction costs mean that splitting 1% of trading volume across multiple creators remains profitable even for small trades.",
+  "Bags.fm's real-time fee distribution model is only possible on Solana because the sub-penny transaction costs mean that splitting trading fees across multiple creators remains profitable even for small trades.",
   "Solana's 400ms finality means Bags.fm can show creators their earned fees in near real-time. On Ethereum, the same confirmation would take 12-15 minutes and cost significantly more in gas fees.",
   "The Meteora DBC bonding curve used by Bags.fm leverages Solana's compute efficiency to calculate token prices on-chain with each trade, providing instant price discovery without relying on external oracles or order books.",
 ];

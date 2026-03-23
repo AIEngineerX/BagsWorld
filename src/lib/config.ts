@@ -7,17 +7,18 @@
 // 1. VISIBILITY: Your token becomes a building in a living world
 // 2. AGENT WORKFORCE: 17 AI agents promote, trade, and hype your token
 // 3. ZERO EXTRA FEES: No additional BagsWorld fees on token launches
-// 4. BAGSAPP MARKETPLACE: Fees auto-route to DividendsBot, DEX Boosts,
-//    Compound Liquidity, and BagsAMM for automated token growth
+// 4. BAGS APP STORE: Open developer marketplace — tools that make tokens powerful
 // =============================================================================
 //
-// REVENUE MODEL:
-// - $BagsWorld token fees route to BagsApp Marketplace apps:
-//   30% DividendsBot (auto-pays top 100 holders daily)
-//   30% DEX Boosts (auto-buys DexScreener visibility)
-//   20% Compound Liquidity (deepens token liquidity pool)
-//   20% BagsAMM (automated market maker for volume)
-// - BagsWorld earns Bags.fm partner fees via partnerConfigPda
+// BAGS.FM FEE MODEL (as of March 2026):
+// - Default 2% trading fee, split 50/50 between protocol and creator
+// - 4 configurable fee tiers set at launch (locked permanently)
+// - Up to 100 fee claimers per token via social identity
+// - $5B+ onchain volume, $40M+ paid to creators
+//
+// BAGSWORLD REVENUE:
+// - $BagsWorld token fees route to Bags App Store apps (DividendsBot, etc.)
+// - BagsWorld earns Bags.fm partner fees via partnerConfigPda (default 25%)
 // - Creators launching tokens pay NO extra BagsWorld fees
 //
 // Follow @DaddyGhost on X for updates
@@ -76,8 +77,8 @@ export const ECOSYSTEM_CONFIG = {
   // ECOSYSTEM FUNDING
   // -------------------------------------------------------------------------
   // BagsWorld does NOT take fees on token launches
-  // $BagsWorld token fees route to BagsApp Marketplace apps for automated growth
-  // BagsWorld earns partner fees from Bags.fm on launches through the platform
+  // $BagsWorld token fees route to Bags App Store apps for automated growth
+  // BagsWorld earns partner fees from Bags.fm on launches (default 25% via partnerConfigPda)
   ecosystem: {
     // Ecosystem wallet
     wallet:
@@ -90,7 +91,7 @@ export const ECOSYSTEM_CONFIG = {
     // Fee percentage in basis points (0 = no mandatory ecosystem fee on launches)
     feeBps: 0,
 
-    // BagsApp Marketplace fee structure for $BagsWorld token
+    // Bags App Store fee structure for $BagsWorld token (DividendsBot is confirmed; others may evolve)
     marketplaceApps: {
       dividendsBot: {
         username: "DividendsBot",
@@ -392,7 +393,7 @@ export const ECOSYSTEM_CONFIG = {
     // Finn's quotes about Bags.fm and memecoins
     quotes: [
       "Welcome to BagsWorld! This is where memecoins come to life. Every token you launch becomes a building here.",
-      "We built Bags.fm so creators can earn forever. 1% of all trading volume, for life. No rugs, just bags.",
+      "We built Bags.fm so creators can earn forever. Trading fees for life. $40M+ paid out. No rugs, just bags.",
       "The fastest growing launchpad in the world isn't just hype - it's because we actually ship.",
       "I bought the WIF hat because memes matter. Culture is the new currency.",
       "Over $1B in trading volume in less than 30 days. That's the power of community.",

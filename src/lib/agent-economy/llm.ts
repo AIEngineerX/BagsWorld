@@ -95,7 +95,7 @@ export async function generateTaskResult(opts: TaskResultInput): Promise<TaskRes
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 300,
-        system: `You are ${agentCtx.name} (${opts.agentRole || agentCtx.role}) working at Bags.fm Corp in the BagsWorld ecosystem. Bags.fm is a Solana token launchpad where creators earn 1% trading royalties on every trade.${memoryBlock}
+        system: `You are ${agentCtx.name} (${opts.agentRole || agentCtx.role}) working at Bags.fm Corp in the BagsWorld ecosystem. Bags.fm is a Solana token launchpad where creators earn a share of trading fees on every trade (default 2% fee, split 50/50 with protocol).${memoryBlock}
 
 You are completing a task. Respond with ONLY valid JSON (no markdown fences). The JSON must have:
 - "narrative": a 2-4 sentence human-readable summary of your work and findings

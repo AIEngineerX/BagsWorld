@@ -11,17 +11,17 @@ export const DIALOGUE = {
   rival_intro: [
     "Before we go further, meet BAGSY!",
     "Bagsy is here to explain how FEE CLAIMERS work.",
-    "Every trade of your token generates a 1% fee. That fee gets split between your FEE CLAIMERS.",
-    "Fee claimers are the people you designate — yourself, collaborators, anyone you choose!",
+    "Every trade of your token generates a trading fee — the default is 2%, split between the protocol and your FEE CLAIMERS.",
+    "Fee claimers are the people you designate — yourself, collaborators, up to 100 people!",
     "Each claimer verifies their social account on Bags and links a wallet to claim their share.",
-    "One more thing — fee shares are PERMANENT. Once you launch, they're locked forever!",
+    "One more thing — fee configuration is PERMANENT. Once you launch, it's locked forever!",
   ],
   token_concept: [
     "Now, it's time to create your first TOKEN!",
     "Tell me about your idea, and I'll help you bring it to life!",
   ],
   education_fees: [
-    "Every trade of your TOKEN generates a 1% fee — split between the FEE CLAIMERS you just set up!",
+    "Every trade of your TOKEN generates fees — your share goes to the FEE CLAIMERS you just set up!",
     "Each claimer verifies their social account on Bags and links a wallet. Then they tap CLAIM to collect!",
     "Gotta claim 'em all!",
   ],

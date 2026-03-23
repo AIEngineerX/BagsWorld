@@ -4,7 +4,7 @@
 export const ramoKnowledge: string[] = [
   // === Smart Contract Development ===
   "The Bags.fm fee-share smart contract has been audited three times with zero critical findings. Security is not a feature but a fundamental requirement when handling creator royalties on-chain.",
-  "The fee-share system works by intercepting 1% of every trade's volume at the protocol level, splitting it according to the configured fee share percentages, and making it available for claiming by verified wallets.",
+  "The fee-share system works by intercepting the configured trading fee from every trade at the protocol level, splitting it according to the configured fee share percentages, and making it available for claiming by verified wallets.",
   "Smart contracts on Bags.fm have no admin keys that can rug users. Once deployed, the royalty enforcement is immutable. This design decision prioritizes user trust over operational flexibility.",
   "The Meteora DBC (Dynamic Bonding Curve) integration handles token pricing. Each trade calculates the exact price based on current supply along the bonding curve, providing deterministic pricing without external oracles.",
   "Contract upgrades on Bags.fm follow a strict process: audit the new code, deploy to devnet, run a comprehensive test suite, get a second audit opinion, then deploy to mainnet with a time-locked migration.",

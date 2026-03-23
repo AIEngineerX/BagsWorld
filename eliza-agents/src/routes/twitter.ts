@@ -216,7 +216,7 @@ function generateShillContent(token: {
     `${symbol} creators are earning fees while you're still launching on pump.fun\n\njust saying\n\nbags.fm/token/${token.mint}`,
 
     // Call to action
-    `looking for alpha?\n\n${symbol} - ${mcap} MC, ${fees} SOL in creator fees already\n\ncreator gets 1% of every trade. forever.\n\nbags.fm/token/${token.mint}`,
+    `looking for alpha?\n\n${symbol} - ${mcap} MC, ${fees} SOL in creator fees already\n\ncreator earns trading fees on every trade. forever.\n\nbags.fm/token/${token.mint}`,
   ];
 }
 

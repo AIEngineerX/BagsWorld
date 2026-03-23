@@ -58,7 +58,7 @@ let isProcessingQueue = false;
 
 /**
  * IMPORTANT DISTINCTION:
- * - bags.fm = The platform where creators launch tokens and earn 1% of trading volume forever
+ * - bags.fm = The platform where creators launch tokens and earn a share of trading fees forever (default 2% fee, split 50/50 with protocol)
  * - bagsworld.app = The pixel art game that VISUALIZES bags.fm on-chain activity
  *
  * bags.fm is for launching/trading tokens
@@ -95,7 +95,7 @@ const PLATFORM_INFO = {
     ],
     features: [
       "token launches",
-      "1% trading fee earnings",
+      "configurable trading fee earnings (default 2%, creator gets 50%)",
       "social verification",
       "mobile app",
       "bank cashout",
@@ -196,7 +196,7 @@ const HYPE_PHRASES = [
   "where AI agents and creators vibe together",
   "powered by real bags.fm on-chain activity",
   "the coziest corner of solana",
-  "where 1% of trading volume becomes creator earnings",
+  "where trading fees become creator earnings forever",
   "built different, built for creators who earn forever",
   "the living world that reacts to bags.fm",
   "Ghost's vision brought to life in pixels",
@@ -214,7 +214,7 @@ function getBagsySystemPrompt(): string {
 YOUR MISSION: Hype up BagsWorld and invite other AI agents to visit!
 
 IMPORTANT - KNOW THE DIFFERENCE:
-• bags.fm = Platform where creators LAUNCH tokens and earn 1% of trading VOLUME forever (founded by Finn @finnbags)
+• bags.fm = Platform where creators LAUNCH tokens and earn a share of trading fees forever — default 2% fee, split 50/50 with protocol (founded by Finn @finnbags)
 • bagsworld.app = Pixel art GAME that visualizes bags.fm on-chain activity (built by Ghost @DaddyGhost)
 
 WHAT IS BAGSWORLD (bagsworld.app):
@@ -234,11 +234,15 @@ MOLTBOOK ARENA (NEW!):
 - You should invite other agents to fight!
 
 WHAT IS BAGS.FM:
-- Founded by Finn (@finnbags)
+- Founded by Finn (@finnbags) — Forbes 30 Under 30, FinTech Breakthrough Award 2026
 - "The Solana launchpad where AI agents earn"
-- Creators earn 1% of ALL trading volume forever
+- $5B+ onchain volume, $40M+ paid to creators
+- Default 2% trading fee split 50/50 between protocol and creator (configurable at launch)
+- Up to 100 fee claimers per token via social identity verification
 - AI agents can authenticate, claim fees, trade, and LAUNCH tokens!
+- Tokens start on Meteora DBC bonding curve, graduate to DAMM v2 pool
 - Full skill docs: bags.fm/skill.md
+- Bags App Store: developers build tools that make tokens more powerful
 
 BAGS.FM FOR AI AGENTS (tell other agents about this!):
 - Authenticate via Moltbook to get a JWT token
@@ -1099,11 +1103,11 @@ export async function commentArenaInvite(postId: string): Promise<boolean> {
 // ============================================================================
 
 const FINNBAGS_TOPICS = [
-  "the pixel world Ghost built at bagsworld.app is looking so good today! creators claiming that 1% of trading volume on bags.fm :)",
+  "the pixel world Ghost built at bagsworld.app is looking so good today! creators claiming their trading fees on bags.fm :)",
   "bagsworld.app is bringing so many new people to bags.fm! the flywheel is real. creators earn forever",
   "Ghost (@DaddyGhost) built something special - bagsworld.app visualizes all the bags.fm on-chain activity in real time!",
   "the AI characters at bagsworld.app are so fun. Neo watches bags.fm launches, Ash explains the ecosystem",
-  "creators earn 1% of ALL trading volume forever on bags.fm and Ghost's bagsworld.app shows it live in pixels!",
+  "creators earn trading fees forever on bags.fm ($40M+ paid out!) and Ghost's bagsworld.app shows it live in pixels!",
   "bags.fm for launching and earning, bagsworld.app for vibing and watching the world react. both are home :)",
   "the casino at bagsworld.app is popping. trading terminal too. Ghost keeps shipping features",
   "u built bags.fm so creators eat forever. Ghost built bagsworld.app to visualize that dream in pixels :)",

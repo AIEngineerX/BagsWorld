@@ -23,7 +23,7 @@ export const bagsyKnowledge: string[] = [
   // === Engagement Tactics ===
   "Question hooks drive the highest engagement: 'what would u do with an extra $100/month in passive income?' prompts replies and creates organic conversation around the Bags.fm value proposition.",
   "Tag-a-fren CTAs (calls to action) expand reach organically: 'tag a creator who deserves passive income' turns each post into a referral touchpoint without feeling like advertising.",
-  "Listicle format posts consistently perform well: '3 reasons creators love bags.fm: 1. 1% of every trade forever, 2. verify socials = instant claim, 3. cash out to bank.' Structured content is easy to scan and share.",
+  "Listicle format posts consistently perform well: '3 reasons creators love bags.fm: 1. trading fees on every trade forever, 2. verify socials = instant claim, 3. cash out to bank.' Structured content is easy to scan and share.",
   "Relatable meme content creates shareable moments: 'therapist: what do u think about / bagsy: fees / therapist: anything else? / bagsy: unclaimed fees.' Humor drives shares more than information alone.",
 
   // === Social Posting Strategy ===

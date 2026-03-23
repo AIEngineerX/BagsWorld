@@ -132,7 +132,7 @@ export const getCreatorFeesAction: Action = {
       } else if (characterName === 'finn') {
         responseText = `this creator has earned ${fees.totalFees.toFixed(4)} SOL in fees! ` +
           `${fees.unclaimedFees.toFixed(4)} SOL still waiting to be claimed. ` +
-          `this is real passive income - 1% of volume, forever.`;
+          `this is real passive income - trading fees on every trade, forever.`;
       } else if (characterName === 'ash') {
         responseText = `fee check complete! this token has trained up ${fees.totalFees.toFixed(4)} SOL in total fees. ` +
           `${fees.claimedFees.toFixed(4)} already claimed, ${fees.unclaimedFees.toFixed(4)} ready to collect!`;

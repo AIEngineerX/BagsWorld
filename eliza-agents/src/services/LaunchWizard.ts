@@ -226,8 +226,8 @@ const STEP_GUIDANCE: Record<LaunchStep, StepGuidance> = {
   fee_config: {
     title: "Configure Creator Fees",
     oakAdvice:
-      "Ah, the creator fee - Finn's wonderful invention! On Bags.fm, you earn a percentage of every trade forever. The standard is 1%, but you can set 0-5%. Higher fees mean more earnings but might discourage trading. What percentage would you like?",
-    prompt: "Enter your creator fee percentage (0-5, default is 1)",
+      "Ah, the creator fee - Finn's wonderful invention! On Bags.fm, you earn a percentage of every trade forever. The default is 2%, but you can set 0-5%. Higher fees mean more earnings but might discourage trading. What percentage would you like?",
+    prompt: "Enter your creator fee percentage (0-5, default is 2)",
     validation: (value: string) => {
       const num = parseFloat(value);
       if (isNaN(num)) return { valid: false, error: "Please enter a number" };
@@ -237,7 +237,7 @@ const STEP_GUIDANCE: Record<LaunchStep, StepGuidance> = {
     },
     examples: ["1", "0.5", "2"],
     tips: [
-      "1% is the most common choice",
+      "2% is the default choice",
       "Lower fees can encourage more trading volume",
       "Fees accumulate and can be claimed anytime",
     ],
@@ -444,7 +444,7 @@ export class LaunchWizard {
       userId,
       currentStep: "welcome",
       data: {
-        creatorFeePercent: 1, // Default to 1%
+        creatorFeePercent: 2, // Default to 2%
         initialBuySol: DEFAULT_INITIAL_BUY_SOL,
       },
       messages: [],
