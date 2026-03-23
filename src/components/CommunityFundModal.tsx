@@ -282,10 +282,32 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
         {/* How It Works Tab */}
         {activeTab === "fund" && (
           <div className="p-4 space-y-4">
-            {/* Wallet Balance */}
-            <div className="bg-gradient-to-br from-bags-darker to-black rounded-lg p-4 border border-bags-gold/50">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-pixel text-bags-gold text-xs">Ecosystem Wallet</h3>
+            {/* Main Message — lead with what it does, not wallet balance */}
+            <div className="bg-bags-darker rounded-lg p-4 border border-bags-green/30 text-center">
+              <div className="text-3xl mb-2">⚡</div>
+              <h3 className="font-pixel text-bags-green text-[11px] mb-2">Bags App Store</h3>
+              <p className="font-pixel text-gray-300 text-[9px] leading-relaxed">
+                $BagsWorld token fees auto-route to{" "}
+                <span className="text-bags-gold">Bags App Store</span> apps for automated token
+                growth — dividends, DEX boosts, liquidity, and volume support.
+              </p>
+            </div>
+
+            {/* Ecosystem Wallet — compact inline, not hero element */}
+            <div className="bg-gradient-to-br from-bags-darker to-black rounded-lg p-3 border border-bags-gold/30">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-pixel text-bags-gold text-[9px]">Ecosystem Wallet</h3>
+                  {walletInfo.isLoading ? (
+                    <span className="font-pixel text-gray-400 text-[9px] animate-pulse">...</span>
+                  ) : walletInfo.error ? (
+                    <span className="font-pixel text-red-400 text-[8px]">error</span>
+                  ) : (
+                    <span className="font-pixel text-bags-green text-[10px]">
+                      {walletInfo.balance.toFixed(4)} SOL
+                    </span>
+                  )}
+                </div>
                 <a
                   href={solscanUrl}
                   target="_blank"
@@ -308,35 +330,10 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
                   </svg>
                 </a>
               </div>
-              <div className="bg-black/50 rounded-lg p-4 text-center mb-3">
-                {walletInfo.isLoading ? (
-                  <div className="font-pixel text-gray-400 text-sm animate-pulse">Loading...</div>
-                ) : walletInfo.error ? (
-                  <div className="font-pixel text-red-400 text-[10px]">{walletInfo.error}</div>
-                ) : (
-                  <>
-                    <div className="font-pixel text-4xl text-bags-green mb-1">
-                      {walletInfo.balance.toFixed(4)}
-                    </div>
-                    <div className="font-pixel text-gray-500 text-[10px]">SOL Balance</div>
-                  </>
-                )}
-              </div>
-              <div className="bg-black/30 rounded p-2">
-                <p className="font-mono text-[8px] text-gray-500 break-all text-center">
-                  {walletAddress}
-                </p>
-              </div>
-            </div>
-
-            {/* Main Message */}
-            <div className="bg-bags-darker rounded-lg p-4 border border-bags-green/30 text-center">
-              <div className="text-3xl mb-2">⚡</div>
-              <h3 className="font-pixel text-bags-green text-[11px] mb-2">Bags App Store</h3>
-              <p className="font-pixel text-gray-300 text-[9px] leading-relaxed">
-                $BagsWorld token fees auto-route to{" "}
-                <span className="text-bags-gold">Bags App Store</span> apps for automated token
-                growth — dividends, DEX boosts, liquidity, and volume support.
+              <p className="font-mono text-[7px] text-gray-600 mt-1 break-all">{walletAddress}</p>
+              <p className="font-pixel text-[7px] text-gray-500 mt-1">
+                Balance is low when fees are actively distributed to apps — that means the system is
+                working.
               </p>
             </div>
 
