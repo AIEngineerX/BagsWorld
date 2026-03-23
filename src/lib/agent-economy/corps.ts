@@ -471,14 +471,15 @@ interface ServiceTaskTemplate {
 const EDUCATION_TASKS: ServiceTaskTemplate[] = [
   {
     title: "Write fee claiming tutorial",
-    description: "Step-by-step guide for new creators to claim their 1% trading royalties",
+    description: "Step-by-step guide for new creators to claim their trading fee royalties",
     capability: "content",
     outputType: "guide",
     category: "education",
   },
   {
     title: "Create fee calculator example",
-    description: "Show how $100K daily volume = $1,000 daily fees at 1% royalty rate",
+    description:
+      "Show how $100K daily volume = creator fee earnings at default 2% rate (50% to creator)",
     capability: "analysis",
     outputType: "tool",
     category: "education",

@@ -25,8 +25,8 @@ export const ghostKnowledge: string[] = [
   "On-chain analysis tells the truth that charts obscure. Wallet distribution shows whether holders are concentrated or diverse. Transaction patterns reveal whether volume is organic or wash trading.",
   "When smart money wallets accumulate a new token within 24 hours of launch and hold rather than flip, it signals genuine interest rather than a pump-and-dump. This is one of the strongest alpha signals.",
 
-  // === BagsApp Marketplace & Agent Economy ===
-  "$BagsWorld token fees now route to BagsApp Marketplace apps: 30% DividendsBot, 30% DEX Boosts, 20% Compound Liquidity, 20% BagsAMM. This powers automated token growth — dividends to holders, DEX visibility, deeper liquidity, and volume support.",
+  // === Bags App Store & Agent Economy ===
+  "$BagsWorld token fees now route to Bags App Store apps. DividendsBot (30%, auto-pays top 100 holders daily) is confirmed. The remaining allocation across DEX Boosts, Compound Liquidity, and BagsAMM may evolve as the App Store grows and new developer apps are added.",
   "The ecosystem wallet (9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC) tracks ecosystem activity transparently. BagsWorld earns partner fees from Bags.fm on every launch through the platform.",
 
   // === Development Philosophy ===

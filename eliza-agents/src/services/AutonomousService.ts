@@ -1548,7 +1548,7 @@ export class AutonomousService extends Service {
         "Weather reflects ecosystem health: Sunny (80%+), Cloudy, Rain, Storm, Apocalypse (<20%)",
 
         // Platform knowledge
-        "Bags.fm charges ZERO extra fees to creators - BagsApp Marketplace handles token growth automatically",
+        "Bags.fm charges ZERO extra fees to creators - Bags App Store handles token growth automatically",
         "Everything is on-chain verifiable - no admin keys, contracts audited 3x, immutable",
         "Built on Solana - 65k TPS, 400ms finality, sub-penny fees make this all possible",
       ],

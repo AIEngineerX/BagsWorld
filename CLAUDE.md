@@ -449,16 +449,18 @@ Professor Oak can generate complete token launch assets using AI:
 
 ## Community Funding Model
 
-BagsWorld charges **zero extra fees** to creators. $BagsWorld token fees route to BagsApp Marketplace apps for automated token growth.
+BagsWorld charges **zero extra fees** to creators. $BagsWorld token fees route to Bags App Store apps for automated token growth. The marketplace is now open to developers.
 
-**BagsApp Marketplace Split:**
+**Bags App Store Split:**
 
-| App | Share | Function |
-|-----|-------|----------|
-| DividendsBot | 30% | Auto-pays top 100 holders daily |
-| DEX Boosts | 30% | Auto-buys DexScreener visibility |
-| Compound Liquidity | 20% | Deepens token liquidity pool |
-| BagsAMM | 20% | Automated market maker for volume |
+| App | Share | Function | Status |
+|-----|-------|----------|--------|
+| DividendsBot | 30% | Auto-pays top 100 holders daily | Confirmed |
+| DEX Boosts | 30% | Auto-buys DexScreener visibility | May evolve |
+| Compound Liquidity | 20% | Deepens token liquidity pool | May evolve |
+| BagsAMM | 20% | Automated market maker for volume | May evolve |
+
+> DividendsBot is confirmed. The remaining split may evolve as the Bags App Store grows and new developer apps are added.
 
 **Agent-as-a-Service:** 17 AI agents promote, trade, and hype every token launched through BagsWorld. BagsWorld earns partner fees from Bags.fm via `partnerConfigPda`.
 

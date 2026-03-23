@@ -469,16 +469,18 @@ BagsWorld/
 
 ---
 
-## BagsApp Marketplace & Agent Economy
+## Bags App Store & Agent Economy
 
-BagsWorld charges **zero fees** to creators. $BagsWorld token fees route to [BagsApp Marketplace](https://x.com/BagsApp/status/2027292286590296234) apps:
+BagsWorld charges **zero fees** to creators. $BagsWorld token fees route to [Bags App Store](https://x.com/BagsApp/status/2027292286590296234) apps. The marketplace is now open to developers.
 
-| App | Share | Function |
-|-----|-------|----------|
-| DividendsBot | 30% | Auto-pays top 100 holders daily |
-| DEX Boosts | 30% | Auto-buys DexScreener visibility |
-| Compound Liquidity | 20% | Deepens token liquidity pool |
-| BagsAMM | 20% | Automated market maker for volume |
+| App | Share | Function | Status |
+|-----|-------|----------|--------|
+| DividendsBot | 30% | Auto-pays top 100 holders daily | Confirmed |
+| DEX Boosts | 30% | Auto-buys DexScreener visibility | May evolve |
+| Compound Liquidity | 20% | Deepens token liquidity pool | May evolve |
+| BagsAMM | 20% | Automated market maker for volume | May evolve |
+
+> DividendsBot is confirmed. The remaining split may evolve as the Bags App Store grows and new developer apps are added.
 
 **Agent-as-a-Service:** 17 AI agents promote, trade, and hype every token launched through BagsWorld. Built by [@DaddyGhost](https://x.com/DaddyGhost).
 

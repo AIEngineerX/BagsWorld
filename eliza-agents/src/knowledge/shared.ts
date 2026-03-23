@@ -28,7 +28,7 @@ export const sharedKnowledge: string[] = [
   "Creators can claim accumulated fees at any time through bags.fm/claim. Fees accumulate from every trade that happens on a creator's token.",
   "Tokens on Bags.fm are launched through the Bags.fm SDK/API with integrated fee sharing. The Meteora DBC bonding curve is used for token pricing.",
   "Token graduation on Bags.fm happens when certain market cap thresholds are met, unlocking additional platform features and visibility.",
-  "BagsWorld charges zero extra fees to creators. $BagsWorld token fees route to BagsApp Marketplace apps (DividendsBot, DEX Boosts, Compound Liquidity, BagsAMM) for automated token growth.",
+  "BagsWorld charges zero extra fees to creators. $BagsWorld token fees route to Bags App Store apps for automated token growth. DividendsBot (auto-pays top 100 holders daily) is confirmed; the marketplace is now open to developers building new growth apps.",
   "Getting Bagged means someone launched a coin using your content, meme, or idea on Bags.fm, and you earn from every trade. Verify your X/TikTok/Instagram at bags.fm to claim earnings.",
   "Fee sharing on Bags.fm is configured at token launch by adding Twitter, GitHub, or Kick usernames and assigning percentages that must total 100%. Each person needs their wallet linked at bags.fm/settings.",
 
@@ -46,8 +46,8 @@ export const sharedKnowledge: string[] = [
   "The Casino in BagsCity requires a minimum of 1 million $BagsWorld tokens to play. This token gate ensures committed community participation.",
   "Ballers Valley showcases the top token holders with luxury mansion representations. Mansion size and detail reflect holding amounts.",
 
-  // === BagsApp Marketplace & Agent Economy ===
-  "$BagsWorld token fees auto-route to BagsApp Marketplace: 30% DividendsBot (auto-pays top 100 holders daily), 30% DEX Boosts (auto-buys DexScreener visibility), 20% Compound Liquidity (deepens pool), 20% BagsAMM (volume support).",
+  // === Bags App Store & Agent Economy ===
+  "$BagsWorld token fees auto-route to the Bags App Store. DividendsBot (auto-pays top 100 holders daily) is confirmed at 30%. The remaining split across DEX Boosts, Compound Liquidity, and BagsAMM may evolve as the App Store grows and new developer apps are added.",
   "All ecosystem activity is verifiable on-chain via Solscan. The ecosystem wallet address is 9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC.",
   "BagsWorld is an Agent-as-a-Service platform: 17 AI agents promote, trade, and hype every token launched through BagsWorld. The agents are the unique value prop no other launchpad offers.",
 

@@ -4,7 +4,7 @@
 
 BagsWorld is a **self-evolving pixel art game** that visualizes real [Bags.fm](https://bags.fm) on-chain activity on Solana. Every building in the world represents a real token launched through Bags.fm. World health, weather, building sizes, character moods, and events all react to **live fee data** from the blockchain. 17 AI characters powered by ElizaOS roam the world autonomously, and agent systems can trade, claim fees, and post to social networks independently.
 
-**Zero extra fees to creators.** $BagsWorld token fees route to BagsApp Marketplace apps (DividendsBot, DEX Boosts, Compound Liquidity, BagsAMM). BagsWorld is an Agent-as-a-Service platform — 17 AI agents promote, trade, and hype every token launched through it.
+**Zero extra fees to creators.** $BagsWorld token fees route to Bags App Store apps (DividendsBot confirmed; DEX Boosts, Compound Liquidity, BagsAMM may evolve as the marketplace grows). BagsWorld is an Agent-as-a-Service platform — 17 AI agents promote, trade, and hype every token launched through it.
 
 ```
 Real Solana Activity --> API Enrichment --> Game State --> Pixel Art World
@@ -860,16 +860,18 @@ npm run typecheck        # TypeScript check
 
 ---
 
-## BagsApp Marketplace & Agent Economy
+## Bags App Store & Agent Economy
 
-BagsWorld charges **zero extra fees** to token creators. $BagsWorld token fees route to BagsApp Marketplace apps for automated growth:
+BagsWorld charges **zero extra fees** to token creators. $BagsWorld token fees route to Bags App Store apps for automated growth. The marketplace is now open to developers.
 
-| App | Share | Function |
-|-----|-------|----------|
-| DividendsBot | 30% | Auto-pays top 100 holders daily |
-| DEX Boosts | 30% | Auto-buys DexScreener visibility |
-| Compound Liquidity | 20% | Deepens token liquidity pool |
-| BagsAMM | 20% | Automated market maker for volume |
+| App | Share | Function | Status |
+|-----|-------|----------|--------|
+| DividendsBot | 30% | Auto-pays top 100 holders daily | Confirmed |
+| DEX Boosts | 30% | Auto-buys DexScreener visibility | May evolve |
+| Compound Liquidity | 20% | Deepens token liquidity pool | May evolve |
+| BagsAMM | 20% | Automated market maker for volume | May evolve |
+
+> DividendsBot is confirmed. The remaining split may evolve as the Bags App Store grows and new developer apps are added.
 
 BagsWorld is an **Agent-as-a-Service** platform: 17 AI agents promote, trade, and hype every token launched through BagsWorld. Revenue comes from Bags.fm partner fees via `partnerConfigPda`.
 
