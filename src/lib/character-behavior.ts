@@ -66,8 +66,8 @@ export function initCharacterBehavior(): void {
   // Start polling for behaviors
   state.pollInterval = setInterval(pollBehaviors, BEHAVIOR_POLL_INTERVAL);
 
-  // Initial poll after short delay (let world load)
-  setTimeout(pollBehaviors, 3000);
+  // Initial poll after game has loaded (defer to avoid saturating event loop during page load)
+  setTimeout(pollBehaviors, 15000);
 }
 
 /**

@@ -1433,10 +1433,10 @@ export function initDialogueSystem(): void {
   // Start scheduled conversations (every 35 seconds for demo visibility)
   startScheduledConversations(35000);
 
-  // Trigger initial conversation quickly (3 seconds after load)
+  // Trigger initial conversation after game has loaded (defer to avoid saturating event loop)
   setTimeout(() => {
     startConversation({ type: "scheduled", interval: 15000 }, "token_launch");
-  }, 3000);
+  }, 15000);
 }
 
 /**
