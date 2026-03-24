@@ -19,7 +19,7 @@ import {
   type BagsWorldHolder,
 } from "@/lib/world-calculator";
 import { Connection, PublicKey } from "@solana/web3.js";
-import { getTokensByMints, searchTokens, type DexPair } from "@/lib/dexscreener-api";
+import { getTokensByMints, type DexPair } from "@/lib/dexscreener-api";
 import {
   emitEvent,
   startCoordinator,
@@ -167,9 +167,13 @@ interface SDKEnrichResult {
 }
 const sdkEnrichCache = new Map<string, SDKEnrichResult>();
 
-// Platform-wide token discovery cache (DexScreener search, 5 min TTL)
+// Platform-wide token discovery cache (api2.bags.fm, 5 min TTL)
 let platformDiscoveryCache: { tokens: RegisteredToken[]; timestamp: number } | null = null;
 const PLATFORM_DISCOVERY_TTL = 5 * 60_000; // 5 minutes
+const platformThemeCache = new Map<
+  string,
+  { theme: string; change24h: number; volume24h: number }
+>();
 
 // Visitor sprite URL cache (wallet -> spriteUrl, persisted across requests)
 const visitorSpriteCache = new Map<string, string>();
@@ -198,35 +202,163 @@ function generateVisitorSprites(
   }
 }
 
+function assignPlatformTheme(
+  mint: string,
+  change24h: number,
+  volume24h: number
+): "rocket" | "volcano" | "palace" | "crystal" {
+  const cached = platformThemeCache.get(mint);
+  if (cached) {
+    if (cached.theme === "rocket" && change24h > 10) return "rocket" as const;
+    if (cached.theme === "volcano" && change24h < -10) return "volcano" as const;
+    if (cached.theme === "palace" && volume24h > 40000) return "palace" as const;
+  }
+
+  let theme: "rocket" | "volcano" | "palace" | "crystal";
+  if (change24h > 20) theme = "rocket";
+  else if (change24h < -20) theme = "volcano";
+  else if (volume24h > 50000) theme = "palace";
+  else theme = "crystal";
+
+  platformThemeCache.set(mint, { theme, change24h, volume24h });
+  return theme;
+}
+
+// X slots chosen to avoid overlap with existing static buildings and characters:
+// ascension: no conflicts
+// trending: Casino=50, Arcade=520 — slots 230/420/800 clear
+// main_city: PokeCenter=280, Bagsy=350 — moved slot 1 from 250→150
+// labs: Characters at 180/320/460/600/740/880 — slots shifted to gaps
+// moltbook: agent HQs dynamic — slots 220/500/780 clear
+const PLATFORM_ZONE_MAP: Array<{ zone: string; slots: number[] }> = [
+  { zone: "ascension", slots: [160, 720, 1000] },
+  { zone: "trending", slots: [230, 420, 800] },
+  { zone: "main_city", slots: [150, 550, 850] },
+  { zone: "labs", slots: [250, 530, 810] },
+  { zone: "moltbook", slots: [220, 500, 780] },
+];
+
+function assignPlatformZone(rank: number): { zone: string; slotX: number } {
+  const zoneIndex = Math.floor((rank - 1) / 3);
+  const slotIndex = (rank - 1) % 3;
+  const zoneConfig = PLATFORM_ZONE_MAP[zoneIndex] || PLATFORM_ZONE_MAP[4];
+  return {
+    zone: zoneConfig.zone,
+    slotX: zoneConfig.slots[slotIndex] || zoneConfig.slots[0],
+  };
+}
+
+// Composite trending score — absolute volume with momentum and breadth multipliers
+function calculateTrendingScore(token: {
+  stats6h?: { buyVolume?: number; sellVolume?: number; priceChange?: number; numTraders?: number };
+  stats24h?: { buyVolume?: number; sellVolume?: number; priceChange?: number; numTraders?: number };
+}): number {
+  const s6 = token.stats6h || {};
+  const s24 = token.stats24h || {};
+  const volume6h = (s6.buyVolume || 0) + (s6.sellVolume || 0);
+  const traders24h = s24.numTraders || 0;
+  const priceChange6h = s6.priceChange || 0;
+
+  const momentum = 1 + Math.max(priceChange6h, -50) / 100;
+  const breadth = Math.log(traders24h + 1);
+
+  return volume6h * momentum * breadth;
+}
+
 async function discoverPlatformTokens(excludeMints: Set<string>): Promise<RegisteredToken[]> {
   const now = Date.now();
   if (platformDiscoveryCache && now - platformDiscoveryCache.timestamp < PLATFORM_DISCOVERY_TTL) {
-    // Return cached results, filtered against current excludeMints
     return platformDiscoveryCache.tokens.filter((t) => !excludeMints.has(t.mint));
   }
 
   try {
-    // DexScreener search "BAGS" returns ~30 active Bags.fm pairs (1 API call)
-    const pairs = await searchTokens("BAGS");
-    // Filter to bags dex only (confirmed Bags.fm tokens) and sort by volume
-    const bagsPairs = pairs
-      .filter((p) => p.dexId === "bags")
-      .sort((a, b) => (b.volume?.h24 || 0) - (a.volume?.h24 || 0))
-      .slice(0, 10); // Top 10 by volume
+    // Single call to Bags.fm top tokens — returns 170+ tokens with rich stats
+    const res = await fetch("https://api2.bags.fm/api/v1/token-launch/top-tokens/lifetime-fees", {
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) {
+      console.warn(`[WorldState] Bags top-tokens API returned ${res.status}`);
+      return [];
+    }
+    const data = await res.json();
+    const tokens: Array<{
+      token: string;
+      lifetimeFees: string;
+      tokenInfo?: {
+        name?: string;
+        symbol?: string;
+        mcap?: number;
+        holderCount?: number;
+        stats1h?: {
+          buyVolume?: number;
+          sellVolume?: number;
+          priceChange?: number;
+          numTraders?: number;
+        };
+        stats6h?: {
+          buyVolume?: number;
+          sellVolume?: number;
+          priceChange?: number;
+          numTraders?: number;
+        };
+        stats24h?: {
+          buyVolume?: number;
+          sellVolume?: number;
+          priceChange?: number;
+          numTraders?: number;
+        };
+      };
+    }> = data.response || data;
 
-    const platformTokens: RegisteredToken[] = bagsPairs.map((pair) => ({
-      mint: pair.baseToken.address,
-      name: pair.baseToken.name,
-      symbol: pair.baseToken.symbol,
-      creator: "platform",
-      createdAt: Date.now() - 86400000, // Not known, assume recent
-      isPlatform: true,
-    }));
+    if (!tokens.length) {
+      console.log("[WorldState] No tokens from Bags top-tokens API");
+      return [];
+    }
+
+    // Score and rank by composite trending score
+    const scored = tokens
+      .filter((t) => t.tokenInfo && !excludeMints.has(t.token))
+      .map((t) => ({
+        ...t,
+        trendingScore: calculateTrendingScore(t.tokenInfo!),
+        volume24h:
+          (t.tokenInfo!.stats24h?.buyVolume || 0) + (t.tokenInfo!.stats24h?.sellVolume || 0),
+        change24h: t.tokenInfo!.stats24h?.priceChange || 0,
+      }))
+      .filter((t) => t.volume24h > 0)
+      .sort((a, b) => b.trendingScore - a.trendingScore)
+      .slice(0, 15);
+
+    // Build RegisteredTokens with theme and zone assignments
+    const platformTokens: RegisteredToken[] = scored.map((t, index) => {
+      const rank = index + 1;
+      const theme = assignPlatformTheme(t.token, t.change24h, t.volume24h);
+      const { zone, slotX } = assignPlatformZone(rank);
+
+      return {
+        mint: t.token,
+        name: t.tokenInfo?.name || "Unknown",
+        symbol: t.tokenInfo?.symbol || "???",
+        creator: "platform",
+        createdAt: Date.now() - 86400000,
+        isPlatform: true,
+        platformTheme: theme,
+        platformRank: rank,
+        platformZone: zone,
+        platformSlotX: slotX,
+      };
+    });
+
+    // Evict stale theme cache entries
+    const currentMints = new Set(platformTokens.map((t) => t.mint));
+    for (const mint of platformThemeCache.keys()) {
+      if (!currentMints.has(mint)) platformThemeCache.delete(mint);
+    }
 
     platformDiscoveryCache = { tokens: platformTokens, timestamp: now };
     console.log(
-      `[WorldState] Discovered ${platformTokens.length} platform tokens:`,
-      platformTokens.map((t) => t.symbol).join(", ")
+      `[WorldState] Discovered ${platformTokens.length} platform tokens via trending score:`,
+      platformTokens.map((t) => `#${t.platformRank} ${t.symbol}(${t.platformTheme})`).join(", ")
     );
 
     return platformTokens.filter((t) => !excludeMints.has(t.mint));
@@ -620,8 +752,12 @@ interface RegisteredToken {
   styleOverride?: number | null;
   healthOverride?: number | null;
   zoneOverride?: ZoneType | null;
-  // Platform discovery flag
+  // Platform discovery fields
   isPlatform?: boolean;
+  platformTheme?: "rocket" | "volcano" | "palace" | "crystal";
+  platformRank?: number;
+  platformZone?: string;
+  platformSlotX?: number;
 }
 
 // Build FeeEarner from SDK creator data
@@ -784,6 +920,10 @@ async function enrichTokenWithSDK(
     healthOverride: token.healthOverride,
     createdAt: token.createdAt,
     isPlatform: token.isPlatform || false,
+    platformTheme: token.platformTheme,
+    platformRank: token.platformRank,
+    platformZone: token.platformZone,
+    platformSlotX: token.platformSlotX,
   };
 
   return { tokenInfo, creators, claimEvents, claimEvents24h };

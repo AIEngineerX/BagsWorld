@@ -6935,10 +6935,11 @@ export class WorldScene extends Phaser.Scene {
     const isBeachBuilding = building.isBeachTheme || building.zone === "moltbook";
     const beachBuildingLevel = Math.min(Math.max(building.level, 1), 5); // Clamp to 1-5
 
-    // Platform buildings use zone-specific showcase textures when available
+    // Platform buildings use zone-specific showcase textures or themed textures
     const getPlatformShowcaseTexture = (
       zone: string | undefined,
-      rank: number | undefined
+      rank: number | undefined,
+      theme: string | undefined
     ): string | null => {
       const slotIndex = ((rank || 1) - 1) % 3;
       switch (zone) {
@@ -6947,12 +6948,16 @@ export class WorldScene extends Phaser.Scene {
         case "trending":
           return ["city_showcase_1", "city_showcase_2", "city_showcase_3"][slotIndex];
         default:
-          return null; // No zone-specific texture, fall through to generic
+          // Use themed platform textures (rocket/volcano/palace/crystal) for all other zones
+          if (theme && this.textures.exists(`platform_${theme}`)) {
+            return `platform_${theme}`;
+          }
+          return null;
       }
     };
 
     const platformTexture = building.isPlatform
-      ? getPlatformShowcaseTexture(building.zone, building.platformRank)
+      ? getPlatformShowcaseTexture(building.zone, building.platformRank, building.platformTheme)
       : null;
 
     const buildingTexture = platformTexture
