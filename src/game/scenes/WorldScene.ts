@@ -6646,6 +6646,8 @@ export class WorldScene extends Phaser.Scene {
     // Buildings with no zone appear in most zones, but NOT in arena/ascension (special zones)
     // Exception: platform buildings with an explicit zone assignment always render in their zone
     const zoneBuildings = buildings.filter((b) => {
+      // Ascension zone handles its own platform showcase — don't create duplicate sprites
+      if (b.isPlatform && b.zone === "ascension") return false;
       // Platform buildings render in their assigned zone
       if (b.isPlatform && b.zone) return b.zone === this.currentZone;
       // Arena and Ascension zones have no regular token buildings
@@ -6698,6 +6700,17 @@ export class WorldScene extends Phaser.Scene {
     if (newBuildings.length > 0) {
       createBatch(0);
     }
+
+    // Update ascension showcase labels with platform token data
+    const ascensionPlatform = buildings.filter((b) => b.isPlatform && b.zone === "ascension");
+    ascensionPlatform.forEach((b, i) => {
+      const label = (this as unknown as Record<string, unknown>)[
+        `_platformLabel_ascension_showcase_${i}`
+      ];
+      if (label && (label as Phaser.GameObjects.Text).active) {
+        (label as Phaser.GameObjects.Text).setText(`$${b.symbol}`);
+      }
+    });
   }
 
   // Get building decay status from health value
@@ -6930,9 +6943,9 @@ export class WorldScene extends Phaser.Scene {
       const slotIndex = ((rank || 1) - 1) % 3;
       switch (zone) {
         case "ascension":
-          return ["ascension_showcase_1", "ascension_showcase_2", "ascension_showcase_3"][
-            slotIndex
-          ];
+          return ["ascension_observatory", "ascension_vault", "ascension_token_shrine"][slotIndex];
+        case "trending":
+          return ["city_showcase_1", "city_showcase_2", "city_showcase_3"][slotIndex];
         default:
           return null; // No zone-specific texture, fall through to generic
       }
@@ -6978,7 +6991,9 @@ export class WorldScene extends Phaser.Scene {
                 ? 1.0
                 : isTreasury
                   ? 1.0
-                  : buildingScale
+                  : building.platformScale
+                    ? building.platformScale
+                    : buildingScale
     );
     container.add(sprite);
 

@@ -494,8 +494,60 @@ function createAscensionDecorations(scene: WorldScene): void {
     if (def.scale !== 1) building.setScale(def.scale);
     scene.ascensionElements.push(building);
 
+    // Make showcase buildings interactive (not temple)
+    const bobExtras: Phaser.GameObjects.GameObject[] = [];
+    if (def.key !== "temple") {
+      building.setInteractive({ useHandCursor: true });
+
+      building.on("pointerover", () => {
+        building.setTint(0xbbf7d0);
+        scene.tweens.add({
+          targets: building,
+          scaleX: def.scale * 1.05,
+          scaleY: def.scale * 1.05,
+          duration: 150,
+        });
+      });
+
+      building.on("pointerout", () => {
+        building.clearTint();
+        scene.tweens.add({
+          targets: building,
+          scaleX: def.scale,
+          scaleY: def.scale,
+          duration: 150,
+        });
+      });
+
+      building.on("pointerup", () => {
+        const slotIndex = def.key === "observatory" ? 0 : def.key === "vault" ? 1 : 2;
+        window.dispatchEvent(
+          new CustomEvent("bagsworld-platform-showcase-click", {
+            detail: { zone: "ascension", slotIndex },
+          })
+        );
+      });
+
+      // Token name label (updated when world state changes)
+      const label = scene.add
+        .text(bx, by + r(15), "", {
+          fontSize: `${r(7)}px`,
+          fontFamily: "monospace",
+          color: "#ffd700",
+          backgroundColor: "rgba(0,0,0,0.5)",
+          padding: { x: 4, y: 2 },
+        })
+        .setOrigin(0.5, 0)
+        .setDepth(DEPTH.UI_LOW);
+      scene.ascensionElements.push(label);
+
+      const slotKey = `ascension_showcase_${def.key === "observatory" ? 0 : def.key === "vault" ? 1 : 2}`;
+      (scene as unknown as Record<string, unknown>)[`_platformLabel_${slotKey}`] = label;
+      bobExtras.push(label);
+    }
+
     // --- Bob animation: everything bobs together ---
-    const bobTargets = [...cloudParts, underGlow, building];
+    const bobTargets = [...cloudParts, underGlow, building, ...bobExtras];
     scene.tweens.add({
       targets: bobTargets,
       y: `-=${r(4)}`,

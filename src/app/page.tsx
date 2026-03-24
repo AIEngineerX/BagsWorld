@@ -456,6 +456,28 @@ export default function Home() {
   );
   useGameEvents(gameEventHandlers, [gameEventHandlers]);
 
+  // Ascension zone showcase buildings — dispatch full BuildingClickData from world state
+  useEffect(() => {
+    const handler = ((e: CustomEvent<{ zone: string; slotIndex: number }>) => {
+      const { zone, slotIndex } = e.detail;
+      const platformBuildings =
+        worldState?.buildings?.filter((b) => b.isPlatform && b.zone === zone) || [];
+      const building = platformBuildings[slotIndex];
+      if (building) {
+        setTradeToken({
+          mint: building.tokenMint,
+          symbol: building.symbol,
+          name: building.name,
+          isPlatform: true,
+          platformTheme: building.platformTheme as BuildingClickData["platformTheme"],
+        });
+      }
+    }) as EventListener;
+
+    window.addEventListener("bagsworld-platform-showcase-click", handler);
+    return () => window.removeEventListener("bagsworld-platform-showcase-click", handler);
+  }, [worldState]);
+
   // Close mobile menu when clicking outside
   useEffect(() => {
     const handleResize = () => {
