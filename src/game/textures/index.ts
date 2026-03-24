@@ -28,4 +28,5 @@ export { generateFoundersAssets } from "./founders-assets";
 export { generateLabsAssets } from "./labs-assets";
 export { generateMoltbookAssets } from "./moltbook-assets";
 export { generateAscensionAssets } from "./ascension-assets";
+export { generatePlatformBuildings } from "./platform-buildings";
 export { exportAgentSprites } from "./sprite-export";

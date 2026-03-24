@@ -20,6 +20,7 @@ import {
   generateMoltbookAssets,
   generateAscensionAssets,
   generateArenaSprites,
+  generatePlatformBuildings,
   exportAgentSprites,
 } from "../textures";
 
@@ -152,6 +153,9 @@ export class BootScene extends Phaser.Scene {
 
     // Generate Arena combat sprites
     generateArenaSprites(this);
+
+    // Generate platform building textures (rocket, volcano, palace, crystal)
+    generatePlatformBuildings(this);
   }
 
   // Call window.exportAgentSprites() from browser console to download all agent PNGs
