@@ -240,57 +240,102 @@ function assignPlatformZone(rank: number): { zone: string; slotX: number } {
   };
 }
 
+// Composite trending score — absolute volume with momentum and breadth multipliers
+// Mirrors how DexScreener/Birdeye rank trending tokens
+function calculateTrendingScore(token: {
+  stats6h?: { buyVolume?: number; sellVolume?: number; priceChange?: number; numTraders?: number };
+  stats24h?: { buyVolume?: number; sellVolume?: number; priceChange?: number; numTraders?: number };
+  mcap?: number;
+}): number {
+  const s6 = token.stats6h || {};
+  const s24 = token.stats24h || {};
+  const volume6h = (s6.buyVolume || 0) + (s6.sellVolume || 0);
+  const traders24h = s24.numTraders || 0;
+  const priceChange6h = s6.priceChange || 0;
+
+  // Base: absolute 6h volume — real money moving
+  // Momentum: positive price action boosts score, cap downside at -50%
+  const momentum = 1 + Math.max(priceChange6h, -50) / 100;
+  // Breadth: more unique traders = more legit (log scale)
+  const breadth = Math.log(traders24h + 1);
+
+  return volume6h * momentum * breadth;
+}
+
 async function discoverPlatformTokens(excludeMints: Set<string>): Promise<RegisteredToken[]> {
   const now = Date.now();
   if (platformDiscoveryCache && now - platformDiscoveryCache.timestamp < PLATFORM_DISCOVERY_TTL) {
-    // Return cached results, filtered against current excludeMints
     return platformDiscoveryCache.tokens.filter((t) => !excludeMints.has(t.mint));
   }
 
   try {
-    // Step 1: Get native Bags.fm launch feed for authoritative token list
-    const bagsApi = getServerBagsApiOrNull();
-    if (!bagsApi) {
-      console.warn("[WorldState] Bags API not configured, skipping platform discovery");
+    // Single call to Bags.fm top tokens — returns 170+ tokens with rich stats
+    const res = await fetch("https://api2.bags.fm/api/v1/token-launch/top-tokens/lifetime-fees", {
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) {
+      console.warn(`[WorldState] Bags top-tokens API returned ${res.status}`);
+      return [];
+    }
+    const data = await res.json();
+    const tokens: Array<{
+      token: string;
+      lifetimeFees: string;
+      tokenInfo?: {
+        name?: string;
+        symbol?: string;
+        mcap?: number;
+        holderCount?: number;
+        stats1h?: {
+          buyVolume?: number;
+          sellVolume?: number;
+          priceChange?: number;
+          numTraders?: number;
+        };
+        stats6h?: {
+          buyVolume?: number;
+          sellVolume?: number;
+          priceChange?: number;
+          numTraders?: number;
+        };
+        stats24h?: {
+          buyVolume?: number;
+          sellVolume?: number;
+          priceChange?: number;
+          numTraders?: number;
+        };
+      };
+    }> = data.response || data;
+
+    if (!tokens.length) {
+      console.log("[WorldState] No tokens from Bags top-tokens API");
       return [];
     }
 
-    const launchFeed = await bagsApi.getLaunchFeed();
-    const migratedTokens = launchFeed.filter((t) => t.status === "MIGRATED");
-    if (migratedTokens.length === 0) {
-      console.log("[WorldState] No migrated tokens in launch feed");
-      return [];
-    }
-
-    // Step 2: Enrich with DexScreener market data
-    // Sort by most recent first, take 30 for DexScreener batch limit
-    const recentMigrated = migratedTokens
-      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-      .slice(0, 30);
-    const mints = recentMigrated.map((t) => t.tokenMint);
-    const dexPairs = await getTokensByMints(mints);
-
-    // Build mint→launch feed lookup for matching
-    const feedByMint = new Map(recentMigrated.map((t) => [t.tokenMint, t]));
-
-    // Step 3: Match DexScreener pairs back to launch feed, sort by 24h volume
-    const enrichedPairs = dexPairs
-      .filter((p) => feedByMint.has(p.baseToken.address))
-      .sort((a, b) => (b.volume?.h24 || 0) - (a.volume?.h24 || 0))
+    // Score and rank by composite trending score
+    const scored = tokens
+      .filter((t) => t.tokenInfo && !excludeMints.has(t.token))
+      .map((t) => ({
+        ...t,
+        trendingScore: calculateTrendingScore(t.tokenInfo!),
+        volume24h:
+          (t.tokenInfo!.stats24h?.buyVolume || 0) + (t.tokenInfo!.stats24h?.sellVolume || 0),
+        change24h: t.tokenInfo!.stats24h?.priceChange || 0,
+      }))
+      .filter((t) => t.volume24h > 0) // Must have some trading activity
+      .sort((a, b) => b.trendingScore - a.trendingScore)
       .slice(0, 15);
 
-    // Step 4: Build RegisteredTokens with theme and zone assignments
-    const platformTokens: RegisteredToken[] = enrichedPairs.map((pair, index) => {
+    // Build RegisteredTokens with theme and zone assignments
+    const platformTokens: RegisteredToken[] = scored.map((t, index) => {
       const rank = index + 1;
-      const change24h = pair.priceChange?.h24 || 0;
-      const volume24h = pair.volume?.h24 || 0;
-      const theme = assignPlatformTheme(pair.baseToken.address, change24h, volume24h);
+      const theme = assignPlatformTheme(t.token, t.change24h, t.volume24h);
       const { zone, slotX } = assignPlatformZone(rank);
 
       return {
-        mint: pair.baseToken.address,
-        name: pair.baseToken.name,
-        symbol: pair.baseToken.symbol,
+        mint: t.token,
+        name: t.tokenInfo?.name || "Unknown",
+        symbol: t.tokenInfo?.symbol || "???",
         creator: "platform",
         createdAt: Date.now() - 86400000,
         isPlatform: true,
@@ -309,8 +354,8 @@ async function discoverPlatformTokens(excludeMints: Set<string>): Promise<Regist
 
     platformDiscoveryCache = { tokens: platformTokens, timestamp: now };
     console.log(
-      `[WorldState] Discovered ${platformTokens.length} platform tokens via launch feed:`,
-      platformTokens.map((t) => `${t.symbol}(${t.platformTheme})`).join(", ")
+      `[WorldState] Discovered ${platformTokens.length} platform tokens via trending score:`,
+      platformTokens.map((t) => `#${t.platformRank} ${t.symbol}(${t.platformTheme})`).join(", ")
     );
 
     return platformTokens.filter((t) => !excludeMints.has(t.mint));
