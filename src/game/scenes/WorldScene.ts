@@ -1579,6 +1579,8 @@ export class WorldScene extends Phaser.Scene {
             symbol: building.symbol || "BAGSWORLD",
             name: building.name || "BagsWorld HQ",
             tokenUrl: building.tokenUrl || `https://bags.fm/${building.tokenMint || building.id}`,
+            isPlatform: building.isPlatform || false,
+            platformTheme: building.platformTheme,
           },
         })
       );
@@ -1599,6 +1601,8 @@ export class WorldScene extends Phaser.Scene {
             symbol: building.symbol || building.name,
             name: building.name,
             tokenUrl: building.tokenUrl,
+            isPlatform: building.isPlatform || false,
+            platformTheme: building.platformTheme,
           },
         })
       );
@@ -6915,21 +6919,24 @@ export class WorldScene extends Phaser.Scene {
     const isBeachBuilding = building.isBeachTheme || building.zone === "moltbook";
     const beachBuildingLevel = Math.min(Math.max(building.level, 1), 5); // Clamp to 1-5
 
-    const buildingTexture = isBagsWorldHQ
-      ? "bagshq"
-      : isMansion
-        ? `mansion_${mansionStyleIndex}`
-        : isPokeCenter
-          ? "pokecenter"
-          : isCasino
-            ? "casino"
-            : isArcade
-              ? "arcade_building"
-              : isTreasury
-                ? "treasury"
-                : isBeachBuilding
-                  ? `beach_building_${beachBuildingLevel}`
-                  : `building_${building.level}_${styleIndex}`;
+    const buildingTexture =
+      building.isPlatform && building.platformTheme
+        ? `platform_${building.platformTheme}`
+        : isBagsWorldHQ
+          ? "bagshq"
+          : isMansion
+            ? `mansion_${mansionStyleIndex}`
+            : isPokeCenter
+              ? "pokecenter"
+              : isCasino
+                ? "casino"
+                : isArcade
+                  ? "arcade_building"
+                  : isTreasury
+                    ? "treasury"
+                    : isBeachBuilding
+                      ? `beach_building_${beachBuildingLevel}`
+                      : `building_${building.level}_${styleIndex}`;
     const sprite = this.add.sprite(0, 0, buildingTexture);
     sprite.setOrigin(0.5, 1);
     // HQ is larger and floating, mansions use rank-based scaling from building data
@@ -6952,6 +6959,10 @@ export class WorldScene extends Phaser.Scene {
                   : buildingScale
     );
     container.add(sprite);
+
+    if (building.isPlatform) {
+      sprite.setScale(0.85);
+    }
 
     // Apply decay visuals for non-permanent buildings
     if (!building.isPermanent && !building.isFloating) {
@@ -7085,6 +7096,19 @@ export class WorldScene extends Phaser.Scene {
     label.setOrigin(0.5, 0.5);
     container.add(label);
 
+    // Platform buildings get a BAGS.FM badge below the label
+    if (building.isPlatform) {
+      const badge = this.add
+        .text(0, (isGoldLabel ? 20 : 12) + 10, "BAGS.FM", {
+          fontSize: "8px",
+          fontFamily: "monospace",
+          color: "#a78bfa",
+        })
+        .setOrigin(0.5, 0)
+        .setDepth(6);
+      container.add(badge);
+    }
+
     // Buildings render behind characters (depth 10-11) but in front of ground elements
     // Buildings on the right appear behind buildings on the left when overlapping
     // HQ floats in sky so it's always visible above other buildings
@@ -7174,6 +7198,8 @@ export class WorldScene extends Phaser.Scene {
               symbol: building.symbol || "BAGSWORLD",
               name: building.name || "BagsWorld HQ",
               tokenUrl: building.tokenUrl || `https://bags.fm/${building.tokenMint || building.id}`,
+              isPlatform: building.isPlatform || false,
+              platformTheme: building.platformTheme,
             },
           })
         );
@@ -7200,6 +7226,8 @@ export class WorldScene extends Phaser.Scene {
               symbol: building.symbol || building.name,
               name: building.name,
               tokenUrl: building.tokenUrl,
+              isPlatform: building.isPlatform || false,
+              platformTheme: building.platformTheme,
             },
           })
         );
