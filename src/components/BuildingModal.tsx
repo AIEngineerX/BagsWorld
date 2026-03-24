@@ -36,6 +36,7 @@ interface BuildingModalProps {
 
 type TradeDirection = "buy" | "sell";
 type IntervalType = "5m" | "15m" | "1h" | "4h" | "1d";
+type ChartType = "price" | "mc";
 type ModalTab = "chart" | "chat";
 
 interface OHLCVCandle {
@@ -90,6 +91,7 @@ export function BuildingModal({
 
   // Chart state
   const [chartInterval, setChartInterval] = useState<IntervalType>("1h");
+  const [chartType, setChartType] = useState<ChartType>("price");
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -201,22 +203,35 @@ export function BuildingModal({
         },
       });
 
-      // Calculate price precision from OHLCV data — memecoin prices can be
-      // as small as $0.000000001, so the default precision:2 rounds them to $0.00
-      // making candles invisible (zero height).
-      const candles = ohlcvData?.candles as OHLCVCandle[] | undefined;
+      // Calculate MC multiplier: supply = marketCap / price
+      const mcMultiplier =
+        chartType === "mc" && tokenInfoData?.price > 0
+          ? tokenInfoData.marketCap / tokenInfoData.price
+          : 1;
+
+      // Apply multiplier to candles (1x for price, supply for MC)
+      const rawCandles = ohlcvData?.candles as OHLCVCandle[] | undefined;
+      const candles = rawCandles?.map((c) => ({
+        ...c,
+        open: c.open * mcMultiplier,
+        high: c.high * mcMultiplier,
+        low: c.low * mcMultiplier,
+        close: c.close * mcMultiplier,
+      }));
+
+      // Calculate precision from data — memecoin prices can be tiny
       let pricePrecision = 2;
       let priceMinMove = 0.01;
       if (candles && candles.length > 0) {
         const minPrice = Math.min(...candles.map((c) => Math.min(c.open, c.low, c.close)));
         if (minPrice > 0) {
-          pricePrecision = Math.max(2, Math.ceil(-Math.log10(minPrice)) + 2);
-          priceMinMove = Math.pow(10, -pricePrecision);
+          pricePrecision =
+            chartType === "mc" ? 0 : Math.max(2, Math.ceil(-Math.log10(minPrice)) + 2);
+          priceMinMove = chartType === "mc" ? 1 : Math.pow(10, -pricePrecision);
         }
       }
 
       // Compute tight Y-axis range from data — 5% padding above and below
-      // prevents the chart from auto-scaling down to 0 and wasting space
       let dataMinPrice = 0;
       let dataMaxPrice = 0;
       if (candles && candles.length > 0) {
@@ -231,11 +246,10 @@ export function BuildingModal({
         borderUpColor: "#00ff88",
         wickDownColor: "#ff4444",
         wickUpColor: "#00ff88",
-        priceFormat: {
-          type: "price",
-          precision: pricePrecision,
-          minMove: priceMinMove,
-        },
+        priceFormat:
+          chartType === "mc"
+            ? { type: "volume" as const }
+            : { type: "price" as const, precision: pricePrecision, minMove: priceMinMove },
         autoscaleInfoProvider: () => ({
           priceRange: {
             minValue: dataMinPrice * 0.95,
@@ -297,7 +311,7 @@ export function BuildingModal({
         volumeSeriesRef.current = null;
       }
     };
-  }, [chartInterval, ohlcvData]);
+  }, [chartInterval, chartType, ohlcvData, tokenInfoData]);
 
   // Quote fetching
   const fetchQuote = useCallback(async () => {
@@ -523,7 +537,9 @@ export function BuildingModal({
               onClick={() => setActiveTab("chart")}
               className={`flex-1 py-2 font-pixel text-[10px] transition-colors ${
                 activeTab === "chart"
-                  ? "bg-bags-green/20 text-bags-green border-b-2 border-bags-green"
+                  ? isAscensionTemple
+                    ? "bg-amber-400/20 text-amber-300 border-b-2 border-amber-400"
+                    : "bg-bags-green/20 text-bags-green border-b-2 border-bags-green"
                   : "text-gray-400 hover:text-white"
               }`}
             >
@@ -533,7 +549,9 @@ export function BuildingModal({
               onClick={() => setActiveTab("chat")}
               className={`flex-1 py-2 font-pixel text-[10px] transition-colors ${
                 activeTab === "chat"
-                  ? "bg-purple-600/20 text-purple-400 border-b-2 border-purple-500"
+                  ? isAscensionTemple
+                    ? "bg-purple-500/20 text-purple-300 border-b-2 border-purple-400"
+                    : "bg-purple-600/20 text-purple-400 border-b-2 border-purple-500"
                   : "text-gray-400 hover:text-white"
               }`}
             >
@@ -606,8 +624,23 @@ export function BuildingModal({
               </div>
             </div>
 
-            {/* Chart Interval Buttons */}
-            <div className="flex gap-1 p-2 border-b border-bags-green/30">
+            {/* Chart Controls — Type toggle + Interval buttons */}
+            <div className="flex gap-1 p-2 border-b border-bags-green/30 items-center">
+              <div className="flex gap-px mr-2 shrink-0">
+                {(["price", "mc"] as ChartType[]).map((ct) => (
+                  <button
+                    key={ct}
+                    onClick={() => setChartType(ct)}
+                    className={`px-2 py-1 font-pixel text-[7px] transition-colors ${
+                      chartType === ct
+                        ? "bg-bags-gold/20 text-bags-gold border border-bags-gold"
+                        : "text-gray-500 border border-gray-700 hover:border-bags-gold/50"
+                    } ${ct === "price" ? "rounded-l" : "rounded-r"}`}
+                  >
+                    {ct === "price" ? "USD" : "MC"}
+                  </button>
+                ))}
+              </div>
               {(["5m", "15m", "1h", "4h", "1d"] as IntervalType[]).map((iv) => (
                 <button
                   key={iv}

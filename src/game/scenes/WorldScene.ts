@@ -6957,12 +6957,18 @@ export class WorldScene extends Phaser.Scene {
           const trendSlot = ((rank || 5) - 5) % 3; // ranks 5-7 → 0,1,2
           return ["city_showcase_1", "city_showcase_2", "city_showcase_3"][trendSlot];
         }
-        default:
-          // Use themed platform textures (rocket/volcano/palace/crystal) for all other zones
-          if (theme && this.textures.exists(`platform_${theme}`)) {
-            return `platform_${theme}`;
+        default: {
+          // Use themed platform textures for non-showcase zones
+          // Override volcano (red/fiery) to crystal (neutral) in peaceful zones
+          const safeTheme =
+            theme === "volcano" && (zone === "main_city" || zone === "labs" || zone === "moltbook")
+              ? "crystal"
+              : theme;
+          if (safeTheme && this.textures.exists(`platform_${safeTheme}`)) {
+            return `platform_${safeTheme}`;
           }
           return null;
+        }
       }
     };
 

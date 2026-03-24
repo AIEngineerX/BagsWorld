@@ -471,6 +471,7 @@ export default function Home() {
           mint: building.tokenMint,
           symbol: building.symbol,
           name: building.name,
+          tokenUrl: `https://bags.fm/${building.tokenMint}`,
           isPlatform: true,
           platformTheme: building.platformTheme as BuildingClickData["platformTheme"],
           isAscensionTemple: zone === "ascension" && slotIndex === 0,
