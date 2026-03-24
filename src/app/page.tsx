@@ -249,6 +249,8 @@ interface BuildingClickData {
   symbol: string;
   name: string;
   tokenUrl?: string;
+  isPlatform?: boolean;
+  platformTheme?: "rocket" | "volcano" | "palace" | "crystal";
 }
 
 // Handles ?zone= and ?chat= deep links from the /agents page

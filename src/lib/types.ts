@@ -227,6 +227,10 @@ export interface TokenInfo {
   levelOverride?: number | null; // Admin override for building level (1-5)
   isPermanent?: boolean; // True for landmark buildings (Treasury, etc.) - not real on-chain tokens
   isPlatform?: boolean; // Discovered from platform-wide activity, not user-registered
+  platformTheme?: "rocket" | "volcano" | "palace" | "crystal";
+  platformRank?: number; // 1-15 ranking by volume
+  platformZone?: string; // assigned zone ID
+  platformSlotX?: number; // assigned X position in zone
   positionOverride?: { x: number; y: number } | null; // Admin override for building position
   styleOverride?: number | null; // Admin override for building style (0-3)
   healthOverride?: number | null; // Admin override for building health (0-100)
@@ -381,6 +385,9 @@ export interface GameBuilding {
   zone?: ZoneType; // Which zone this building appears in (default: both)
   isFloating?: boolean; // Special floating building (BagsWorld HQ)
   isPermanent?: boolean; // Landmark building (Treasury, etc.) - not a real token
+  isPlatform?: boolean; // Trending token from Bags.fm ecosystem (not user-registered)
+  platformTheme?: "rocket" | "volcano" | "palace" | "crystal";
+  platformRank?: number; // 1-15 ranking by volume
   styleOverride?: number | null; // Admin override for building style (0-3)
   // Mansion fields (Ballers Valley)
   isMansion?: boolean; // True for top holder mansions

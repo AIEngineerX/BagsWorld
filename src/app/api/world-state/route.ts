@@ -619,6 +619,10 @@ interface RegisteredToken {
   zoneOverride?: ZoneType | null;
   // Platform discovery flag
   isPlatform?: boolean;
+  platformTheme?: "rocket" | "volcano" | "palace" | "crystal";
+  platformRank?: number;
+  platformZone?: string;
+  platformSlotX?: number;
 }
 
 // Build FeeEarner from SDK creator data
