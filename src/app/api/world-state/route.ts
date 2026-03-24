@@ -928,11 +928,73 @@ async function enrichTokenWithSDK(
       creators = cached.creators;
       claimEvents = cached.claimEvents;
       claimEvents24h = cached.claimEvents24h;
+    } else {
+      // SDK cache miss — fetch with timeout. Events, fees, and earners depend on this data.
+      try {
+        const mintPubkey = new PublicKey(token.mint);
+        const now = Math.floor(Date.now() / 1000);
+        const twentyFourHoursAgo = now - 24 * 60 * 60;
+
+        const sdkResults = await Promise.race([
+          Promise.allSettled([
+            sdk.state.getTokenCreators(mintPubkey),
+            sdk.state.getTokenLifetimeFees(mintPubkey),
+            sdk.state.getTokenClaimEvents(mintPubkey, { limit: 5 }),
+            sdk.state.getTokenClaimEvents(mintPubkey, {
+              mode: "time",
+              from: twentyFourHoursAgo,
+              to: now,
+            }),
+          ]),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("SDK enrichment timeout")), 10000)
+          ),
+        ]);
+        const [creatorsResult, feesResult, eventsResult, events24hResult] = sdkResults;
+
+        if (creatorsResult.status === "fulfilled") {
+          creators = creatorsResult.value || [];
+        }
+        if (feesResult.status === "fulfilled") {
+          lifetimeFees = lamportsToSol(feesResult.value || 0);
+        }
+        if (eventsResult.status === "fulfilled") {
+          const rawEvents: TokenClaimEventSDK[] = eventsResult.value || [];
+          claimEvents = rawEvents.map((e) => ({
+            signature: e.signature,
+            claimer: e.wallet,
+            claimerUsername: undefined,
+            amount: safeParseClaimAmount(e.amount),
+            timestamp: e.timestamp,
+            tokenMint: token.mint,
+          }));
+        }
+        if (events24hResult.status === "fulfilled") {
+          const rawEvents24h: TokenClaimEventSDK[] = events24hResult.value || [];
+          claimEvents24h = rawEvents24h.map((e) => ({
+            signature: e.signature,
+            claimer: e.wallet,
+            claimerUsername: undefined,
+            amount: safeParseClaimAmount(e.amount),
+            timestamp: e.timestamp,
+            tokenMint: token.mint,
+          }));
+        }
+
+        // Cache successful results
+        if (lifetimeFees > 0 || creators.length > 0) {
+          sdkEnrichCache.set(token.mint, {
+            lifetimeFees,
+            creators,
+            claimEvents,
+            claimEvents24h,
+            timestamp: Date.now(),
+          });
+        }
+      } catch {
+        // SDK enrichment timed out or failed — continue with defaults
+      }
     }
-    // SDK cache miss: skip enrichment for this cycle, return defaults.
-    // Game rendering only needs DexScreener data (price, mcap, volume).
-    // SDK data (fees, creators, claims) will fill in on the next poll cycle
-    // when enrichTokensInBackground() runs after the response is sent.
   }
 
   // Build TokenInfo
@@ -1985,20 +2047,7 @@ export async function POST(request: NextRequest) {
       worldState.buildings = [...worldState.buildings, ...externalBuildings];
     }
 
-    const response = NextResponse.json(worldState);
-
-    // After response is built, trigger background SDK enrichment for uncached tokens.
-    // This populates the cache so the NEXT 60s poll will have full SDK data.
-    if (sdk) {
-      const realMints = tokensToProcess
-        .filter(
-          (t) => !t.isPlatform && !t.mint.startsWith("Treasury") && !t.mint.startsWith("Starter")
-        )
-        .map((t) => t.mint);
-      enrichTokensInBackground(sdk, realMints);
-    }
-
-    return response;
+    return NextResponse.json(worldState);
   } catch {
     return NextResponse.json({ error: "Failed to build world state" }, { status: 500 });
   }
