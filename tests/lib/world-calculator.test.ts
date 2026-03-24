@@ -1807,7 +1807,7 @@ describe("buildWorldState", () => {
   });
 
   describe("platform token filtering", () => {
-    it("should exclude platform tokens from buildings", () => {
+    it("should add platform tokens as platform buildings, not regular buildings", () => {
       const platformToken: TokenInfo = {
         mint: "platform-only",
         name: "Platform Token",
@@ -1820,8 +1820,10 @@ describe("buildWorldState", () => {
       };
 
       const state = buildWorldState([], [platformToken]);
-      // Platform tokens should not become buildings
-      expect(state.buildings).toHaveLength(0);
+      // Platform tokens become platform buildings (separate from regular buildings)
+      expect(state.buildings).toHaveLength(1);
+      expect(state.buildings[0].isPlatform).toBe(true);
+      expect(state.buildings[0].id).toBe("platform_platform-only");
     });
 
     it("should include platform tokens in health calculation", () => {

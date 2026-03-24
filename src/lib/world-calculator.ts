@@ -723,13 +723,22 @@ export function transformTokenToBuilding(
   };
 }
 
-export function transformPlatformToken(token: TokenInfo): GameBuilding {
-  const grassTop = Math.round(455 * SCALE);
-  const rank = token.platformRank || 15;
+// Per-zone Y positions and scale multipliers for platform buildings
+const PLATFORM_ZONE_CONFIG: Record<string, { y: number; scales: number[] }> = {
+  ascension: { y: 535, scales: [1.15, 1.15, 1.1] },
+  trending: { y: 540, scales: [1.0, 1.0, 1.0] },
+  main_city: { y: 540, scales: [1.0, 1.0, 1.0] },
+  labs: { y: 540, scales: [1.0, 1.0, 1.0] },
+  moltbook: { y: 540, scales: [1.0, 1.0, 1.0] },
+};
 
-  // Ascension zone has a different ground level (cloud platforms)
-  const isAscension = (token.platformZone as string) === "ascension";
-  const baseY = isAscension ? Math.round(535 * SCALE) : grassTop;
+export function transformPlatformToken(token: TokenInfo): GameBuilding {
+  const rank = token.platformRank || 15;
+  const zone = (token.platformZone as string) || "main_city";
+  const zoneConfig = PLATFORM_ZONE_CONFIG[zone] || PLATFORM_ZONE_CONFIG.main_city;
+  const slotIndex = (rank - 1) % 3;
+  const baseY = Math.round(zoneConfig.y * SCALE);
+  const platformScale = zoneConfig.scales[slotIndex] ?? 1.0;
 
   return {
     id: `platform_${token.mint}`,
@@ -750,6 +759,7 @@ export function transformPlatformToken(token: TokenInfo): GameBuilding {
     isPlatform: true,
     platformTheme: token.platformTheme,
     platformRank: rank,
+    platformScale,
   };
 }
 

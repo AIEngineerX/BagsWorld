@@ -388,6 +388,7 @@ export interface GameBuilding {
   isPlatform?: boolean; // Trending token from Bags.fm ecosystem (not user-registered)
   platformTheme?: "rocket" | "volcano" | "palace" | "crystal";
   platformRank?: number; // 1-15 ranking by volume
+  platformScale?: number; // Zone-specific scale for platform building sprite
   styleOverride?: number | null; // Admin override for building style (0-3)
   // Mansion fields (Ballers Valley)
   isMansion?: boolean; // True for top holder mansions
