@@ -2,6 +2,8 @@
 // Characters discuss actual on-chain events, market conditions, and ecosystem stats
 // Now routes through ElizaOS Runtime for memory, plugins, and coordination
 
+export const fetchCache = "force-no-store";
+
 import { NextResponse } from "next/server";
 import { characters, generateCharacterPrompt } from "@/characters";
 
@@ -187,6 +189,7 @@ async function fetchRealWorldData(): Promise<RealWorldData> {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const statsRes = await fetch(`${baseUrl}/api/ecosystem-stats`, {
       cache: "no-store",
+      signal: AbortSignal.timeout(5000),
     });
 
     if (statsRes.ok) {
@@ -346,7 +349,7 @@ async function generateViaElizaOS(
         lineCount,
         style: "casual",
       }),
-      signal: AbortSignal.timeout(12000), // 12s timeout
+      signal: AbortSignal.timeout(3000), // 3s timeout — fail fast if not running
     });
 
     if (!response.ok) {
@@ -449,6 +452,7 @@ The conversation should feel natural, like these characters actually know each o
         max_tokens: 800,
         messages: [{ role: "user", content: conversationPrompt }],
       }),
+      signal: AbortSignal.timeout(8000),
     });
 
     if (!response.ok) {
