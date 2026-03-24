@@ -342,6 +342,7 @@ function GameCanvasInner({ worldState }: GameCanvasProps) {
         userSelect: "none",
         position: "relative",
         zIndex: 0,
+        background: "linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%)",
       }}
     />
   );

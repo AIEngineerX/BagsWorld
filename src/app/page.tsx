@@ -527,7 +527,7 @@ export default function Home() {
       </Suspense>
       {/* Header - responsive, collapses in immersive mode */}
       <header
-        className={`bg-bags-dark hud-border-bottom hud-panel flex items-center justify-between px-1.5 md:px-4 relative z-50 safe-area-top shrink-0 transition-all duration-500 ease-in-out ${isImmersive ? "h-0 overflow-hidden opacity-0" : "h-14 md:h-16"}`}
+        className={`bg-bags-dark hud-border-bottom hud-panel flex items-center justify-between px-1.5 md:px-4 relative z-50 safe-area-top shrink-0 transition-all duration-500 ease-in-out ${isImmersive ? "h-0 overflow-hidden invisible" : "h-14 md:h-16"}`}
       >
         {/* Left side - Logo and health */}
         <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
@@ -811,14 +811,35 @@ export default function Home() {
             [POP:<span className="text-white ml-1">{worldState?.population?.length ?? 0}</span>]
           </span>
           <span className="text-gray-400 hidden sm:inline">
-            [BLDG:<span className="text-white ml-1">{worldState?.buildings?.length ?? 0}</span>]
+            [BLDG:
+            <span className="text-white ml-1">
+              {worldState?.buildings?.filter((b) => !b.isPermanent && !b.isFloating && !b.isMansion)
+                .length ?? 0}
+            </span>
+            ]
           </span>
           <div className="hidden md:block">
             <DatabaseStatus />
           </div>
-          <div className="hidden lg:block">
-            <EcosystemStats />
-          </div>
+          {(() => {
+            const hq = worldState?.buildings?.find((b) => b.isFloating && b.symbol === "BAGSWORLD");
+            if (!hq?.marketCap) return null;
+            const mcap =
+              hq.marketCap >= 1e6
+                ? `$${(hq.marketCap / 1e6).toFixed(1)}M`
+                : hq.marketCap >= 1e3
+                  ? `$${(hq.marketCap / 1e3).toFixed(1)}K`
+                  : `$${hq.marketCap.toFixed(0)}`;
+            const change = hq.change24h ?? 0;
+            const changeColor = change >= 0 ? "text-green-400" : "text-red-400";
+            const changeStr = `${change >= 0 ? "+" : ""}${change.toFixed(1)}%`;
+            return (
+              <span className="text-gray-400 hidden lg:inline">
+                $BAGS:<span className="text-white ml-1">{mcap}</span>
+                <span className={`ml-1 ${changeColor}`}>{changeStr}</span>
+              </span>
+            );
+          })()}
           <GhostTraderButton />
           {publicKey?.toString() === CASINO_ADMIN_WALLET && (
             <button

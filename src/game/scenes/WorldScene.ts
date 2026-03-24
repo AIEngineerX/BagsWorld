@@ -270,7 +270,7 @@ export class WorldScene extends Phaser.Scene {
   private readonly ENCOUNTER_COOLDOWN_MS = 90000;
   private readonly ENCOUNTER_RADIUS = 50;
   private readonly ENCOUNTER_CHANCE = 0.08;
-  private lastGlobalEncounter = 0;
+  private lastGlobalEncounter = Date.now(); // Grace period: no encounters on first load
   private readonly GLOBAL_ENCOUNTER_COOLDOWN_MS = 45000;
   private encounterActive = false;
   private encounterActiveTimeout: ReturnType<typeof setTimeout> | null = null;
