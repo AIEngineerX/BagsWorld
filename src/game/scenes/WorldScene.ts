@@ -6644,8 +6644,11 @@ export class WorldScene extends Phaser.Scene {
 
     // Filter buildings by current zone
     // Buildings with no zone appear in most zones, but NOT in arena/ascension (special zones)
+    // Exception: platform buildings with an explicit zone assignment always render in their zone
     const zoneBuildings = buildings.filter((b) => {
-      // Arena and Ascension zones have no token buildings
+      // Platform buildings render in their assigned zone
+      if (b.isPlatform && b.zone) return b.zone === this.currentZone;
+      // Arena and Ascension zones have no regular token buildings
       if (this.currentZone === "arena" || this.currentZone === "ascension") return false;
       if (!b.zone) return true; // No zone = appears in all non-special zones
       return b.zone === this.currentZone;
@@ -6919,24 +6922,23 @@ export class WorldScene extends Phaser.Scene {
     const isBeachBuilding = building.isBeachTheme || building.zone === "moltbook";
     const beachBuildingLevel = Math.min(Math.max(building.level, 1), 5); // Clamp to 1-5
 
-    const buildingTexture =
-      building.isPlatform && building.platformTheme
-        ? `platform_${building.platformTheme}`
-        : isBagsWorldHQ
-          ? "bagshq"
-          : isMansion
-            ? `mansion_${mansionStyleIndex}`
-            : isPokeCenter
-              ? "pokecenter"
-              : isCasino
-                ? "casino"
-                : isArcade
-                  ? "arcade_building"
-                  : isTreasury
-                    ? "treasury"
-                    : isBeachBuilding
-                      ? `beach_building_${beachBuildingLevel}`
-                      : `building_${building.level}_${styleIndex}`;
+    // Platform buildings use the same texture system as regular buildings (high quality, zone-appropriate)
+    // The building structure is permanent; only the token data rotates.
+    const buildingTexture = isBagsWorldHQ
+      ? "bagshq"
+      : isMansion
+        ? `mansion_${mansionStyleIndex}`
+        : isPokeCenter
+          ? "pokecenter"
+          : isCasino
+            ? "casino"
+            : isArcade
+              ? "arcade_building"
+              : isTreasury
+                ? "treasury"
+                : isBeachBuilding
+                  ? `beach_building_${beachBuildingLevel}`
+                  : `building_${building.level}_${styleIndex}`;
     const sprite = this.add.sprite(0, 0, buildingTexture);
     sprite.setOrigin(0.5, 1);
     // HQ is larger and floating, mansions use rank-based scaling from building data
@@ -6959,10 +6961,6 @@ export class WorldScene extends Phaser.Scene {
                   : buildingScale
     );
     container.add(sprite);
-
-    if (building.isPlatform) {
-      sprite.setScale(0.85);
-    }
 
     // Apply decay visuals for non-permanent buildings
     if (!building.isPermanent && !building.isFloating) {
