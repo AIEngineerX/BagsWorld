@@ -228,14 +228,14 @@ function assignPlatformTheme(
 // ascension: temple(440)=#1, observatory(160)=#2, vault(720)=#3, shrine(1000)=#4
 // trending: Casino=50, Arcade=520 — slots 230/420/800 clear
 // main_city: PokeCenter=280, Bagsy=350 — slot 1 at 150 to avoid
-// labs: Characters at 180/320/460/600/740/880 — slots shifted to gaps
-// moltbook: agent HQs dynamic — slots 220/500 clear
+// labs: LabsHQ=420 — slots 250/600/810 clear
+// moltbook: MoltBar=250, MoltbookHQ=400, AgentHut=550, BountyBoard=680 — slots 120/780 clear
 const PLATFORM_ZONE_MAP: Array<{ zone: string; slots: number[] }> = [
   { zone: "ascension", slots: [440, 160, 720, 1000] },
   { zone: "trending", slots: [230, 420, 800] },
   { zone: "main_city", slots: [150, 550, 850] },
-  { zone: "labs", slots: [250, 530, 810] },
-  { zone: "moltbook", slots: [220, 500] },
+  { zone: "labs", slots: [250, 600, 810] },
+  { zone: "moltbook", slots: [120, 780] },
 ];
 
 // Rank-to-zone assignment: 1-4 ascension, 5-7 trending, 8-10 main_city, 11-13 labs, 14-15 moltbook
