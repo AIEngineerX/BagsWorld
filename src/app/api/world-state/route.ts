@@ -223,7 +223,7 @@ function assignPlatformTheme(
 }
 
 const PLATFORM_ZONE_MAP: Array<{ zone: string; slots: number[] }> = [
-  { zone: "ascension", slots: [200, 420, 640] },
+  { zone: "ascension", slots: [300, 580, 860] },
   { zone: "trending", slots: [180, 500, 820] },
   { zone: "main_city", slots: [250, 550, 850] },
   { zone: "labs", slots: [200, 480, 760] },

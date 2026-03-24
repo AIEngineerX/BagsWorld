@@ -727,14 +727,18 @@ export function transformPlatformToken(token: TokenInfo): GameBuilding {
   const grassTop = Math.round(455 * SCALE);
   const rank = token.platformRank || 15;
 
+  // Ascension zone has a different ground level (cloud platforms)
+  const isAscension = (token.platformZone as string) === "ascension";
+  const baseY = isAscension ? Math.round(535 * SCALE) : grassTop;
+
   return {
     id: `platform_${token.mint}`,
     tokenMint: token.mint,
     name: token.name || "Unknown",
     symbol: token.symbol || "???",
     x: Math.round((token.platformSlotX || 400) * SCALE),
-    y: grassTop,
-    level: calculateBuildingLevel(token.marketCap || 0),
+    y: baseY,
+    level: Math.max(4, calculateBuildingLevel(token.marketCap || 0)),
     health: 100,
     status: "active",
     glowing: (token.change24h || 0) > 10,

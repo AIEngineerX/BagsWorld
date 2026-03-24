@@ -6922,23 +6922,43 @@ export class WorldScene extends Phaser.Scene {
     const isBeachBuilding = building.isBeachTheme || building.zone === "moltbook";
     const beachBuildingLevel = Math.min(Math.max(building.level, 1), 5); // Clamp to 1-5
 
-    // Platform buildings use the same texture system as regular buildings (high quality, zone-appropriate)
-    // The building structure is permanent; only the token data rotates.
-    const buildingTexture = isBagsWorldHQ
-      ? "bagshq"
-      : isMansion
-        ? `mansion_${mansionStyleIndex}`
-        : isPokeCenter
-          ? "pokecenter"
-          : isCasino
-            ? "casino"
-            : isArcade
-              ? "arcade_building"
-              : isTreasury
-                ? "treasury"
-                : isBeachBuilding
-                  ? `beach_building_${beachBuildingLevel}`
-                  : `building_${building.level}_${styleIndex}`;
+    // Platform buildings use zone-specific showcase textures when available
+    const getPlatformShowcaseTexture = (
+      zone: string | undefined,
+      rank: number | undefined
+    ): string | null => {
+      const slotIndex = ((rank || 1) - 1) % 3;
+      switch (zone) {
+        case "ascension":
+          return ["ascension_showcase_1", "ascension_showcase_2", "ascension_showcase_3"][
+            slotIndex
+          ];
+        default:
+          return null; // No zone-specific texture, fall through to generic
+      }
+    };
+
+    const platformTexture = building.isPlatform
+      ? getPlatformShowcaseTexture(building.zone, building.platformRank)
+      : null;
+
+    const buildingTexture = platformTexture
+      ? platformTexture
+      : isBagsWorldHQ
+        ? "bagshq"
+        : isMansion
+          ? `mansion_${mansionStyleIndex}`
+          : isPokeCenter
+            ? "pokecenter"
+            : isCasino
+              ? "casino"
+              : isArcade
+                ? "arcade_building"
+                : isTreasury
+                  ? "treasury"
+                  : isBeachBuilding
+                    ? `beach_building_${beachBuildingLevel}`
+                    : `building_${building.level}_${styleIndex}`;
     const sprite = this.add.sprite(0, 0, buildingTexture);
     sprite.setOrigin(0.5, 1);
     // HQ is larger and floating, mansions use rank-based scaling from building data

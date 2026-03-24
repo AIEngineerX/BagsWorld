@@ -1131,6 +1131,429 @@ function generateAscensionSpirePeak(scene: Phaser.Scene): void {
 }
 
 // ============================================================================
+// 14. CELESTIAL BEACON (80x140) — Tall tower with glowing crystal orb
+// ============================================================================
+
+function generateAscensionShowcase1(scene: Phaser.Scene): void {
+  const w = r(80),
+    h = r(140);
+  const cx = w / 2;
+  const g = scene.make.graphics({ x: 0, y: 0 });
+
+  // --- Ornate stepped base ---
+  g.fillStyle(0xe8ded0);
+  g.fillRect(r(10), h - r(10), w - r(20), r(10));
+  g.fillStyle(0xf5f0eb);
+  g.fillRect(r(12), h - r(10), w - r(24), r(3));
+  g.fillStyle(0xe8ded0);
+  g.fillRect(r(14), h - r(18), w - r(28), r(8));
+  g.fillStyle(0xf5f0eb);
+  g.fillRect(r(16), h - r(18), w - r(32), r(3));
+
+  // --- Main tower body (tapered upward) ---
+  // Lower section (wider)
+  g.fillStyle(0xf5f0eb);
+  g.fillRect(r(18), r(50), w - r(36), h - r(68));
+
+  // Left highlight
+  g.fillStyle(0xfffef5);
+  g.fillRect(r(18), r(50), r(4), h - r(68));
+
+  // Right shadow
+  g.fillStyle(0xe8ded0);
+  g.fillRect(w - r(22), r(50), r(4), h - r(68));
+
+  // Upper section (narrower)
+  g.fillStyle(0xf5f0eb);
+  g.fillRect(r(22), r(30), w - r(44), r(24));
+
+  // Upper left highlight
+  g.fillStyle(0xfffef5);
+  g.fillRect(r(22), r(30), r(3), r(24));
+
+  // Upper right shadow
+  g.fillStyle(0xe8ded0);
+  g.fillRect(w - r(25), r(30), r(3), r(24));
+
+  // --- Vertical golden light strips on tower ---
+  g.fillStyle(0xffd700, 0.4);
+  g.fillRect(r(26), r(55), r(2), h - r(78));
+  g.fillRect(w - r(28), r(55), r(2), h - r(78));
+  // Brighter center strip
+  g.fillStyle(0xffd700, 0.6);
+  g.fillRect(cx - r(1), r(55), r(2), h - r(78));
+
+  // --- Golden cornice between sections ---
+  g.fillStyle(0xd4a843);
+  g.fillRect(r(16), r(48), w - r(32), r(4));
+  g.fillStyle(0xffd700);
+  g.fillRect(r(16), r(48), w - r(32), r(2));
+
+  // --- Tower cap / balcony ring ---
+  g.fillStyle(0xd4a843);
+  g.fillRect(r(18), r(26), w - r(36), r(6));
+  g.fillStyle(0xffd700);
+  g.fillRect(r(18), r(26), w - r(36), r(2));
+
+  // --- Crystal orb mount (stepped pedestal at top) ---
+  g.fillStyle(0xe8ded0);
+  g.fillRect(cx - r(8), r(20), r(16), r(8));
+  g.fillStyle(0xd4a843);
+  g.fillRect(cx - r(6), r(18), r(12), r(4));
+
+  // --- Glowing crystal orb ---
+  // Outer glow aura
+  g.fillStyle(0xffd700, 0.15);
+  g.fillRect(cx - r(14), r(2), r(28), r(20));
+  g.fillStyle(0xffe44d, 0.1);
+  g.fillRect(cx - r(12), r(4), r(24), r(16));
+
+  // Orb body (stepped circle)
+  g.fillStyle(0xb8e6f0);
+  g.fillRect(cx - r(6), r(8), r(12), r(10));
+  g.fillRect(cx - r(7), r(10), r(14), r(6));
+  g.fillRect(cx - r(5), r(6), r(10), r(2));
+  g.fillRect(cx - r(5), r(18), r(10), r(2));
+
+  // Orb inner glow
+  g.fillStyle(0xfffef5, 0.5);
+  g.fillRect(cx - r(4), r(10), r(8), r(6));
+
+  // Orb highlight corner
+  g.fillStyle(0xffffff, 0.4);
+  g.fillRect(cx - r(5), r(9), r(3), r(3));
+
+  // Orb golden ring border
+  g.fillStyle(0xd4a843);
+  g.fillRect(cx - r(8), r(12), r(1), r(4));
+  g.fillRect(cx + r(7), r(12), r(1), r(4));
+  g.fillRect(cx - r(6), r(7), r(12), r(1));
+  g.fillRect(cx - r(6), r(20), r(12), r(1));
+
+  // --- Narrow windows with golden frames ---
+  const windowYs = [r(60), r(80), r(100)];
+  windowYs.forEach((wy) => {
+    // Left window
+    g.fillStyle(0xd4a843);
+    g.fillRect(r(22), wy, r(8), r(14));
+    g.fillStyle(0xffd700, 0.3);
+    g.fillRect(r(24), wy + r(2), r(4), r(10));
+    g.fillStyle(0xfffef5, 0.4);
+    g.fillRect(r(24), wy + r(2), r(2), r(2));
+
+    // Right window
+    g.fillStyle(0xd4a843);
+    g.fillRect(w - r(30), wy, r(8), r(14));
+    g.fillStyle(0xffd700, 0.3);
+    g.fillRect(w - r(28), wy + r(2), r(4), r(10));
+    g.fillStyle(0xfffef5, 0.4);
+    g.fillRect(w - r(28), wy + r(2), r(2), r(2));
+  });
+
+  // --- Block line details ---
+  g.fillStyle(0xe8ded0);
+  for (let by = r(58); by < h - r(22); by += r(16)) {
+    g.fillRect(r(20), by, r(6), r(1));
+    g.fillRect(w - r(26), by, r(6), r(1));
+  }
+
+  // --- Small golden finials at base corners ---
+  g.fillStyle(0xd4a843);
+  g.fillRect(r(12), h - r(22), r(4), r(6));
+  g.fillRect(w - r(16), h - r(22), r(4), r(6));
+  g.fillStyle(0xffd700);
+  g.fillRect(r(13), h - r(22), r(2), r(2));
+  g.fillRect(w - r(15), h - r(22), r(2), r(2));
+
+  g.generateTexture("ascension_showcase_1", w, h);
+  g.destroy();
+}
+
+// ============================================================================
+// 15. STARFORGE PAVILION (100x120) — Wide hall with arched doorways and dome
+// ============================================================================
+
+function generateAscensionShowcase2(scene: Phaser.Scene): void {
+  const w = r(100),
+    h = r(120);
+  const cx = w / 2;
+  const g = scene.make.graphics({ x: 0, y: 0 });
+
+  // --- Foundation steps (2 steps) ---
+  g.fillStyle(0xe8ded0);
+  g.fillRect(r(8), h - r(8), w - r(16), r(8));
+  g.fillStyle(0xf5f0eb);
+  g.fillRect(r(10), h - r(8), w - r(20), r(3));
+  g.fillStyle(0xe8ded0);
+  g.fillRect(r(12), h - r(16), w - r(24), r(8));
+  g.fillStyle(0xf5f0eb);
+  g.fillRect(r(14), h - r(16), w - r(28), r(3));
+
+  // --- Main walls ---
+  g.fillStyle(0xf5f0eb);
+  g.fillRect(r(14), r(34), w - r(28), h - r(50));
+
+  // Left highlight
+  g.fillStyle(0xfffef5);
+  g.fillRect(r(14), r(34), r(5), h - r(50));
+
+  // Right shadow
+  g.fillStyle(0xe8ded0);
+  g.fillRect(w - r(19), r(34), r(5), h - r(50));
+
+  // --- 6 columns across facade ---
+  const colPositions = [r(18), r(30), r(42), w - r(48), w - r(36), w - r(24)];
+  colPositions.forEach((colX) => {
+    g.fillStyle(0xf5f0eb);
+    g.fillRect(colX, r(36), r(6), h - r(54));
+    // Left highlight
+    g.fillStyle(0xfffef5);
+    g.fillRect(colX, r(36), r(1), h - r(54));
+    // Right shadow
+    g.fillStyle(0xe8ded0);
+    g.fillRect(colX + r(5), r(36), r(1), h - r(54));
+    // Capital
+    g.fillStyle(0xd4a843);
+    g.fillRect(colX - r(1), r(32), r(8), r(4));
+    // Base
+    g.fillStyle(0xe8ded0);
+    g.fillRect(colX - r(1), h - r(20), r(8), r(4));
+  });
+
+  // --- Celestial dome roof (stepped rectangles) ---
+  g.fillStyle(0xd4a843);
+  g.fillRect(r(10), r(28), w - r(20), r(8));
+  g.fillRect(r(18), r(20), w - r(36), r(10));
+  g.fillRect(r(26), r(14), w - r(52), r(8));
+  g.fillRect(r(32), r(8), w - r(64), r(8));
+  g.fillRect(r(38), r(4), w - r(76), r(6));
+  g.fillRect(cx - r(6), r(1), r(12), r(5));
+
+  // Dome highlight
+  g.fillStyle(0xffd700);
+  g.fillRect(r(10), r(28), w - r(20), r(3));
+  g.fillRect(r(18), r(20), w - r(36), r(2));
+  g.fillRect(r(26), r(14), w - r(52), r(2));
+
+  // Dome finial (golden ball at peak)
+  g.fillStyle(0xffd700);
+  g.fillRect(cx - r(3), r(1), r(6), r(4));
+  g.fillStyle(0xfffef5);
+  g.fillRect(cx - r(2), r(1), r(3), r(2));
+
+  // --- Star motifs on dome surface ---
+  g.fillStyle(0xffd700);
+  g.fillRect(r(22), r(22), r(2), r(2));
+  g.fillRect(r(34), r(16), r(2), r(2));
+  g.fillRect(r(46), r(12), r(2), r(2));
+  g.fillRect(w - r(24), r(22), r(2), r(2));
+  g.fillRect(w - r(36), r(16), r(2), r(2));
+  g.fillRect(w - r(48), r(12), r(2), r(2));
+  // Star connector lines
+  g.fillStyle(0xffd700, 0.3);
+  g.fillRect(r(24), r(22), r(10), r(1));
+  g.fillRect(r(36), r(16), r(10), r(1));
+  g.fillRect(w - r(34), r(22), r(10), r(1));
+
+  // --- Three arched doorways ---
+  const archXs = [cx - r(30), cx - r(8), cx + r(16)];
+  archXs.forEach((ax) => {
+    // Arch frame
+    g.fillStyle(0xd4a843);
+    g.fillRect(ax, r(60), r(14), h - r(78));
+    // Arch top (stepped)
+    g.fillRect(ax + r(1), r(56), r(12), r(6));
+    g.fillRect(ax + r(3), r(53), r(8), r(5));
+    // Inner glow
+    g.fillStyle(0xffd700, 0.3);
+    g.fillRect(ax + r(2), r(62), r(10), h - r(82));
+    // Bright center
+    g.fillStyle(0xfffef5, 0.4);
+    g.fillRect(ax + r(4), r(66), r(6), h - r(90));
+    // Highlight corner
+    g.fillStyle(0xfffef5, 0.5);
+    g.fillRect(ax + r(2), r(62), r(3), r(3));
+  });
+
+  // --- Amber glass windows on upper walls ---
+  const upperWinXs = [r(20), r(36), w - r(42), w - r(26)];
+  upperWinXs.forEach((wx) => {
+    g.fillStyle(0xd4c9a8);
+    g.fillRect(wx, r(40), r(8), r(12));
+    g.fillStyle(0xffd700, 0.3);
+    g.fillRect(wx + r(1), r(41), r(6), r(10));
+    g.fillStyle(0xfffef5, 0.4);
+    g.fillRect(wx + r(1), r(41), r(2), r(2));
+  });
+
+  // --- Block line details on walls ---
+  g.fillStyle(0xe8ded0);
+  g.fillRect(r(16), r(50), r(12), r(1));
+  g.fillRect(w - r(28), r(50), r(12), r(1));
+  g.fillRect(r(16), r(70), r(12), r(1));
+  g.fillRect(w - r(28), r(70), r(12), r(1));
+  g.fillRect(r(16), r(90), r(12), r(1));
+  g.fillRect(w - r(28), r(90), r(12), r(1));
+
+  // --- Golden roof trim line ---
+  g.fillStyle(0xd4a843);
+  g.fillRect(r(8), r(32), w - r(16), r(3));
+  g.fillStyle(0xffd700);
+  g.fillRect(r(8), r(32), w - r(16), r(1));
+
+  g.generateTexture("ascension_showcase_2", w, h);
+  g.destroy();
+}
+
+// ============================================================================
+// 16. ORACLE SPIRE (70x150) — Crystalline spire with floating runes
+// ============================================================================
+
+function generateAscensionShowcase3(scene: Phaser.Scene): void {
+  const w = r(70),
+    h = r(150);
+  const cx = w / 2;
+  const g = scene.make.graphics({ x: 0, y: 0 });
+
+  // --- Ornate base platform ---
+  g.fillStyle(0xe8ded0);
+  g.fillRect(r(8), h - r(10), w - r(16), r(10));
+  g.fillStyle(0xf5f0eb);
+  g.fillRect(r(10), h - r(10), w - r(20), r(3));
+  g.fillStyle(0xd4c9a8);
+  g.fillRect(r(10), h - r(16), w - r(20), r(6));
+
+  // --- Lower pedestal (marble with purple tint) ---
+  g.fillStyle(0xe8ded0);
+  g.fillRect(r(14), h - r(30), w - r(28), r(14));
+  // Left highlight
+  g.fillStyle(0xf5f0eb);
+  g.fillRect(r(14), h - r(30), r(3), r(14));
+  // Right shadow
+  g.fillStyle(0xd4c9a8);
+  g.fillRect(w - r(17), h - r(30), r(3), r(14));
+
+  // --- Main crystalline spire body (tapered, faceted) ---
+  // Wide lower section
+  g.fillStyle(0x6b4e8e);
+  g.fillRect(cx - r(14), r(60), r(28), h - r(90));
+
+  // Mid section
+  g.fillStyle(0x7b5ea0);
+  g.fillRect(cx - r(11), r(38), r(22), r(26));
+
+  // Upper section
+  g.fillStyle(0x8a6eb0);
+  g.fillRect(cx - r(8), r(22), r(16), r(20));
+
+  // Top taper
+  g.fillStyle(0x9a7ec0);
+  g.fillRect(cx - r(6), r(14), r(12), r(10));
+  g.fillRect(cx - r(4), r(8), r(8), r(8));
+  g.fillRect(cx - r(3), r(4), r(6), r(6));
+  g.fillRect(cx - r(2), r(1), r(4), r(5));
+  g.fillRect(cx - r(1), 0, r(2), r(3));
+
+  // --- Faceted edge highlights (left face — lighter) ---
+  g.fillStyle(0xb898d0);
+  g.fillRect(cx - r(14), r(60), r(3), h - r(90));
+  g.fillRect(cx - r(11), r(38), r(3), r(26));
+  g.fillRect(cx - r(8), r(22), r(2), r(20));
+  g.fillRect(cx - r(6), r(14), r(2), r(10));
+  g.fillRect(cx - r(4), r(8), r(2), r(8));
+
+  // --- Faceted edge shadows (right face — darker) ---
+  g.fillStyle(0x4e3670);
+  g.fillRect(cx + r(11), r(60), r(3), h - r(90));
+  g.fillRect(cx + r(8), r(38), r(3), r(26));
+  g.fillRect(cx + r(6), r(22), r(2), r(20));
+  g.fillRect(cx + r(4), r(14), r(2), r(10));
+  g.fillRect(cx + r(2), r(8), r(2), r(8));
+
+  // --- Inner golden glow (central stripe) ---
+  g.fillStyle(0xffd700, 0.35);
+  g.fillRect(cx - r(2), r(16), r(4), h - r(48));
+  g.fillStyle(0xffd700, 0.5);
+  g.fillRect(cx - r(1), r(20), r(2), h - r(56));
+
+  // --- Golden diamond inset (center of spire body) ---
+  g.fillStyle(0xd4a843);
+  g.fillRect(cx - r(5), r(70), r(10), r(16));
+  g.fillStyle(0xffd700);
+  g.fillRect(cx - r(3), r(72), r(6), r(12));
+  g.fillStyle(0xfffef5, 0.4);
+  g.fillRect(cx - r(2), r(73), r(3), r(3));
+
+  // --- Second diamond inset (upper body) ---
+  g.fillStyle(0xd4a843);
+  g.fillRect(cx - r(4), r(42), r(8), r(12));
+  g.fillStyle(0xffd700);
+  g.fillRect(cx - r(2), r(44), r(4), r(8));
+  g.fillStyle(0xfffef5, 0.4);
+  g.fillRect(cx - r(2), r(44), r(2), r(2));
+
+  // --- Floating rune symbols (small pixel rectangles around spire) ---
+  // Left side runes
+  g.fillStyle(0xffd700, 0.6);
+  g.fillRect(r(4), r(50), r(3), r(3));
+  g.fillRect(r(6), r(70), r(3), r(3));
+  g.fillRect(r(2), r(90), r(3), r(3));
+  g.fillRect(r(8), r(35), r(2), r(2));
+
+  // Right side runes
+  g.fillRect(w - r(7), r(45), r(3), r(3));
+  g.fillRect(w - r(9), r(65), r(3), r(3));
+  g.fillRect(w - r(5), r(85), r(3), r(3));
+  g.fillRect(w - r(10), r(30), r(2), r(2));
+
+  // Rune connecting lines (very faint)
+  g.fillStyle(0xffd700, 0.15);
+  g.fillRect(r(7), r(52), r(8), r(1));
+  g.fillRect(w - r(15), r(47), r(8), r(1));
+  g.fillRect(r(5), r(92), r(10), r(1));
+  g.fillRect(w - r(15), r(87), r(10), r(1));
+
+  // --- Purple crystal window slits ---
+  const windowYs = [r(96), r(116)];
+  windowYs.forEach((wy) => {
+    g.fillStyle(0xd4a843);
+    g.fillRect(cx - r(10), wy, r(6), r(12));
+    g.fillStyle(0xb8e6f0, 0.5);
+    g.fillRect(cx - r(9), wy + r(1), r(4), r(10));
+    g.fillStyle(0xfffef5, 0.3);
+    g.fillRect(cx - r(9), wy + r(1), r(2), r(2));
+
+    g.fillStyle(0xd4a843);
+    g.fillRect(cx + r(4), wy, r(6), r(12));
+    g.fillStyle(0xb8e6f0, 0.5);
+    g.fillRect(cx + r(5), wy + r(1), r(4), r(10));
+    g.fillStyle(0xfffef5, 0.3);
+    g.fillRect(cx + r(5), wy + r(1), r(2), r(2));
+  });
+
+  // --- Golden band at pedestal/spire junction ---
+  g.fillStyle(0xd4a843);
+  g.fillRect(r(12), h - r(32), w - r(24), r(4));
+  g.fillStyle(0xffd700);
+  g.fillRect(r(12), h - r(32), w - r(24), r(2));
+
+  // --- Ethereal glow aura at tip ---
+  g.fillStyle(0xffd700, 0.12);
+  g.fillRect(cx - r(10), 0, r(20), r(18));
+  g.fillStyle(0x9a7ec0, 0.08);
+  g.fillRect(cx - r(14), 0, r(28), r(12));
+
+  // --- Bright tip sparkle ---
+  g.fillStyle(0xffffff);
+  g.fillRect(cx, 0, r(1), r(1));
+  g.fillStyle(0xfffef5);
+  g.fillRect(cx - r(1), r(1), r(2), r(2));
+
+  g.generateTexture("ascension_showcase_3", w, h);
+  g.destroy();
+}
+
+// ============================================================================
 // MAIN EXPORT
 // ============================================================================
 
@@ -1152,4 +1575,7 @@ export function generateAscensionAssets(scene: Phaser.Scene): void {
   generateAscensionPlatformDiamond(scene);
   generateAscensionHalo(scene);
   generateAscensionSpirePeak(scene);
+  generateAscensionShowcase1(scene);
+  generateAscensionShowcase2(scene);
+  generateAscensionShowcase3(scene);
 }
