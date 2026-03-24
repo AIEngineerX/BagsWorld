@@ -14,7 +14,13 @@ export function DatabaseStatus() {
   useEffect(() => {
     const checkStatus = async () => {
       try {
-        const response = await fetch("/api/database-status");
+        const response = await fetch("/api/database-status", {
+          signal: AbortSignal.timeout(5000),
+        });
+        if (!response.ok) {
+          setStatus(null);
+          return;
+        }
         const data = await response.json();
         setStatus(data);
       } catch {

@@ -1191,6 +1191,7 @@ async function fetchIntelligentDialogue(
     const response = await fetch("/api/intelligent-dialogue", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(10000),
       body: JSON.stringify({
         participants,
         topic,

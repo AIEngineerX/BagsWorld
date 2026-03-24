@@ -139,6 +139,7 @@ async function pollBehaviors(): Promise<void> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(context),
+      signal: AbortSignal.timeout(10000),
     });
 
     if (!response.ok) {
