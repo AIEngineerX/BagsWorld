@@ -6957,13 +6957,20 @@ export class WorldScene extends Phaser.Scene {
           const trendSlot = ((rank || 5) - 5) % 3; // ranks 5-7 → 0,1,2
           return ["city_showcase_1", "city_showcase_2", "city_showcase_3"][trendSlot];
         }
+        case "main_city": {
+          // Park: nature-themed — greenhouse, garden pavilion, treehouse
+          const parkSlot = ((rank || 8) - 8) % 3; // ranks 8-10 → 0,1,2
+          return ["park_showcase_1", "park_showcase_2", "park_showcase_3"][parkSlot];
+        }
+        case "moltbook": {
+          // Moltbook Beach: volcanic/tiki — volcanos fit the tropical island theme
+          const beachSlot = ((rank || 14) - 14) % 2; // ranks 14-15 → 0,1
+          return ["beach_showcase_1", "beach_showcase_2"][beachSlot];
+        }
         default: {
-          // Use themed platform textures for non-showcase zones
-          // Override volcano (red/fiery) to crystal (neutral) in peaceful zones
-          const safeTheme =
-            theme === "volcano" && (zone === "main_city" || zone === "labs" || zone === "moltbook")
-              ? "crystal"
-              : theme;
+          // Use themed platform textures for non-showcase zones (labs)
+          // Override volcano to crystal only in labs (peaceful HQ zone)
+          const safeTheme = theme === "volcano" && zone === "labs" ? "crystal" : theme;
           if (safeTheme && this.textures.exists(`platform_${safeTheme}`)) {
             return `platform_${safeTheme}`;
           }

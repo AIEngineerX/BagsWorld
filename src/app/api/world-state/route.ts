@@ -284,7 +284,7 @@ async function discoverPlatformTokens(excludeMints: Set<string>): Promise<Regist
   try {
     // Single call to Bags.fm top tokens — returns 170+ tokens with rich stats
     const res = await fetch("https://api2.bags.fm/api/v1/token-launch/top-tokens/lifetime-fees", {
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) {
       console.warn(`[WorldState] Bags top-tokens API returned ${res.status}`);
@@ -521,6 +521,7 @@ async function fetchBagsWorldHolders(): Promise<BagsWorldHolder[]> {
     const accountsResponse = await fetch(rpcUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(5000),
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
@@ -550,6 +551,7 @@ async function fetchBagsWorldHolders(): Promise<BagsWorldHolder[]> {
     const supplyResponse = await fetch(rpcUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(5000),
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
@@ -573,6 +575,7 @@ async function fetchBagsWorldHolders(): Promise<BagsWorldHolder[]> {
           const ownerResponse = await fetch(rpcUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            signal: AbortSignal.timeout(5000),
             body: JSON.stringify({
               jsonrpc: "2.0",
               id: 1,
@@ -808,6 +811,94 @@ function calculate24hEarningsPerWallet(claimEvents24h: ClaimEvent[]): Map<string
   return earningsMap;
 }
 
+// Background SDK enrichment — enriches tokens sequentially (3 at a time) without blocking response
+let bgEnrichRunning = false;
+function enrichTokensInBackground(sdk: any, mints: string[]): void {
+  if (bgEnrichRunning) return;
+  // Only enrich mints not yet cached
+  const uncached = mints.filter((m) => !sdkEnrichCache.has(m));
+  if (uncached.length === 0) return;
+
+  bgEnrichRunning = true;
+  const BATCH_SIZE = 3; // Max concurrent SDK enrichments
+
+  (async () => {
+    try {
+      for (let i = 0; i < uncached.length; i += BATCH_SIZE) {
+        const batch = uncached.slice(i, i + BATCH_SIZE);
+        await Promise.allSettled(
+          batch.map(async (mint) => {
+            try {
+              const mintPubkey = new PublicKey(mint);
+              const now = Math.floor(Date.now() / 1000);
+              const twentyFourHoursAgo = now - 24 * 60 * 60;
+
+              const results = await Promise.race([
+                Promise.allSettled([
+                  sdk.state.getTokenCreators(mintPubkey),
+                  sdk.state.getTokenLifetimeFees(mintPubkey),
+                  sdk.state.getTokenClaimEvents(mintPubkey, { limit: 5 }),
+                  sdk.state.getTokenClaimEvents(mintPubkey, {
+                    mode: "time",
+                    from: twentyFourHoursAgo,
+                    to: now,
+                  }),
+                ]),
+                new Promise<never>((_, reject) =>
+                  setTimeout(() => reject(new Error("SDK bg timeout")), 8000)
+                ),
+              ]);
+
+              const [creatorsR, feesR, eventsR, events24hR] = results;
+              const creators = creatorsR.status === "fulfilled" ? creatorsR.value || [] : [];
+              const lifetimeFees =
+                feesR.status === "fulfilled" ? lamportsToSol(feesR.value || 0) : 0;
+              const claimEvents =
+                eventsR.status === "fulfilled"
+                  ? (eventsR.value || []).map((e: TokenClaimEventSDK) => ({
+                      signature: e.signature,
+                      claimer: e.wallet,
+                      claimerUsername: undefined,
+                      amount: safeParseClaimAmount(e.amount),
+                      timestamp: e.timestamp,
+                      tokenMint: mint,
+                    }))
+                  : [];
+              const claimEvents24h =
+                events24hR.status === "fulfilled"
+                  ? (events24hR.value || []).map((e: TokenClaimEventSDK) => ({
+                      signature: e.signature,
+                      claimer: e.wallet,
+                      claimerUsername: undefined,
+                      amount: safeParseClaimAmount(e.amount),
+                      timestamp: e.timestamp,
+                      tokenMint: mint,
+                    }))
+                  : [];
+
+              if (lifetimeFees > 0 || creators.length > 0) {
+                sdkEnrichCache.set(mint, {
+                  lifetimeFees,
+                  creators,
+                  claimEvents,
+                  claimEvents24h,
+                  timestamp: Date.now(),
+                });
+              }
+            } catch {
+              // Individual mint enrichment failed, continue
+            }
+          })
+        );
+      }
+    } catch {
+      // Background enrichment batch failed
+    } finally {
+      bgEnrichRunning = false;
+    }
+  })();
+}
+
 // Convert registered token to TokenInfo with SDK enrichment
 async function enrichTokenWithSDK(
   token: RegisteredToken,
@@ -836,74 +927,11 @@ async function enrichTokenWithSDK(
       creators = cached.creators;
       claimEvents = cached.claimEvents;
       claimEvents24h = cached.claimEvents24h;
-    } else {
-      try {
-        const mintPubkey = new PublicKey(token.mint);
-
-        // Calculate 24h time range for claim events
-        const now = Math.floor(Date.now() / 1000);
-        const twentyFourHoursAgo = now - 24 * 60 * 60;
-
-        const [creatorsResult, feesResult, eventsResult, events24hResult] =
-          await Promise.allSettled([
-            sdk.state.getTokenCreators(mintPubkey),
-            sdk.state.getTokenLifetimeFees(mintPubkey),
-            sdk.state.getTokenClaimEvents(mintPubkey, { limit: 5 }),
-            // Fetch 24h claim events using time-based filtering (Bags API v1.2.0+)
-            sdk.state.getTokenClaimEvents(mintPubkey, {
-              mode: "time",
-              from: twentyFourHoursAgo,
-              to: now,
-            }),
-          ]);
-
-        if (creatorsResult.status === "fulfilled") {
-          creators = creatorsResult.value || [];
-        }
-
-        if (feesResult.status === "fulfilled") {
-          // SDK returns lamports, convert to SOL for storage and display
-          lifetimeFees = lamportsToSol(feesResult.value || 0);
-        }
-
-        if (eventsResult.status === "fulfilled") {
-          const rawEvents: TokenClaimEventSDK[] = eventsResult.value || [];
-          claimEvents = rawEvents.map((e) => ({
-            signature: e.signature,
-            claimer: e.wallet,
-            claimerUsername: undefined,
-            amount: safeParseClaimAmount(e.amount),
-            timestamp: e.timestamp,
-            tokenMint: token.mint,
-          }));
-        }
-
-        if (events24hResult.status === "fulfilled") {
-          const rawEvents24h: TokenClaimEventSDK[] = events24hResult.value || [];
-          claimEvents24h = rawEvents24h.map((e) => ({
-            signature: e.signature,
-            claimer: e.wallet,
-            claimerUsername: undefined,
-            amount: safeParseClaimAmount(e.amount),
-            timestamp: e.timestamp,
-            tokenMint: token.mint,
-          }));
-        }
-
-        // Cache successful SDK results (only if we got at least fees or creators)
-        if (lifetimeFees > 0 || creators.length > 0) {
-          sdkEnrichCache.set(token.mint, {
-            lifetimeFees,
-            creators,
-            claimEvents,
-            claimEvents24h,
-            timestamp: Date.now(),
-          });
-        }
-      } catch {
-        // Token enrichment failed, continue with defaults
-      }
     }
+    // SDK cache miss: skip enrichment for this cycle, return defaults.
+    // Game rendering only needs DexScreener data (price, mcap, volume).
+    // SDK data (fees, creators, claims) will fill in on the next poll cycle
+    // when enrichTokensInBackground() runs after the response is sent.
   }
 
   // Build TokenInfo
@@ -1181,57 +1209,74 @@ export async function POST(request: NextRequest) {
     const sdk = await getBagsSDK();
 
     // Map to store health data from Neon for time-based decay calculation
-    // Key: mint, Value: { currentHealth, healthUpdatedAt }
     const healthDataMap = new Map<
       string,
       { currentHealth: number | null; healthUpdatedAt: Date | null }
     >();
 
-    // Merge admin overrides from Neon global tokens
-    if (isNeonConfigured()) {
-      try {
-        const globalTokens = await getGlobalTokens();
-        const globalTokenMap = new Map(globalTokens.map((gt) => [gt.mint, gt]));
-
-        // Extract health data for all global tokens (for time-based decay)
-        globalTokens.forEach((gt) => {
-          healthDataMap.set(gt.mint, {
-            currentHealth: gt.current_health ?? null,
-            healthUpdatedAt: gt.health_updated_at ? new Date(gt.health_updated_at) : null,
-          });
-        });
-
-        registeredTokens = registeredTokens.map((token) => {
-          const gt = globalTokenMap.get(token.mint);
-          if (!gt) return token;
-          return {
-            ...token,
-            levelOverride: gt.level_override ?? token.levelOverride,
-            positionOverride:
-              gt.position_x != null && gt.position_y != null
-                ? { x: gt.position_x, y: gt.position_y }
-                : token.positionOverride,
-            styleOverride: gt.style_override ?? token.styleOverride,
-            healthOverride: gt.health_override ?? token.healthOverride,
-            zoneOverride: (gt.zone_override as TokenInfo["zoneOverride"]) ?? token.zoneOverride,
-          };
-        });
-      } catch (err) {
-        console.warn("[WorldState] Failed to fetch global tokens for overrides:", err);
-      }
-    }
-
-    // ALWAYS include Treasury building and PokeCenter (permanent landmarks)
-    // Then add any user tokens + platform-discovered tokens
     const permanentBuildings = [TREASURY_BUILDING, BAGSWORLD_HQ, ...STARTER_BUILDINGS];
     const registeredMints = new Set([
       ...permanentBuildings.map((t) => t.mint),
       ...registeredTokens.map((t) => t.mint),
     ]);
-    const platformTokens = await discoverPlatformTokens(registeredMints);
+
+    // Fire ALL independent network calls in parallel:
+    // 1. Global tokens from DB (admin overrides)
+    // 2. Platform token discovery (Bags.fm trending)
+    // 3. DexScreener prices (for registered mints — known upfront)
+    // 4. Holder data (Solana RPC)
+    const knownMints = registeredTokens
+      .filter((t) => !t.mint.startsWith("Treasury") && !t.mint.startsWith("Starter"))
+      .map((t) => t.mint);
+
+    const [globalTokensResult, platformTokens, priceData, bagsWorldHolders] = await Promise.all([
+      isNeonConfigured()
+        ? getGlobalTokens().catch((err) => {
+            console.warn("[WorldState] Failed to fetch global tokens:", err);
+            return [] as Awaited<ReturnType<typeof getGlobalTokens>>;
+          })
+        : Promise.resolve([] as Awaited<ReturnType<typeof getGlobalTokens>>),
+      discoverPlatformTokens(registeredMints),
+      fetchTokenPrices(knownMints),
+      Promise.race([
+        fetchBagsWorldHolders(),
+        new Promise<BagsWorldHolder[]>((resolve) =>
+          setTimeout(() => {
+            console.warn("[WorldState] Holder fetch timed out, using placeholders");
+            resolve(getPlaceholderHolders(Date.now()));
+          }, 10000)
+        ),
+      ]),
+    ]);
+    // Apply DB overrides to registered tokens
+    if (globalTokensResult.length > 0) {
+      const globalTokenMap = new Map(globalTokensResult.map((gt) => [gt.mint, gt]));
+      globalTokensResult.forEach((gt) => {
+        healthDataMap.set(gt.mint, {
+          currentHealth: gt.current_health ?? null,
+          healthUpdatedAt: gt.health_updated_at ? new Date(gt.health_updated_at) : null,
+        });
+      });
+      registeredTokens = registeredTokens.map((token) => {
+        const gt = globalTokenMap.get(token.mint);
+        if (!gt) return token;
+        return {
+          ...token,
+          levelOverride: gt.level_override ?? token.levelOverride,
+          positionOverride:
+            gt.position_x != null && gt.position_y != null
+              ? { x: gt.position_x, y: gt.position_y }
+              : token.positionOverride,
+          styleOverride: gt.style_override ?? token.styleOverride,
+          healthOverride: gt.health_override ?? token.healthOverride,
+          zoneOverride: (gt.zone_override as TokenInfo["zoneOverride"]) ?? token.zoneOverride,
+        };
+      });
+    }
+
     const tokensToProcess = [...permanentBuildings, ...registeredTokens, ...platformTokens];
 
-    // Enrich all tokens with SDK data
+    // Enrich all tokens (SDK data served from cache or skipped — instant)
     const enrichedResults = await Promise.all(
       tokensToProcess.map((token) => enrichTokenWithSDK(token, sdk))
     );
@@ -1239,13 +1284,9 @@ export async function POST(request: NextRequest) {
     // Build arrays
     const tokens: TokenInfo[] = enrichedResults.map((r) => r.tokenInfo);
     const allClaimEvents: ClaimEvent[] = enrichedResults
-      .flatMap((r) => r.claimEvents.slice(0, 10)) // Cap per-token to avoid processing 10k+ events
+      .flatMap((r) => r.claimEvents.slice(0, 10))
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, 20);
-
-    // Fetch REAL prices from DexScreener and merge into tokens
-    const allMints = tokens.map((t) => t.mint);
-    const priceData = await fetchTokenPrices(allMints);
 
     // Merge real price data into tokens
     for (const token of tokens) {
@@ -1587,8 +1628,7 @@ export async function POST(request: NextRequest) {
     const realWeather = getWeatherNonBlocking();
     const timeInfo = getESTTimeInfo();
 
-    // Fetch top BagsWorld token holders for Ballers Valley mansions
-    const bagsWorldHolders = await fetchBagsWorldHolders();
+    // bagsWorldHolders already resolved from parallel fetch above
     console.log("[WorldState] Creating world with", bagsWorldHolders.length, "mansion holders");
 
     // Calculate Bags.fm health metrics from real on-chain data
@@ -1934,7 +1974,20 @@ export async function POST(request: NextRequest) {
       worldState.buildings = [...worldState.buildings, ...externalBuildings];
     }
 
-    return NextResponse.json(worldState);
+    const response = NextResponse.json(worldState);
+
+    // After response is built, trigger background SDK enrichment for uncached tokens.
+    // This populates the cache so the NEXT 60s poll will have full SDK data.
+    if (sdk) {
+      const realMints = tokensToProcess
+        .filter(
+          (t) => !t.isPlatform && !t.mint.startsWith("Treasury") && !t.mint.startsWith("Starter")
+        )
+        .map((t) => t.mint);
+      enrichTokensInBackground(sdk, realMints);
+    }
+
+    return response;
   } catch {
     return NextResponse.json({ error: "Failed to build world state" }, { status: 500 });
   }

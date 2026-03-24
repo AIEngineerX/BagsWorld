@@ -78,6 +78,10 @@ Agent discovery must be dynamic, never hardcoded. API endpoints should discover 
 | `src/app/api/trading-terminal/`       | Market data and charts                                         |
 | `src/game/scenes/BootScene.ts`        | Asset preloading + pixel art texture generation                |
 | `src/game/scenes/WorldScene.ts`       | Main game logic, zone rendering, weather (1000+ lines)         |
+| `src/game/textures/platform-buildings.ts` | Platform building textures (12 themed showcase buildings)  |
+| `src/game/textures/constants.ts`      | SCALE, DEPTH layers, Y positions, PALETTE (32 colors)          |
+| `src/game/textures/moltbook-assets.ts` | Beach building textures (levels 1-5) + Moltbook zone assets  |
+| `src/game/textures/ascension-assets.ts` | Ascension zone textures (temple, observatory, vault, shrine) |
 | `src/lib/types.ts`                    | Core types: WorldState, GameCharacter, GameBuilding, GameEvent |
 | `src/lib/store.ts`                    | Zustand store                                                  |
 | `src/lib/config.ts`                   | Ecosystem configuration (wallets, gates, decay)                |
@@ -368,16 +372,16 @@ Day/Night synced to EST timezone via `timeInfo` from API.
 
 ## World Zones (8)
 
-| Zone ID     | Name             | Theme                                          |
-| ----------- | ---------------- | ---------------------------------------------- |
-| `labs`      | HQ               | Bags.fm team headquarters, R&D                 |
-| `main_city` | Park             | Peaceful green space, PokeCenter               |
-| `trending`  | BagsCity         | Urban neon, Casino, Trading Terminal            |
-| `ballers`   | Ballers Valley   | Luxury mansions for top holders                |
-| `founders`  | Founder's Corner | Token launch education, Professor Oak, Pokemon |
-| `moltbook`  | Moltbook Beach   | Tropical AI agent hangout, Openclaw lobsters   |
-| `arena`     | MoltBook Arena   | Real-time AI agent combat, spectator crowd     |
-| `ascension` | Ascension Spire  | Endgame progression zone                       |
+| Zone ID     | Name             | Theme                                          | Platform Showcases              |
+| ----------- | ---------------- | ---------------------------------------------- | ------------------------------- |
+| `labs`      | HQ               | Bags.fm team headquarters, R&D                 | Generic (volcano→crystal)       |
+| `main_city` | Park             | Peaceful green space, PokeCenter               | Greenhouse, Pavilion, Treehouse |
+| `trending`  | BagsCity         | Urban neon, Casino, Trading Terminal            | Neon Shop, Tower, Comm Tower    |
+| `ballers`   | Ballers Valley   | Luxury mansions for top holders                | —                               |
+| `founders`  | Founder's Corner | Token launch education, Professor Oak, Pokemon | —                               |
+| `moltbook`  | Moltbook Beach   | Tropical volcanic island, tiki, AI agents      | Volcano Hut, Tiki Tower         |
+| `arena`     | MoltBook Arena   | Real-time AI agent combat, spectator crowd     | —                               |
+| `ascension` | Ascension Spire  | Endgame progression zone                       | Temple, Observatory, Vault, Shrine |
 
 ## AI Characters (17 Total)
 
@@ -597,12 +601,44 @@ private setupMyZone(): void {
 
 ## Existing Texture Generators
 
-| Method                       | Creates                            |
-| ---------------------------- | ---------------------------------- |
-| `generateBuildings()`        | 5 levels x 4 styles = 20 buildings |
-| `generateMansions()`         | 5 luxury mansion styles            |
-| `generateAcademyBuildings()` | 8 campus buildings                 |
-| `generatePokeCenter()`       | Pokemon-style center               |
-| `generateTerminal()`         | Tech terminal building             |
+| Method                         | Creates                                                      |
+| ------------------------------ | ------------------------------------------------------------ |
+| `generateBuildings()`          | 5 levels x 4 styles = 20 buildings (user-registered tokens)  |
+| `generateMansions()`           | 5 luxury mansion styles (Ballers Valley)                     |
+| `generateAcademyBuildings()`   | 8 campus buildings                                           |
+| `generatePokeCenter()`         | Pokemon-style center                                         |
+| `generateTerminal()`           | Tech terminal building                                       |
+| `generatePlatformBuildings()`  | 12 platform showcase buildings (see Platform Building System) |
 
 Use Park zone (main_city) as the reference template for element density and placement.
+
+## Platform Building System
+
+Top 15 trending Bags.fm tokens auto-discovered every 5 minutes via `discoverPlatformTokens()` in `/api/world-state`. These are platform-wide tokens, not user-registered.
+
+**Discovery:** Single call to Bags.fm `top-tokens/lifetime-fees` → composite trending score (volume × momentum × breadth) → top 15 by score.
+
+**Theme Assignment** (`assignPlatformTheme()`):
+
+| Condition         | Theme     | Visual                          |
+| ----------------- | --------- | ------------------------------- |
+| 24h change > +20% | `rocket`  | Red body, silver nose, exhaust  |
+| 24h change < -20% | `volcano` | Dark rock, orange lava crater   |
+| 24h volume > $50K | `palace`  | Golden temple, marble columns   |
+| Otherwise         | `crystal` | Neutral calm crystal            |
+
+**Zone Distribution by Rank:**
+
+| Rank  | Zone            | Showcase Textures                                  |
+| ----- | --------------- | -------------------------------------------------- |
+| 1-4   | Ascension Spire | `ascension_temple`, `_observatory`, `_vault`, `_shrine` |
+| 5-7   | BagsCity        | `city_showcase_1`, `_2`, `_3` (neon urban)         |
+| 8-10  | Park            | `park_showcase_1`, `_2`, `_3` (greenhouse, pavilion, treehouse) |
+| 11-13 | HQ Labs         | Generic `platform_${theme}` (volcano→crystal override) |
+| 14-15 | Moltbook Beach  | `beach_showcase_1`, `_2` (volcano hut, tiki tower) |
+
+**Key differences from user buildings:**
+- Platform buildings skip decay (always 100% health, active status)
+- Platform buildings skip MAX_BUILDINGS limit (20 user + 15 platform = 35 max)
+- Themes are cached and persist across API calls
+- Volcano theme is overridden to crystal only in Labs (peaceful HQ zone)

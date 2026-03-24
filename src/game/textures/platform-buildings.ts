@@ -10,6 +10,11 @@ export function generatePlatformBuildings(scene: Phaser.Scene): void {
   generateCityShowcase1(scene, s);
   generateCityShowcase2(scene, s);
   generateCityShowcase3(scene, s);
+  generateParkShowcase1(scene, s);
+  generateParkShowcase2(scene, s);
+  generateParkShowcase3(scene, s);
+  generateBeachShowcase1(scene, s);
+  generateBeachShowcase2(scene, s);
 }
 
 // ROCKET — Red/orange body, silver nose cone, porthole windows, exhaust flame
@@ -1622,5 +1627,966 @@ function generateCityShowcase3(scene: Phaser.Scene, s: number): void {
   );
 
   g.generateTexture("city_showcase_3", w, h);
+  g.destroy();
+}
+
+// ============================================================================
+// PARK SHOWCASE BUILDINGS — nature-themed, green/brown/warm palette
+// ============================================================================
+
+// GREENHOUSE — Glass panels with green plants visible inside, wooden frame
+function generateParkShowcase1(scene: Phaser.Scene, s: number): void {
+  const w = Math.round(90 * s);
+  const h = Math.round(95 * s);
+  const g = scene.make.graphics({ x: 0, y: 0 });
+
+  const wood = 0x78350f;
+  const woodLight = lighten(wood, 0.2);
+  const woodDark = darken(wood, 0.3);
+  const glass = 0x86efac;
+  const plantGreen = 0x22c55e;
+  const plantDark = 0x166534;
+  const soil = 0x451a03;
+
+  const cx = w / 2;
+  const groundY = h - Math.round(4 * s);
+
+  // === DROP SHADOW ===
+  g.fillStyle(0x000000, 0.3);
+  g.fillRect(
+    Math.round(4 * s),
+    Math.round(12 * s),
+    w - Math.round(4 * s),
+    groundY - Math.round(8 * s)
+  );
+
+  // === WOODEN BASE ===
+  const baseH = Math.round(20 * s);
+  const baseY = groundY - baseH;
+  g.fillStyle(wood);
+  g.fillRect(0, baseY, w, baseH);
+  g.fillStyle(woodLight);
+  g.fillRect(0, baseY, Math.round(3 * s), baseH);
+  g.fillStyle(woodDark);
+  g.fillRect(w - Math.round(3 * s), baseY, Math.round(3 * s), baseH);
+
+  // Wood plank lines
+  g.fillStyle(woodDark, 0.4);
+  for (let py = baseY + Math.round(5 * s); py < groundY; py += Math.round(6 * s)) {
+    g.fillRect(Math.round(3 * s), py, w - Math.round(6 * s), Math.round(1 * s));
+  }
+
+  // === GLASS GREENHOUSE BODY ===
+  const glassY = Math.round(12 * s);
+  const glassH = baseY - glassY;
+  // Glass fill (semi-transparent green tint)
+  g.fillStyle(glass, 0.2);
+  g.fillRect(Math.round(4 * s), glassY, w - Math.round(8 * s), glassH);
+
+  // Glass panels — vertical wooden struts dividing the glass
+  const panelCount = 5;
+  const panelW = Math.round((w - 8 * s) / panelCount);
+  for (let i = 0; i <= panelCount; i++) {
+    const px = Math.round(4 * s) + i * panelW;
+    g.fillStyle(wood);
+    g.fillRect(px - Math.round(1 * s), glassY, Math.round(2 * s), glassH);
+  }
+  // Horizontal strut mid-point
+  g.fillStyle(wood);
+  g.fillRect(
+    Math.round(4 * s),
+    glassY + Math.round(glassH / 2),
+    w - Math.round(8 * s),
+    Math.round(2 * s)
+  );
+
+  // Glass sheen (highlight in each panel)
+  for (let i = 0; i < panelCount; i++) {
+    const px = Math.round(4 * s) + i * panelW + Math.round(2 * s);
+    g.fillStyle(0xffffff, 0.15);
+    g.fillRect(px, glassY + Math.round(3 * s), Math.round(3 * s), Math.round(8 * s));
+  }
+
+  // === PLANTS INSIDE ===
+  // Soil bed at bottom of glass section
+  g.fillStyle(soil, 0.6);
+  g.fillRect(
+    Math.round(8 * s),
+    baseY - Math.round(6 * s),
+    w - Math.round(16 * s),
+    Math.round(6 * s)
+  );
+
+  // Plant clusters (varied green blobs inside glass)
+  const plantPositions = [0.15, 0.3, 0.5, 0.7, 0.85];
+  for (const pct of plantPositions) {
+    const px = Math.round(w * pct);
+    const plantH = Math.round((8 + Math.floor(pct * 7)) * s);
+    g.fillStyle(plantDark);
+    g.fillRect(
+      px - Math.round(4 * s),
+      baseY - Math.round(6 * s) - plantH,
+      Math.round(8 * s),
+      plantH
+    );
+    g.fillStyle(plantGreen, 0.8);
+    g.fillRect(
+      px - Math.round(3 * s),
+      baseY - Math.round(6 * s) - plantH + Math.round(2 * s),
+      Math.round(6 * s),
+      plantH - Math.round(4 * s)
+    );
+  }
+
+  // === PEAKED GLASS ROOF ===
+  const roofPeakY = Math.round(2 * s);
+  // Left slope
+  for (let row = 0; row < glassY - roofPeakY; row++) {
+    const frac = row / (glassY - roofPeakY);
+    const leftX = Math.round(cx - (cx - 4 * s) * frac);
+    const rightX = Math.round(cx + (cx - 4 * s) * frac);
+    g.fillStyle(glass, 0.12);
+    g.fillRect(leftX, roofPeakY + row, rightX - leftX, 1);
+  }
+  // Roof frame lines
+  g.fillStyle(wood, 0.8);
+  for (let row = 0; row < glassY - roofPeakY; row++) {
+    const frac = row / (glassY - roofPeakY);
+    const leftX = Math.round(cx - (cx - 4 * s) * frac);
+    const rightX = Math.round(cx + (cx - 4 * s) * frac);
+    if (row === 0 || row === glassY - roofPeakY - 1) {
+      g.fillRect(leftX, roofPeakY + row, rightX - leftX, Math.round(1 * s));
+    }
+  }
+  // Ridge beam
+  g.fillStyle(woodDark);
+  g.fillRect(cx - Math.round(1 * s), roofPeakY, Math.round(2 * s), glassY - roofPeakY);
+
+  // === DOOR ===
+  const doorW = Math.round(12 * s);
+  const doorH = Math.round(16 * s);
+  const doorX = cx - doorW / 2;
+  const doorY = groundY - doorH;
+  g.fillStyle(plantDark);
+  g.fillRect(doorX, doorY, doorW, doorH);
+  g.fillStyle(woodLight, 0.7);
+  g.fillRect(doorX - Math.round(1 * s), doorY, Math.round(1 * s), doorH);
+  g.fillRect(doorX + doorW, doorY, Math.round(1 * s), doorH);
+  g.fillRect(doorX, doorY - Math.round(1 * s), doorW, Math.round(1 * s));
+
+  // === GROUND GLOW (nature warmth) ===
+  g.fillStyle(plantGreen, 0.06);
+  g.fillRect(0, groundY - Math.round(2 * s), w, Math.round(6 * s));
+
+  g.generateTexture("park_showcase_1", w, h);
+  g.destroy();
+}
+
+// GARDEN PAVILION — Open-air wooden structure with flower roof and hanging vines
+function generateParkShowcase2(scene: Phaser.Scene, s: number): void {
+  const w = Math.round(85 * s);
+  const h = Math.round(95 * s);
+  const g = scene.make.graphics({ x: 0, y: 0 });
+
+  const wood = 0x78350f;
+  const woodLight = lighten(wood, 0.25);
+  const woodDark = darken(wood, 0.3);
+  const flower1 = 0xec4899; // Pink
+  const flower2 = 0xfbbf24; // Gold
+  const flower3 = 0xa855f7; // Purple
+  const leaf = 0x22c55e;
+  const leafDark = 0x14532d;
+  const stone = 0x6b7280;
+
+  const cx = w / 2;
+  const groundY = h - Math.round(4 * s);
+
+  // === DROP SHADOW ===
+  g.fillStyle(0x000000, 0.3);
+  g.fillRect(
+    Math.round(6 * s),
+    Math.round(10 * s),
+    w - Math.round(6 * s),
+    groundY - Math.round(6 * s)
+  );
+
+  // === STONE BASE/PLATFORM ===
+  const baseH = Math.round(8 * s);
+  const baseY = groundY - baseH;
+  g.fillStyle(stone);
+  g.fillRect(Math.round(4 * s), baseY, w - Math.round(8 * s), baseH);
+  g.fillStyle(lighten(stone, 0.15));
+  g.fillRect(Math.round(4 * s), baseY, w - Math.round(8 * s), Math.round(2 * s));
+  // Stone texture
+  g.fillStyle(darken(stone, 0.2), 0.3);
+  for (let px = Math.round(8 * s); px < w - Math.round(8 * s); px += Math.round(10 * s)) {
+    g.fillRect(px, baseY + Math.round(3 * s), Math.round(1 * s), Math.round(4 * s));
+  }
+
+  // === FOUR WOODEN PILLARS ===
+  const pillarW = Math.round(5 * s);
+  const pillarTop = Math.round(22 * s);
+  const pillarPositions = [
+    Math.round(10 * s),
+    Math.round(30 * s),
+    w - Math.round(35 * s),
+    w - Math.round(15 * s),
+  ];
+  for (const px of pillarPositions) {
+    g.fillStyle(wood);
+    g.fillRect(px, pillarTop, pillarW, baseY - pillarTop);
+    g.fillStyle(woodLight);
+    g.fillRect(px, pillarTop, Math.round(2 * s), baseY - pillarTop);
+    g.fillStyle(woodDark);
+    g.fillRect(px + pillarW - Math.round(1 * s), pillarTop, Math.round(1 * s), baseY - pillarTop);
+  }
+
+  // === ROOF BEAM ===
+  const roofBeamY = pillarTop;
+  g.fillStyle(wood);
+  g.fillRect(Math.round(6 * s), roofBeamY, w - Math.round(12 * s), Math.round(4 * s));
+  g.fillStyle(woodLight);
+  g.fillRect(Math.round(6 * s), roofBeamY, w - Math.round(12 * s), Math.round(1 * s));
+
+  // === PEAKED FLOWER ROOF ===
+  const roofPeakY = Math.round(4 * s);
+  const roofBaseY = roofBeamY + Math.round(2 * s);
+  // Leaf/thatch base
+  for (let row = 0; row < roofBaseY - roofPeakY; row++) {
+    const frac = row / (roofBaseY - roofPeakY);
+    const halfW = Math.round((w / 2 + 4 * s) * frac);
+    g.fillStyle(leafDark);
+    g.fillRect(cx - halfW, roofPeakY + row, halfW * 2, 1);
+  }
+  // Lighter leaf layer
+  for (
+    let row = Math.round(2 * s);
+    row < roofBaseY - roofPeakY - Math.round(2 * s);
+    row += Math.round(3 * s)
+  ) {
+    const frac = row / (roofBaseY - roofPeakY);
+    const halfW = Math.round((w / 2 + 2 * s) * frac);
+    g.fillStyle(leaf, 0.6);
+    g.fillRect(
+      cx - halfW + Math.round(2 * s),
+      roofPeakY + row,
+      halfW * 2 - Math.round(4 * s),
+      Math.round(2 * s)
+    );
+  }
+
+  // Scattered flowers on roof
+  const flowerColors = [flower1, flower2, flower3, flower1, flower2];
+  const flowerXs = [0.2, 0.35, 0.5, 0.65, 0.8];
+  for (let i = 0; i < flowerXs.length; i++) {
+    const fx = Math.round(w * flowerXs[i]);
+    const fy = roofPeakY + Math.round((roofBaseY - roofPeakY) * flowerXs[i] * 0.6);
+    g.fillStyle(flowerColors[i]);
+    g.fillRect(fx - Math.round(2 * s), fy, Math.round(4 * s), Math.round(3 * s));
+    g.fillStyle(lighten(flowerColors[i], 0.3));
+    g.fillRect(fx - Math.round(1 * s), fy, Math.round(2 * s), Math.round(1 * s));
+  }
+
+  // === HANGING VINES from roof ===
+  const vinePositions = [
+    Math.round(16 * s),
+    Math.round(38 * s),
+    w - Math.round(40 * s),
+    w - Math.round(18 * s),
+  ];
+  for (const vx of vinePositions) {
+    const vineLen = Math.round((12 + Math.floor(Math.random() * 8)) * s);
+    g.fillStyle(leaf, 0.7);
+    g.fillRect(vx, roofBaseY, Math.round(2 * s), vineLen);
+    // Leaf at end
+    g.fillStyle(leaf);
+    g.fillRect(vx - Math.round(1 * s), roofBaseY + vineLen, Math.round(4 * s), Math.round(3 * s));
+  }
+
+  // === BENCH INSIDE ===
+  const benchY = baseY - Math.round(8 * s);
+  g.fillStyle(woodLight);
+  g.fillRect(cx - Math.round(12 * s), benchY, Math.round(24 * s), Math.round(3 * s));
+  g.fillStyle(wood);
+  g.fillRect(
+    cx - Math.round(10 * s),
+    benchY + Math.round(3 * s),
+    Math.round(3 * s),
+    Math.round(5 * s)
+  );
+  g.fillRect(
+    cx + Math.round(7 * s),
+    benchY + Math.round(3 * s),
+    Math.round(3 * s),
+    Math.round(5 * s)
+  );
+
+  // === GROUND GLOW ===
+  g.fillStyle(leaf, 0.05);
+  g.fillRect(0, groundY - Math.round(2 * s), w, Math.round(6 * s));
+
+  g.generateTexture("park_showcase_2", w, h);
+  g.destroy();
+}
+
+// TREEHOUSE — Built into a large oak tree with rope ladder and lanterns
+function generateParkShowcase3(scene: Phaser.Scene, s: number): void {
+  const w = Math.round(90 * s);
+  const h = Math.round(110 * s);
+  const g = scene.make.graphics({ x: 0, y: 0 });
+
+  const trunk = 0x78350f;
+  const trunkLight = lighten(trunk, 0.15);
+  const trunkDark = darken(trunk, 0.3);
+  const wood = 0x92400e;
+  const woodLight = lighten(wood, 0.2);
+  const leafDark = 0x14532d;
+  const leafMid = 0x166534;
+  const leafBright = 0x22c55e;
+  const lantern = 0xfbbf24;
+  const rope = 0xb45309;
+
+  const cx = w / 2;
+  const groundY = h - Math.round(4 * s);
+
+  // === TREE TRUNK ===
+  const trunkW = Math.round(20 * s);
+  const trunkX = cx - trunkW / 2;
+  g.fillStyle(trunk);
+  g.fillRect(trunkX, Math.round(30 * s), trunkW, groundY - Math.round(30 * s));
+  // Bark texture (lighter left, darker right)
+  g.fillStyle(trunkLight);
+  g.fillRect(trunkX, Math.round(30 * s), Math.round(5 * s), groundY - Math.round(30 * s));
+  g.fillStyle(trunkDark);
+  g.fillRect(
+    trunkX + trunkW - Math.round(4 * s),
+    Math.round(30 * s),
+    Math.round(4 * s),
+    groundY - Math.round(30 * s)
+  );
+  // Bark lines
+  g.fillStyle(trunkDark, 0.4);
+  for (let py = Math.round(35 * s); py < groundY; py += Math.round(8 * s)) {
+    g.fillRect(trunkX + Math.round(5 * s), py, trunkW - Math.round(9 * s), Math.round(1 * s));
+  }
+
+  // === ROOTS at base ===
+  g.fillStyle(trunk);
+  g.fillRect(
+    trunkX - Math.round(8 * s),
+    groundY - Math.round(8 * s),
+    Math.round(10 * s),
+    Math.round(8 * s)
+  );
+  g.fillRect(
+    trunkX + trunkW - Math.round(2 * s),
+    groundY - Math.round(6 * s),
+    Math.round(8 * s),
+    Math.round(6 * s)
+  );
+
+  // === TREE HOUSE CABIN ===
+  const cabinW = Math.round(50 * s);
+  const cabinH = Math.round(28 * s);
+  const cabinX = cx - cabinW / 2;
+  const cabinY = Math.round(32 * s);
+
+  // Shadow
+  g.fillStyle(0x000000, 0.3);
+  g.fillRect(cabinX + Math.round(3 * s), cabinY + Math.round(3 * s), cabinW, cabinH);
+
+  // Cabin body
+  g.fillStyle(wood);
+  g.fillRect(cabinX, cabinY, cabinW, cabinH);
+  g.fillStyle(woodLight);
+  g.fillRect(cabinX, cabinY, Math.round(3 * s), cabinH);
+  g.fillStyle(darken(wood, 0.25));
+  g.fillRect(cabinX + cabinW - Math.round(3 * s), cabinY, Math.round(3 * s), cabinH);
+
+  // Wood plank lines
+  g.fillStyle(darken(wood, 0.2), 0.3);
+  for (let py = cabinY + Math.round(5 * s); py < cabinY + cabinH; py += Math.round(5 * s)) {
+    g.fillRect(cabinX + Math.round(3 * s), py, cabinW - Math.round(6 * s), Math.round(1 * s));
+  }
+
+  // Windows (2 small square windows with warm glow)
+  const winSize = Math.round(8 * s);
+  const winY = cabinY + Math.round(8 * s);
+  // Left window
+  g.fillStyle(lantern, 0.4);
+  g.fillRect(cabinX + Math.round(8 * s), winY, winSize, winSize);
+  g.fillStyle(lantern, 0.8);
+  g.fillRect(
+    cabinX + Math.round(9 * s),
+    winY + Math.round(1 * s),
+    Math.round(2 * s),
+    Math.round(2 * s)
+  );
+  // Right window
+  g.fillStyle(lantern, 0.4);
+  g.fillRect(cabinX + cabinW - Math.round(16 * s), winY, winSize, winSize);
+  g.fillStyle(lantern, 0.8);
+  g.fillRect(
+    cabinX + cabinW - Math.round(15 * s),
+    winY + Math.round(1 * s),
+    Math.round(2 * s),
+    Math.round(2 * s)
+  );
+
+  // Door in center
+  const doorW = Math.round(10 * s);
+  const doorH = Math.round(14 * s);
+  const doorX = cx - doorW / 2;
+  const doorY = cabinY + cabinH - doorH;
+  g.fillStyle(darken(wood, 0.3));
+  g.fillRect(doorX, doorY, doorW, doorH);
+  g.fillStyle(lantern, 0.3);
+  g.fillRect(
+    doorX + Math.round(1 * s),
+    doorY + Math.round(1 * s),
+    doorW - Math.round(2 * s),
+    doorH - Math.round(2 * s)
+  );
+
+  // === PEAKED ROOF ===
+  const roofPeakY = Math.round(14 * s);
+  const roofBaseY = cabinY + Math.round(2 * s);
+  const roofOverhang = Math.round(8 * s);
+  for (let row = 0; row <= roofBaseY - roofPeakY; row++) {
+    const frac = row / (roofBaseY - roofPeakY);
+    const halfW = Math.round((cabinW / 2 + roofOverhang) * frac);
+    g.fillStyle(row < Math.round(2 * s) ? darken(trunk, 0.1) : trunk);
+    g.fillRect(cx - halfW, roofPeakY + row, halfW * 2, 1);
+  }
+  // Roof highlight left edge
+  for (let row = 0; row <= roofBaseY - roofPeakY; row++) {
+    const frac = row / (roofBaseY - roofPeakY);
+    const halfW = Math.round((cabinW / 2 + roofOverhang) * frac);
+    g.fillStyle(trunkLight, 0.3);
+    g.fillRect(cx - halfW, roofPeakY + row, Math.round(2 * s), 1);
+  }
+
+  // === LEAFY CANOPY around and above cabin ===
+  const canopyBlobs = [
+    { x: 0.15, y: 0.08, r: 14 },
+    { x: 0.35, y: 0.03, r: 16 },
+    { x: 0.55, y: 0.01, r: 18 },
+    { x: 0.75, y: 0.04, r: 15 },
+    { x: 0.9, y: 0.09, r: 13 },
+    { x: 0.25, y: 0.14, r: 12 },
+    { x: 0.65, y: 0.12, r: 13 },
+  ];
+  for (const blob of canopyBlobs) {
+    const bx = Math.round(w * blob.x);
+    const by = Math.round(h * blob.y);
+    const br = Math.round(blob.r * s);
+    g.fillStyle(leafDark);
+    g.fillCircle(bx, by, br);
+    g.fillStyle(leafMid, 0.7);
+    g.fillCircle(bx - Math.round(2 * s), by - Math.round(2 * s), br - Math.round(2 * s));
+    g.fillStyle(leafBright, 0.3);
+    g.fillCircle(bx - Math.round(3 * s), by - Math.round(3 * s), Math.round(br * 0.4));
+  }
+
+  // === ROPE LADDER ===
+  const ladderX = cx + Math.round(14 * s);
+  const ladderTop = cabinY + cabinH;
+  g.fillStyle(rope);
+  g.fillRect(ladderX, ladderTop, Math.round(1 * s), groundY - ladderTop);
+  g.fillRect(ladderX + Math.round(6 * s), ladderTop, Math.round(1 * s), groundY - ladderTop);
+  // Rungs
+  for (
+    let ry = ladderTop + Math.round(5 * s);
+    ry < groundY - Math.round(3 * s);
+    ry += Math.round(7 * s)
+  ) {
+    g.fillStyle(wood);
+    g.fillRect(ladderX, ry, Math.round(7 * s), Math.round(2 * s));
+  }
+
+  // === HANGING LANTERNS ===
+  const lanternPositions = [cabinX + Math.round(4 * s), cabinX + cabinW - Math.round(6 * s)];
+  for (const lx of lanternPositions) {
+    const ly = cabinY + cabinH + Math.round(2 * s);
+    // String
+    g.fillStyle(rope);
+    g.fillRect(
+      lx + Math.round(1 * s),
+      cabinY + cabinH - Math.round(1 * s),
+      Math.round(1 * s),
+      Math.round(4 * s)
+    );
+    // Lantern body
+    g.fillStyle(lantern);
+    g.fillRect(lx, ly, Math.round(4 * s), Math.round(5 * s));
+    // Glow
+    g.fillStyle(lantern, 0.2);
+    g.fillCircle(lx + Math.round(2 * s), ly + Math.round(2 * s), Math.round(6 * s));
+  }
+
+  // === GROUND GLOW ===
+  g.fillStyle(lantern, 0.04);
+  g.fillRect(0, groundY - Math.round(2 * s), w, Math.round(6 * s));
+
+  g.generateTexture("park_showcase_3", w, h);
+  g.destroy();
+}
+
+// ============================================================================
+// MOLTBOOK BEACH SHOWCASE BUILDINGS — volcanic/tiki tropical theme
+// ============================================================================
+
+// VOLCANO HUT — Small volcano with a tiki hut built into its side, lava glow
+function generateBeachShowcase1(scene: Phaser.Scene, s: number): void {
+  const w = Math.round(90 * s);
+  const h = Math.round(100 * s);
+  const g = scene.make.graphics({ x: 0, y: 0 });
+
+  const rock = 0x451a03;
+  const rockLight = lighten(rock, 0.2);
+  const rockDark = darken(rock, 0.3);
+  const lava = 0xf97316;
+  const lavaHot = 0xfbbf24;
+  const lavaDark = 0xdc2626;
+  const tiki = 0x92400e;
+  const tikiLight = lighten(tiki, 0.2);
+  const thatch = 0xb45309;
+  const sand = 0xfef3c7;
+
+  const cx = w / 2;
+  const groundY = h - Math.round(4 * s);
+
+  // === SANDY BASE ===
+  g.fillStyle(sand, 0.3);
+  g.fillRect(0, groundY - Math.round(4 * s), w, Math.round(8 * s));
+
+  // === VOLCANO MOUNTAIN ===
+  const peakY = Math.round(8 * s);
+  const baseW = w - Math.round(8 * s);
+  // Build the mountain as rows getting narrower toward peak
+  for (let row = 0; row <= groundY - peakY; row++) {
+    const frac = 1 - row / (groundY - peakY);
+    const halfW = Math.round((baseW / 2) * (1 - frac * 0.7));
+    const rowColor = row < Math.round(30 * s) ? rockDark : rock;
+    g.fillStyle(rowColor);
+    g.fillRect(cx - halfW, peakY + row, halfW * 2, 1);
+  }
+  // Light left face
+  for (let row = 0; row <= groundY - peakY; row++) {
+    const frac = 1 - row / (groundY - peakY);
+    const halfW = Math.round((baseW / 2) * (1 - frac * 0.7));
+    g.fillStyle(rockLight, 0.25);
+    g.fillRect(cx - halfW, peakY + row, Math.round(halfW * 0.4), 1);
+  }
+
+  // Rock texture (dithered dark patches)
+  g.fillStyle(rockDark, 0.3);
+  for (
+    let py = peakY + Math.round(10 * s);
+    py < groundY - Math.round(5 * s);
+    py += Math.round(7 * s)
+  ) {
+    for (let px = cx - Math.round(20 * s); px < cx + Math.round(20 * s); px += Math.round(9 * s)) {
+      g.fillRect(px, py, Math.round(3 * s), Math.round(2 * s));
+    }
+  }
+
+  // === CRATER at top ===
+  const craterW = Math.round(20 * s);
+  const craterY = peakY + Math.round(2 * s);
+  // Crater rim
+  g.fillStyle(rockDark);
+  g.fillRect(cx - craterW / 2, craterY, craterW, Math.round(6 * s));
+  // Lava inside
+  g.fillStyle(lavaDark);
+  g.fillRect(
+    cx - craterW / 2 + Math.round(3 * s),
+    craterY + Math.round(1 * s),
+    craterW - Math.round(6 * s),
+    Math.round(4 * s)
+  );
+  g.fillStyle(lava, 0.8);
+  g.fillRect(
+    cx - craterW / 2 + Math.round(5 * s),
+    craterY + Math.round(2 * s),
+    craterW - Math.round(10 * s),
+    Math.round(2 * s)
+  );
+  g.fillStyle(lavaHot, 0.6);
+  g.fillRect(
+    cx - Math.round(3 * s),
+    craterY + Math.round(2 * s),
+    Math.round(6 * s),
+    Math.round(1 * s)
+  );
+
+  // Lava glow above crater
+  g.fillStyle(lava, 0.15);
+  g.fillCircle(cx, craterY, Math.round(14 * s));
+  g.fillStyle(lavaHot, 0.08);
+  g.fillCircle(cx, craterY - Math.round(4 * s), Math.round(10 * s));
+
+  // === LAVA DRIPS down sides ===
+  const dripPositions = [
+    { x: cx - Math.round(8 * s), len: 18 },
+    { x: cx + Math.round(6 * s), len: 14 },
+    { x: cx - Math.round(2 * s), len: 22 },
+  ];
+  for (const drip of dripPositions) {
+    g.fillStyle(lavaDark, 0.7);
+    g.fillRect(drip.x, craterY + Math.round(4 * s), Math.round(2 * s), Math.round(drip.len * s));
+    g.fillStyle(lava, 0.5);
+    g.fillRect(
+      drip.x,
+      craterY + Math.round(4 * s),
+      Math.round(1 * s),
+      Math.round(drip.len * s * 0.7)
+    );
+  }
+
+  // === TIKI HUT built into mountainside ===
+  const hutX = Math.round(8 * s);
+  const hutY = groundY - Math.round(32 * s);
+  const hutW = Math.round(28 * s);
+  const hutH = Math.round(28 * s);
+
+  // Hut body
+  g.fillStyle(tiki);
+  g.fillRect(hutX, hutY, hutW, hutH);
+  g.fillStyle(tikiLight);
+  g.fillRect(hutX, hutY, Math.round(2 * s), hutH);
+
+  // Thatched roof (triangle)
+  const tRoofPeakY = hutY - Math.round(10 * s);
+  for (let row = 0; row <= hutY - tRoofPeakY; row++) {
+    const frac = row / (hutY - tRoofPeakY);
+    const halfW = Math.round((hutW / 2 + 6 * s) * frac);
+    g.fillStyle(thatch);
+    g.fillRect(hutX + hutW / 2 - halfW, tRoofPeakY + row, halfW * 2, 1);
+  }
+  // Thatch texture
+  g.fillStyle(lighten(thatch, 0.15), 0.5);
+  for (let row = Math.round(2 * s); row < hutY - tRoofPeakY; row += Math.round(3 * s)) {
+    const frac = row / (hutY - tRoofPeakY);
+    const halfW = Math.round((hutW / 2 + 4 * s) * frac);
+    g.fillRect(
+      hutX + hutW / 2 - halfW + Math.round(2 * s),
+      tRoofPeakY + row,
+      halfW * 2 - Math.round(4 * s),
+      Math.round(1 * s)
+    );
+  }
+
+  // Hut door opening
+  g.fillStyle(0x0a0a0f, 0.8);
+  g.fillRect(
+    hutX + Math.round(8 * s),
+    hutY + Math.round(10 * s),
+    Math.round(12 * s),
+    Math.round(18 * s)
+  );
+  // Warm interior glow
+  g.fillStyle(lava, 0.2);
+  g.fillRect(
+    hutX + Math.round(9 * s),
+    hutY + Math.round(11 * s),
+    Math.round(10 * s),
+    Math.round(16 * s)
+  );
+
+  // === TIKI TORCHES ===
+  const torchPositions = [hutX - Math.round(4 * s), hutX + hutW + Math.round(2 * s)];
+  for (const tx of torchPositions) {
+    // Pole
+    g.fillStyle(tiki);
+    g.fillRect(tx, hutY + Math.round(4 * s), Math.round(2 * s), groundY - hutY - Math.round(4 * s));
+    // Flame
+    g.fillStyle(lava);
+    g.fillRect(
+      tx - Math.round(1 * s),
+      hutY + Math.round(1 * s),
+      Math.round(4 * s),
+      Math.round(4 * s)
+    );
+    g.fillStyle(lavaHot, 0.8);
+    g.fillRect(tx, hutY, Math.round(2 * s), Math.round(3 * s));
+    // Flame glow
+    g.fillStyle(lava, 0.12);
+    g.fillCircle(tx + Math.round(1 * s), hutY + Math.round(2 * s), Math.round(6 * s));
+  }
+
+  // === SMOKE WISPS above crater ===
+  g.fillStyle(0x9ca3af, 0.15);
+  g.fillCircle(cx - Math.round(3 * s), peakY - Math.round(6 * s), Math.round(4 * s));
+  g.fillCircle(cx + Math.round(2 * s), peakY - Math.round(10 * s), Math.round(3 * s));
+  g.fillCircle(cx - Math.round(1 * s), peakY - Math.round(14 * s), Math.round(2 * s));
+
+  // === GROUND GLOW (lava warmth) ===
+  g.fillStyle(lava, 0.06);
+  g.fillRect(0, groundY - Math.round(2 * s), w, Math.round(6 * s));
+
+  g.generateTexture("beach_showcase_1", w, h);
+  g.destroy();
+}
+
+// TIKI TOWER — Tall bamboo/tiki tower with carved face, glowing eyes, palm fronds
+function generateBeachShowcase2(scene: Phaser.Scene, s: number): void {
+  const w = Math.round(70 * s);
+  const h = Math.round(105 * s);
+  const g = scene.make.graphics({ x: 0, y: 0 });
+
+  const bamboo = 0x92400e;
+  const bambooLight = lighten(bamboo, 0.25);
+  const bambooDark = darken(bamboo, 0.3);
+  const palm = 0x166534;
+  const palmBright = 0x22c55e;
+  const eyeGlow = 0x4ade80;
+  const flame = 0xf97316;
+  const flameHot = 0xfbbf24;
+  const sand = 0xfef3c7;
+
+  const cx = w / 2;
+  const groundY = h - Math.round(4 * s);
+
+  // === SANDY BASE ===
+  g.fillStyle(sand, 0.3);
+  g.fillRect(0, groundY - Math.round(4 * s), w, Math.round(8 * s));
+
+  // === MAIN TIKI TOWER ===
+  const towerW = Math.round(30 * s);
+  const towerX = cx - towerW / 2;
+  const towerTopY = Math.round(18 * s);
+
+  // Shadow
+  g.fillStyle(0x000000, 0.3);
+  g.fillRect(
+    towerX + Math.round(3 * s),
+    towerTopY + Math.round(3 * s),
+    towerW,
+    groundY - towerTopY
+  );
+
+  // Tower body
+  g.fillStyle(bamboo);
+  g.fillRect(towerX, towerTopY, towerW, groundY - towerTopY);
+  // Light left edge
+  g.fillStyle(bambooLight);
+  g.fillRect(towerX, towerTopY, Math.round(4 * s), groundY - towerTopY);
+  // Dark right edge
+  g.fillStyle(bambooDark);
+  g.fillRect(
+    towerX + towerW - Math.round(3 * s),
+    towerTopY,
+    Math.round(3 * s),
+    groundY - towerTopY
+  );
+
+  // Horizontal bamboo segment lines
+  g.fillStyle(bambooDark, 0.5);
+  for (let py = towerTopY + Math.round(8 * s); py < groundY; py += Math.round(10 * s)) {
+    g.fillRect(towerX + Math.round(2 * s), py, towerW - Math.round(4 * s), Math.round(2 * s));
+  }
+
+  // === CARVED TIKI FACE ===
+  const faceY = towerTopY + Math.round(10 * s);
+  const faceH = Math.round(30 * s);
+
+  // Face background (darker recess)
+  g.fillStyle(bambooDark, 0.4);
+  g.fillRect(towerX + Math.round(4 * s), faceY, towerW - Math.round(8 * s), faceH);
+
+  // Eyes — large glowing rectangles
+  const eyeW = Math.round(6 * s);
+  const eyeH = Math.round(5 * s);
+  const eyeY = faceY + Math.round(6 * s);
+  // Left eye
+  g.fillStyle(eyeGlow, 0.4);
+  g.fillRect(
+    towerX + Math.round(7 * s) - Math.round(1 * s),
+    eyeY - Math.round(1 * s),
+    eyeW + Math.round(2 * s),
+    eyeH + Math.round(2 * s)
+  );
+  g.fillStyle(eyeGlow);
+  g.fillRect(towerX + Math.round(7 * s), eyeY, eyeW, eyeH);
+  // Right eye
+  g.fillStyle(eyeGlow, 0.4);
+  g.fillRect(
+    towerX + towerW - Math.round(13 * s) - Math.round(1 * s),
+    eyeY - Math.round(1 * s),
+    eyeW + Math.round(2 * s),
+    eyeH + Math.round(2 * s)
+  );
+  g.fillStyle(eyeGlow);
+  g.fillRect(towerX + towerW - Math.round(13 * s), eyeY, eyeW, eyeH);
+
+  // Angry eyebrow ridges (angled dark lines above eyes)
+  g.fillStyle(bambooDark);
+  g.fillRect(
+    towerX + Math.round(6 * s),
+    eyeY - Math.round(3 * s),
+    Math.round(8 * s),
+    Math.round(2 * s)
+  );
+  g.fillRect(
+    towerX + towerW - Math.round(14 * s),
+    eyeY - Math.round(3 * s),
+    Math.round(8 * s),
+    Math.round(2 * s)
+  );
+
+  // Nose — small triangle/rectangle
+  g.fillStyle(bambooDark);
+  g.fillRect(
+    cx - Math.round(2 * s),
+    faceY + Math.round(14 * s),
+    Math.round(4 * s),
+    Math.round(4 * s)
+  );
+  g.fillStyle(bambooLight, 0.4);
+  g.fillRect(
+    cx - Math.round(1 * s),
+    faceY + Math.round(14 * s),
+    Math.round(1 * s),
+    Math.round(3 * s)
+  );
+
+  // Mouth — wide grimace with teeth
+  const mouthY = faceY + Math.round(20 * s);
+  g.fillStyle(0x0a0a0f);
+  g.fillRect(towerX + Math.round(7 * s), mouthY, towerW - Math.round(14 * s), Math.round(6 * s));
+  // Teeth (alternating)
+  g.fillStyle(sand);
+  for (
+    let tx = towerX + Math.round(8 * s);
+    tx < towerX + towerW - Math.round(8 * s);
+    tx += Math.round(4 * s)
+  ) {
+    g.fillRect(tx, mouthY, Math.round(2 * s), Math.round(3 * s));
+    g.fillRect(tx, mouthY + Math.round(3 * s), Math.round(2 * s), Math.round(3 * s));
+  }
+
+  // Eye glow effect
+  g.fillStyle(eyeGlow, 0.1);
+  g.fillCircle(towerX + Math.round(10 * s), eyeY + Math.round(2 * s), Math.round(10 * s));
+  g.fillCircle(towerX + towerW - Math.round(10 * s), eyeY + Math.round(2 * s), Math.round(10 * s));
+
+  // === CROWN/TOP with flame bowl ===
+  // Platform on top
+  g.fillStyle(bamboo);
+  g.fillRect(
+    towerX - Math.round(4 * s),
+    towerTopY - Math.round(3 * s),
+    towerW + Math.round(8 * s),
+    Math.round(5 * s)
+  );
+  g.fillStyle(bambooLight);
+  g.fillRect(
+    towerX - Math.round(4 * s),
+    towerTopY - Math.round(3 * s),
+    towerW + Math.round(8 * s),
+    Math.round(1 * s)
+  );
+
+  // Fire bowl
+  g.fillStyle(bambooDark);
+  g.fillRect(
+    cx - Math.round(6 * s),
+    towerTopY - Math.round(6 * s),
+    Math.round(12 * s),
+    Math.round(4 * s)
+  );
+  // Flames
+  g.fillStyle(flame);
+  g.fillRect(
+    cx - Math.round(5 * s),
+    towerTopY - Math.round(12 * s),
+    Math.round(10 * s),
+    Math.round(7 * s)
+  );
+  g.fillStyle(flameHot, 0.8);
+  g.fillRect(
+    cx - Math.round(3 * s),
+    towerTopY - Math.round(14 * s),
+    Math.round(6 * s),
+    Math.round(6 * s)
+  );
+  g.fillStyle(0xffffff, 0.4);
+  g.fillRect(
+    cx - Math.round(1 * s),
+    towerTopY - Math.round(12 * s),
+    Math.round(2 * s),
+    Math.round(3 * s)
+  );
+  // Flame glow
+  g.fillStyle(flame, 0.15);
+  g.fillCircle(cx, towerTopY - Math.round(10 * s), Math.round(12 * s));
+
+  // === PALM FRONDS from sides ===
+  // Left frond
+  g.fillStyle(palm);
+  g.fillRect(
+    towerX - Math.round(16 * s),
+    towerTopY + Math.round(6 * s),
+    Math.round(18 * s),
+    Math.round(3 * s)
+  );
+  g.fillStyle(palmBright, 0.5);
+  g.fillRect(
+    towerX - Math.round(14 * s),
+    towerTopY + Math.round(6 * s),
+    Math.round(14 * s),
+    Math.round(1 * s)
+  );
+  // Drooping leaf segments
+  for (let i = 0; i < 4; i++) {
+    const fx = towerX - Math.round((14 - i * 3) * s);
+    const fy = towerTopY + Math.round((8 + i * 3) * s);
+    g.fillStyle(palm, 0.7);
+    g.fillRect(fx, fy, Math.round(4 * s), Math.round(5 * s));
+  }
+  // Right frond
+  g.fillStyle(palm);
+  g.fillRect(
+    towerX + towerW - Math.round(2 * s),
+    towerTopY + Math.round(10 * s),
+    Math.round(16 * s),
+    Math.round(3 * s)
+  );
+  g.fillStyle(palmBright, 0.5);
+  g.fillRect(
+    towerX + towerW,
+    towerTopY + Math.round(10 * s),
+    Math.round(12 * s),
+    Math.round(1 * s)
+  );
+  for (let i = 0; i < 4; i++) {
+    const fx = towerX + towerW + Math.round((2 + i * 3) * s);
+    const fy = towerTopY + Math.round((12 + i * 3) * s);
+    g.fillStyle(palm, 0.7);
+    g.fillRect(fx, fy, Math.round(4 * s), Math.round(5 * s));
+  }
+
+  // === DOOR at base ===
+  const doorW = Math.round(10 * s);
+  const doorH = Math.round(16 * s);
+  const doorX = cx - doorW / 2;
+  const doorY = groundY - doorH;
+  g.fillStyle(0x0a0a0f, 0.8);
+  g.fillRect(doorX, doorY, doorW, doorH);
+  // Arch top
+  g.fillStyle(bamboo);
+  g.fillRect(
+    doorX - Math.round(1 * s),
+    doorY - Math.round(2 * s),
+    doorW + Math.round(2 * s),
+    Math.round(3 * s)
+  );
+
+  // === GROUND GLOW (green mystic) ===
+  g.fillStyle(eyeGlow, 0.05);
+  g.fillRect(0, groundY - Math.round(2 * s), w, Math.round(6 * s));
+
+  g.generateTexture("beach_showcase_2", w, h);
   g.destroy();
 }

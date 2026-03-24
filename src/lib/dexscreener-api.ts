@@ -185,6 +185,7 @@ export async function getTokensByMints(mints: string[]): Promise<DexPair[]> {
   try {
     const response = await fetch(`${DEXSCREENER_API_URL}/tokens/v1/solana/${mints.join(",")}`, {
       cache: "no-store",
+      signal: AbortSignal.timeout(8000),
     });
 
     if (!response.ok) {
