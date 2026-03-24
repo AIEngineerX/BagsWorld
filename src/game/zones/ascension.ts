@@ -494,57 +494,58 @@ function createAscensionDecorations(scene: WorldScene): void {
     if (def.scale !== 1) building.setScale(def.scale);
     scene.ascensionElements.push(building);
 
-    // Make showcase buildings interactive (not temple)
+    // All showcase buildings are interactive (temple=#1, observatory=#2, vault=#3, shrine=#4)
+    const slotMap: Record<string, number> = { temple: 0, observatory: 1, vault: 2, shrine: 3 };
+    const slotIndex = slotMap[def.key] ?? 0;
     const bobExtras: Phaser.GameObjects.GameObject[] = [];
-    if (def.key !== "temple") {
-      building.setInteractive({ useHandCursor: true });
 
-      building.on("pointerover", () => {
-        building.setTint(0xbbf7d0);
-        scene.tweens.add({
-          targets: building,
-          scaleX: def.scale * 1.05,
-          scaleY: def.scale * 1.05,
-          duration: 150,
-        });
+    building.setInteractive({ useHandCursor: true });
+
+    building.on("pointerover", () => {
+      building.setTint(def.key === "temple" ? 0xffd700 : 0xbbf7d0);
+      scene.tweens.add({
+        targets: building,
+        scaleX: def.scale * 1.05,
+        scaleY: def.scale * 1.05,
+        duration: 150,
       });
+    });
 
-      building.on("pointerout", () => {
-        building.clearTint();
-        scene.tweens.add({
-          targets: building,
-          scaleX: def.scale,
-          scaleY: def.scale,
-          duration: 150,
-        });
+    building.on("pointerout", () => {
+      building.clearTint();
+      scene.tweens.add({
+        targets: building,
+        scaleX: def.scale,
+        scaleY: def.scale,
+        duration: 150,
       });
+    });
 
-      building.on("pointerup", () => {
-        const slotIndex = def.key === "observatory" ? 0 : def.key === "vault" ? 1 : 2;
-        window.dispatchEvent(
-          new CustomEvent("bagsworld-platform-showcase-click", {
-            detail: { zone: "ascension", slotIndex },
-          })
-        );
-      });
-
-      // Token name label (updated when world state changes)
-      const label = scene.add
-        .text(bx, by + r(15), "", {
-          fontSize: `${r(7)}px`,
-          fontFamily: "monospace",
-          color: "#ffd700",
-          backgroundColor: "rgba(0,0,0,0.5)",
-          padding: { x: 4, y: 2 },
+    building.on("pointerup", () => {
+      window.dispatchEvent(
+        new CustomEvent("bagsworld-platform-showcase-click", {
+          detail: { zone: "ascension", slotIndex },
         })
-        .setOrigin(0.5, 0)
-        .setDepth(DEPTH.UI_LOW);
-      scene.ascensionElements.push(label);
+      );
+    });
 
-      const slotKey = `ascension_showcase_${def.key === "observatory" ? 0 : def.key === "vault" ? 1 : 2}`;
-      (scene as unknown as Record<string, unknown>)[`_platformLabel_${slotKey}`] = label;
-      bobExtras.push(label);
-    }
+    // Token name label (updated when world state changes)
+    const label = scene.add
+      .text(bx, by + r(15), "", {
+        fontSize: `${r(def.key === "temple" ? 8 : 7)}px`,
+        fontFamily: "monospace",
+        color: def.key === "temple" ? "#ffd700" : "#ffd700",
+        backgroundColor: "rgba(0,0,0,0.6)",
+        padding: { x: 4, y: 2 },
+      })
+      .setOrigin(0.5, 0)
+      .setDepth(DEPTH.UI_LOW);
+    scene.ascensionElements.push(label);
+
+    (scene as unknown as Record<string, unknown>)[
+      `_platformLabel_ascension_showcase_${slotIndex}`
+    ] = label;
+    bobExtras.push(label);
 
     // --- Bob animation: everything bobs together ---
     const bobTargets = [...cloudParts, underGlow, building, ...bobExtras];

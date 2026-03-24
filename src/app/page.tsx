@@ -251,6 +251,7 @@ interface BuildingClickData {
   tokenUrl?: string;
   isPlatform?: boolean;
   platformTheme?: "rocket" | "volcano" | "palace" | "crystal";
+  isAscensionTemple?: boolean;
 }
 
 // Handles ?zone= and ?chat= deep links from the /agents page
@@ -461,7 +462,9 @@ export default function Home() {
     const handler = ((e: CustomEvent<{ zone: string; slotIndex: number }>) => {
       const { zone, slotIndex } = e.detail;
       const platformBuildings =
-        worldState?.buildings?.filter((b) => b.isPlatform && b.zone === zone) || [];
+        worldState?.buildings
+          ?.filter((b) => b.isPlatform && b.zone === zone)
+          .sort((a, b) => (a.platformRank || 99) - (b.platformRank || 99)) || [];
       const building = platformBuildings[slotIndex];
       if (building) {
         setTradeToken({
@@ -470,6 +473,7 @@ export default function Home() {
           name: building.name,
           isPlatform: true,
           platformTheme: building.platformTheme as BuildingClickData["platformTheme"],
+          isAscensionTemple: zone === "ascension" && slotIndex === 0,
         });
       }
     }) as EventListener;
@@ -919,6 +923,7 @@ export default function Home() {
           onClose={() => setTradeToken(null)}
           isPlatform={tradeToken.isPlatform}
           platformTheme={tradeToken.platformTheme}
+          isAscensionTemple={tradeToken.isAscensionTemple}
         />
       )}
 

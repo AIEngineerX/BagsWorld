@@ -6941,12 +6941,22 @@ export class WorldScene extends Phaser.Scene {
       rank: number | undefined,
       theme: string | undefined
     ): string | null => {
-      const slotIndex = ((rank || 1) - 1) % 3;
       switch (zone) {
-        case "ascension":
-          return ["ascension_observatory", "ascension_vault", "ascension_token_shrine"][slotIndex];
-        case "trending":
-          return ["city_showcase_1", "city_showcase_2", "city_showcase_3"][slotIndex];
+        case "ascension": {
+          // Ranks 1-4: temple, observatory, vault, shrine
+          const ascTextures = [
+            "ascension_temple",
+            "ascension_observatory",
+            "ascension_vault",
+            "ascension_token_shrine",
+          ];
+          const ascSlot = (rank || 1) - 1; // rank 1→0, rank 2→1, etc.
+          return ascTextures[ascSlot] || ascTextures[0];
+        }
+        case "trending": {
+          const trendSlot = ((rank || 5) - 5) % 3; // ranks 5-7 → 0,1,2
+          return ["city_showcase_1", "city_showcase_2", "city_showcase_3"][trendSlot];
+        }
         default:
           // Use themed platform textures (rocket/volcano/palace/crystal) for all other zones
           if (theme && this.textures.exists(`platform_${theme}`)) {

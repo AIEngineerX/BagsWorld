@@ -31,6 +31,7 @@ interface BuildingModalProps {
   onClose: () => void;
   isPlatform?: boolean;
   platformTheme?: string;
+  isAscensionTemple?: boolean;
 }
 
 type TradeDirection = "buy" | "sell";
@@ -68,6 +69,7 @@ export function BuildingModal({
   tokenUrl,
   onClose,
   isPlatform,
+  isAscensionTemple,
 }: BuildingModalProps) {
   const { publicKey, connected, mobileSignAndSend } = useMobileWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
@@ -431,32 +433,64 @@ export function BuildingModal({
 
   const change24h = tokenInfo?.change24h ?? 0;
 
+  // Celestial theme for Ascension Temple (#1 trending)
+  const accent = isAscensionTemple ? "gold" : "green";
+  const borderColor = isAscensionTemple ? "border-amber-400" : "border-bags-green";
+  const accentText = isAscensionTemple ? "text-amber-300" : "text-bags-green";
+  const accentBg = isAscensionTemple ? "bg-amber-400/15" : "bg-bags-green/20";
+  const accentBorder = isAscensionTemple ? "border-amber-400/40" : "border-bags-green";
+  const accentHover = isAscensionTemple ? "hover:bg-amber-400/10" : "hover:bg-bags-green/10";
+
   return (
     <div
       className="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-[100] safe-area-bottom"
       onClick={handleBackdropClick}
     >
       <div
-        className={`bg-bags-dark border-4 border-bags-green w-full sm:max-w-2xl max-h-[75vh] sm:max-h-[95vh] overflow-y-auto rounded-t-xl sm:rounded-xl ${isDismissing ? "modal-sheet-dismiss" : ""}`}
+        className={`w-full sm:max-w-2xl max-h-[75vh] sm:max-h-[95vh] overflow-y-auto rounded-t-xl sm:rounded-xl border-4 ${borderColor} ${isDismissing ? "modal-sheet-dismiss" : ""} ${
+          isAscensionTemple ? "bg-[#0d0a1a]" : "bg-bags-dark"
+        }`}
         onClick={(e) => e.stopPropagation()}
-        style={{ transform: translateY > 0 ? `translateY(${translateY}px)` : undefined }}
+        style={{
+          transform: translateY > 0 ? `translateY(${translateY}px)` : undefined,
+          ...(isAscensionTemple
+            ? { boxShadow: "0 0 40px rgba(251,191,36,0.15), inset 0 1px 0 rgba(251,191,36,0.1)" }
+            : {}),
+        }}
         {...swipeHandlers}
       >
         {/* Mobile drag handle */}
         <div className="sm:hidden flex justify-center pt-2 pb-1">
-          <div className="w-10 h-1 rounded-full bg-white/30" />
+          <div
+            className={`w-10 h-1 rounded-full ${isAscensionTemple ? "bg-amber-400/40" : "bg-white/30"}`}
+          />
         </div>
         {/* Header */}
-        <div className="flex items-center justify-between p-3 sm:p-4 border-b-4 border-bags-green">
+        <div
+          className={`flex items-center justify-between p-3 sm:p-4 border-b-4 ${borderColor} ${
+            isAscensionTemple ? "bg-gradient-to-r from-[#1a0033] via-[#2a0a4a] to-[#1a0033]" : ""
+          }`}
+        >
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-bags-green/20 border border-bags-green rounded flex items-center justify-center flex-shrink-0">
-              <span className="font-pixel text-bags-green text-[10px] sm:text-xs">HQ</span>
+            <div
+              className={`w-8 h-8 sm:w-10 sm:h-10 ${accentBg} border ${accentBorder} rounded flex items-center justify-center flex-shrink-0`}
+            >
+              <span className={`font-pixel ${accentText} text-[10px] sm:text-xs`}>
+                {isAscensionTemple ? "#1" : "HQ"}
+              </span>
             </div>
             <div className="min-w-0">
-              <h2 className="font-pixel text-xs sm:text-sm text-bags-green truncate">
+              <h2 className={`font-pixel text-xs sm:text-sm ${accentText} truncate`}>
                 {tokenName}
               </h2>
-              <p className="font-pixel text-[7px] sm:text-[8px] text-gray-400">${tokenSymbol}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-pixel text-[7px] sm:text-[8px] text-gray-400">${tokenSymbol}</p>
+                {isAscensionTemple && (
+                  <span className="font-pixel text-[6px] sm:text-[7px] px-1.5 py-0.5 bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded">
+                    TOP TRENDING
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -465,7 +499,7 @@ export function BuildingModal({
                 href={tokenUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-pixel text-[8px] px-2 py-1 text-bags-green border border-bags-green/30 hover:bg-bags-green/10 rounded"
+                className={`font-pixel text-[8px] px-2 py-1 ${accentText} border ${accentBorder} ${accentHover} rounded`}
               >
                 BAGS.FM
               </a>
@@ -482,7 +516,9 @@ export function BuildingModal({
 
         {/* Tab Bar — only show when platform building has chat */}
         {isPlatform && (
-          <div className="flex border-b border-bags-green/30">
+          <div
+            className={`flex border-b ${isAscensionTemple ? "border-amber-400/30" : "border-bags-green/30"}`}
+          >
             <button
               onClick={() => setActiveTab("chart")}
               className={`flex-1 py-2 font-pixel text-[10px] transition-colors ${

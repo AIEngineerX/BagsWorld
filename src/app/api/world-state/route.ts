@@ -225,23 +225,33 @@ function assignPlatformTheme(
 }
 
 // X slots chosen to avoid overlap with existing static buildings and characters:
-// ascension: no conflicts
+// ascension: temple(440)=#1, observatory(160)=#2, vault(720)=#3, shrine(1000)=#4
 // trending: Casino=50, Arcade=520 — slots 230/420/800 clear
-// main_city: PokeCenter=280, Bagsy=350 — moved slot 1 from 250→150
+// main_city: PokeCenter=280, Bagsy=350 — slot 1 at 150 to avoid
 // labs: Characters at 180/320/460/600/740/880 — slots shifted to gaps
-// moltbook: agent HQs dynamic — slots 220/500/780 clear
+// moltbook: agent HQs dynamic — slots 220/500 clear
 const PLATFORM_ZONE_MAP: Array<{ zone: string; slots: number[] }> = [
-  { zone: "ascension", slots: [160, 720, 1000] },
+  { zone: "ascension", slots: [440, 160, 720, 1000] },
   { zone: "trending", slots: [230, 420, 800] },
   { zone: "main_city", slots: [150, 550, 850] },
   { zone: "labs", slots: [250, 530, 810] },
-  { zone: "moltbook", slots: [220, 500, 780] },
+  { zone: "moltbook", slots: [220, 500] },
 ];
 
+// Rank-to-zone assignment: 1-4 ascension, 5-7 trending, 8-10 main_city, 11-13 labs, 14-15 moltbook
 function assignPlatformZone(rank: number): { zone: string; slotX: number } {
-  const zoneIndex = Math.floor((rank - 1) / 3);
-  const slotIndex = (rank - 1) % 3;
-  const zoneConfig = PLATFORM_ZONE_MAP[zoneIndex] || PLATFORM_ZONE_MAP[4];
+  // Ascension gets 4 slots (ranks 1-4), all others get 3 or 2
+  const zoneBreaks = [
+    { maxRank: 4, zoneIdx: 0 },
+    { maxRank: 7, zoneIdx: 1 },
+    { maxRank: 10, zoneIdx: 2 },
+    { maxRank: 13, zoneIdx: 3 },
+    { maxRank: 15, zoneIdx: 4 },
+  ];
+  const entry = zoneBreaks.find((b) => rank <= b.maxRank) || zoneBreaks[4];
+  const zoneConfig = PLATFORM_ZONE_MAP[entry.zoneIdx];
+  const prevMax = zoneBreaks[zoneBreaks.indexOf(entry) - 1]?.maxRank || 0;
+  const slotIndex = rank - prevMax - 1;
   return {
     zone: zoneConfig.zone,
     slotX: zoneConfig.slots[slotIndex] || zoneConfig.slots[0],
