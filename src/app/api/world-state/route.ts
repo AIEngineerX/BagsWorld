@@ -16,7 +16,7 @@ import {
   type BagsWorldHolder,
 } from "@/lib/world-calculator";
 import { Connection, PublicKey } from "@solana/web3.js";
-import { getTokensByMints, searchTokens, type DexPair } from "@/lib/dexscreener-api";
+import { getTokensByMints, type DexPair } from "@/lib/dexscreener-api";
 import {
   emitEvent,
   startCoordinator,
@@ -40,6 +40,7 @@ import {
 } from "@/lib/agent-economy/external-registry";
 import { LAMPORTS_PER_SOL, lamportsToSol, formatSol } from "@/lib/solana-utils";
 import { pruneCache } from "@/lib/cache-utils";
+import { getServerBagsApiOrNull } from "@/lib/bags-api-server";
 // ChadGhost runs externally via OpenClaw cron jobs — removed auto-start import
 
 // Bags SDK types
@@ -167,6 +168,10 @@ const sdkEnrichCache = new Map<string, SDKEnrichResult>();
 // Platform-wide token discovery cache (DexScreener search, 5 min TTL)
 let platformDiscoveryCache: { tokens: RegisteredToken[]; timestamp: number } | null = null;
 const PLATFORM_DISCOVERY_TTL = 5 * 60_000; // 5 minutes
+const platformThemeCache = new Map<
+  string,
+  { theme: string; change24h: number; volume24h: number }
+>();
 
 // Visitor sprite URL cache (wallet -> spriteUrl, persisted across requests)
 const visitorSpriteCache = new Map<string, string>();
@@ -195,6 +200,46 @@ function generateVisitorSprites(
   }
 }
 
+function assignPlatformTheme(
+  mint: string,
+  change24h: number,
+  volume24h: number
+): "rocket" | "volcano" | "palace" | "crystal" {
+  const cached = platformThemeCache.get(mint);
+  if (cached) {
+    if (cached.theme === "rocket" && change24h > 10) return "rocket" as const;
+    if (cached.theme === "volcano" && change24h < -10) return "volcano" as const;
+    if (cached.theme === "palace" && volume24h > 40000) return "palace" as const;
+  }
+
+  let theme: "rocket" | "volcano" | "palace" | "crystal";
+  if (change24h > 20) theme = "rocket";
+  else if (change24h < -20) theme = "volcano";
+  else if (volume24h > 50000) theme = "palace";
+  else theme = "crystal";
+
+  platformThemeCache.set(mint, { theme, change24h, volume24h });
+  return theme;
+}
+
+const PLATFORM_ZONE_MAP: Array<{ zone: string; slots: number[] }> = [
+  { zone: "ascension", slots: [200, 420, 640] },
+  { zone: "trending", slots: [180, 500, 820] },
+  { zone: "main_city", slots: [250, 550, 850] },
+  { zone: "labs", slots: [200, 480, 760] },
+  { zone: "moltbook", slots: [220, 500, 780] },
+];
+
+function assignPlatformZone(rank: number): { zone: string; slotX: number } {
+  const zoneIndex = Math.floor((rank - 1) / 3);
+  const slotIndex = (rank - 1) % 3;
+  const zoneConfig = PLATFORM_ZONE_MAP[zoneIndex] || PLATFORM_ZONE_MAP[4];
+  return {
+    zone: zoneConfig.zone,
+    slotX: zoneConfig.slots[slotIndex] || zoneConfig.slots[0],
+  };
+}
+
 async function discoverPlatformTokens(excludeMints: Set<string>): Promise<RegisteredToken[]> {
   const now = Date.now();
   if (platformDiscoveryCache && now - platformDiscoveryCache.timestamp < PLATFORM_DISCOVERY_TTL) {
@@ -203,27 +248,59 @@ async function discoverPlatformTokens(excludeMints: Set<string>): Promise<Regist
   }
 
   try {
-    // DexScreener search "BAGS" returns ~30 active Bags.fm pairs (1 API call)
-    const pairs = await searchTokens("BAGS");
-    // Filter to bags dex only (confirmed Bags.fm tokens) and sort by volume
-    const bagsPairs = pairs
-      .filter((p) => p.dexId === "bags")
-      .sort((a, b) => (b.volume?.h24 || 0) - (a.volume?.h24 || 0))
-      .slice(0, 10); // Top 10 by volume
+    // Step 1: Get native Bags.fm launch feed for authoritative token list
+    const bagsApi = getServerBagsApiOrNull();
+    if (!bagsApi) {
+      console.warn("[WorldState] Bags API not configured, skipping platform discovery");
+      return [];
+    }
 
-    const platformTokens: RegisteredToken[] = bagsPairs.map((pair) => ({
-      mint: pair.baseToken.address,
-      name: pair.baseToken.name,
-      symbol: pair.baseToken.symbol,
-      creator: "platform",
-      createdAt: Date.now() - 86400000, // Not known, assume recent
-      isPlatform: true,
-    }));
+    const launchFeed = await bagsApi.getLaunchFeed();
+    const migratedTokens = launchFeed.filter((t) => t.status === "MIGRATED");
+    if (migratedTokens.length === 0) {
+      console.log("[WorldState] No migrated tokens in launch feed");
+      return [];
+    }
+
+    // Step 2: Enrich with DexScreener market data
+    const mints = migratedTokens.map((t) => t.tokenMint);
+    const dexPairs = await getTokensByMints(mints);
+
+    // Build mint→launch feed lookup for matching
+    const feedByMint = new Map(migratedTokens.map((t) => [t.tokenMint, t]));
+
+    // Step 3: Match DexScreener pairs back to launch feed, sort by 24h volume
+    const enrichedPairs = dexPairs
+      .filter((p) => feedByMint.has(p.baseToken.address))
+      .sort((a, b) => (b.volume?.h24 || 0) - (a.volume?.h24 || 0))
+      .slice(0, 15);
+
+    // Step 4: Build RegisteredTokens with theme and zone assignments
+    const platformTokens: RegisteredToken[] = enrichedPairs.map((pair, index) => {
+      const rank = index + 1;
+      const change24h = pair.priceChange?.h24 || 0;
+      const volume24h = pair.volume?.h24 || 0;
+      const theme = assignPlatformTheme(pair.baseToken.address, change24h, volume24h);
+      const { zone, slotX } = assignPlatformZone(rank);
+
+      return {
+        mint: pair.baseToken.address,
+        name: pair.baseToken.name,
+        symbol: pair.baseToken.symbol,
+        creator: "platform",
+        createdAt: Date.now() - 86400000,
+        isPlatform: true,
+        platformTheme: theme,
+        platformRank: rank,
+        platformZone: zone,
+        platformSlotX: slotX,
+      };
+    });
 
     platformDiscoveryCache = { tokens: platformTokens, timestamp: now };
     console.log(
-      `[WorldState] Discovered ${platformTokens.length} platform tokens:`,
-      platformTokens.map((t) => t.symbol).join(", ")
+      `[WorldState] Discovered ${platformTokens.length} platform tokens via launch feed:`,
+      platformTokens.map((t) => `${t.symbol}(${t.platformTheme})`).join(", ")
     );
 
     return platformTokens.filter((t) => !excludeMints.has(t.mint));
