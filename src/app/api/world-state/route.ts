@@ -224,18 +224,19 @@ function assignPlatformTheme(
   return theme;
 }
 
-// X slots chosen to avoid overlap with existing static buildings and characters:
-// ascension: temple(440)=#1, observatory(160)=#2, vault(720)=#3, shrine(1000)=#4
-// trending: Casino=50, Arcade=520 — slots 230/420/800 clear
-// main_city: PokeCenter=280, Bagsy=350 — slot 1 at 150 to avoid
-// labs: LabsHQ=420 — slots 250/600/810 clear
-// moltbook: MoltBar=250, MoltbookHQ=400, AgentHut=550, BountyBoard=680 — slots 120/780 clear
+// X slots chosen to avoid overlap with static buildings AND stay within canvas (max base ~750).
+// Canvas is 1280px, SCALE=1.6, so base coords 0-800. Buildings ~80px wide → safe range 50-750.
+// ascension: no static buildings — evenly spaced
+// trending: Casino=50, Arcade=520 — slots avoid both
+// main_city: PokeCenter=280 — slot 1 before, slots 2-3 after
+// labs: LabsHQ=420 — slot 1 before, slots 2-3 after
+// moltbook: MoltBar=250, MoltbookHQ=400, AgentHut=550, BountyBoard=680 — edges only
 const PLATFORM_ZONE_MAP: Array<{ zone: string; slots: number[] }> = [
-  { zone: "ascension", slots: [440, 160, 720, 1000] },
-  { zone: "trending", slots: [230, 420, 800] },
-  { zone: "main_city", slots: [150, 550, 850] },
-  { zone: "labs", slots: [250, 600, 810] },
-  { zone: "moltbook", slots: [120, 780] },
+  { zone: "ascension", slots: [160, 350, 540, 700] },
+  { zone: "trending", slots: [230, 420, 700] },
+  { zone: "main_city", slots: [150, 550, 720] },
+  { zone: "labs", slots: [250, 530, 710] },
+  { zone: "moltbook", slots: [100, 730] },
 ];
 
 // Rank-to-zone assignment: 1-4 ascension, 5-7 trending, 8-10 main_city, 11-13 labs, 14-15 moltbook
