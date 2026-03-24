@@ -74,14 +74,27 @@ export async function GET() {
       // Only attempt auto-start if wallet and API are configured
       if (isAgentWalletConfigured() && isServerBagsApiConfigured()) {
         console.log("[Ecosystem Stats] Auto-initializing creator rewards agent...");
-        const initialized = await initCreatorRewardsAgent();
-        if (initialized) {
-          const started = await startCreatorRewardsAgent();
-          if (started) {
-            console.log("[Ecosystem Stats] Creator rewards agent auto-started successfully");
-            // Re-fetch state after starting
-            rewardsState = getCreatorRewardsState();
-          }
+        const agentStarted = await Promise.race([
+          (async () => {
+            const initialized = await initCreatorRewardsAgent();
+            if (initialized) {
+              const started = await startCreatorRewardsAgent();
+              return started;
+            }
+            return false;
+          })(),
+          new Promise<boolean>((resolve) =>
+            setTimeout(() => {
+              console.warn("[Ecosystem Stats] Agent init timed out after 5s");
+              resolve(false);
+            }, 5000)
+          ),
+        ]);
+
+        if (agentStarted) {
+          console.log("[Ecosystem Stats] Creator rewards agent auto-started successfully");
+          // Re-fetch state after starting
+          rewardsState = getCreatorRewardsState();
         }
       }
     }

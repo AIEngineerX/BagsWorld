@@ -816,11 +816,11 @@ let bgEnrichRunning = false;
 function enrichTokensInBackground(sdk: any, mints: string[]): void {
   if (bgEnrichRunning) return;
   // Only enrich mints not yet cached
-  const uncached = mints.filter((m) => !sdkEnrichCache.has(m));
+  const uncached = mints.filter((m) => !sdkEnrichCache.has(m)).slice(0, 10);
   if (uncached.length === 0) return;
 
   bgEnrichRunning = true;
-  const BATCH_SIZE = 3; // Max concurrent SDK enrichments
+  const BATCH_SIZE = 2; // Max concurrent SDK enrichments
 
   (async () => {
     try {
@@ -1069,47 +1069,38 @@ async function generateEvents(
     }
   });
 
-  // Add fee milestone events - now uses database for persistence
+  // Batch milestone checks — collect all (token, threshold) pairs first, then check in parallel
+  const milestoneChecks: Array<{
+    token: TokenInfo;
+    threshold: number;
+    eventId: string;
+  }> = [];
+
   for (const token of tokens) {
     if (token.lifetimeFees > 0) {
       const feeThresholds = [1, 5, 10, 50, 100, 500, 1000];
       for (const threshold of feeThresholds) {
         if (token.lifetimeFees >= threshold) {
           const eventId = `milestone-${token.mint}-${threshold}`;
-
-          // Skip if already in current events
-          if (existingIds.has(eventId)) {
-            break; // Only show the highest achieved milestone not yet displayed
+          if (!existingIds.has(eventId)) {
+            milestoneChecks.push({ token, threshold, eventId });
           }
+          break; // Only highest milestone per token
+        }
+      }
+    }
+  }
 
-          // Check database to see if milestone was already achieved
-          if (isNeonConfigured()) {
-            const { isNew, achievedAt } = await recordMilestoneAchievement(
-              token.mint,
-              threshold,
-              token.symbol
-            );
-
-            if (isNew) {
-              // New milestone - use current time (when detected)
-              events.unshift({
-                id: eventId,
-                type: "milestone",
-                message: `${token.symbol} reached ${formatSol(threshold)} in lifetime fees!`,
-                timestamp: Date.now(),
-                data: {
-                  tokenName: token.name,
-                  amount: threshold,
-                  mint: token.mint,
-                },
-              });
-            }
-            // If not new, don't add event (already celebrated)
-          } else {
-            // No database - fall back to in-memory only (won't persist across cold starts)
-            events.unshift({
+  // Execute all milestone DB checks in parallel (instead of sequential awaits)
+  if (isNeonConfigured() && milestoneChecks.length > 0) {
+    const results = await Promise.all(
+      milestoneChecks.map(async ({ token, threshold, eventId }) => {
+        try {
+          const { isNew } = await recordMilestoneAchievement(token.mint, threshold, token.symbol);
+          if (isNew) {
+            return {
               id: eventId,
-              type: "milestone",
+              type: "milestone" as const,
               message: `${token.symbol} reached ${formatSol(threshold)} in lifetime fees!`,
               timestamp: Date.now(),
               data: {
@@ -1117,11 +1108,30 @@ async function generateEvents(
                 amount: threshold,
                 mint: token.mint,
               },
-            });
+            };
           }
-          break; // Only show highest milestone per token
+        } catch {
+          // Milestone check failed, skip
         }
-      }
+        return null;
+      })
+    );
+    const milestoneEvents = results.filter(Boolean) as GameEvent[];
+    events.unshift(...milestoneEvents);
+  } else if (milestoneChecks.length > 0) {
+    // No database — fall back to in-memory
+    for (const { token, threshold, eventId } of milestoneChecks) {
+      events.unshift({
+        id: eventId,
+        type: "milestone",
+        message: `${token.symbol} reached ${formatSol(threshold)} in lifetime fees!`,
+        timestamp: Date.now(),
+        data: {
+          tokenName: token.name,
+          amount: threshold,
+          mint: token.mint,
+        },
+      });
     }
   }
 
