@@ -19,28 +19,36 @@ export function PlatformChat({ tokenName, tokenSymbol, tokenMint }: PlatformChat
   const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Focus input on mount
+  // Focus input on mount; abort on unmount
   useEffect(() => {
     inputRef.current?.focus();
+    return () => {
+      abortRef.current?.abort();
+    };
   }, []);
 
   const sendMessage = useCallback(async () => {
     const text = input.trim();
     if (!text || isStreaming) return;
 
-    const userMsg: ChatMessage = { role: "user", content: text };
-    setMessages((prev) => [...prev, userMsg]);
+    // Snapshot history BEFORE state mutations
+    const historySnapshot = messages.filter((m) => m.content.length > 0);
+
     setInput("");
     setIsStreaming(true);
-
-    // Add empty assistant message that we'll stream into
+    setMessages((prev) => [...prev, { role: "user", content: text }]);
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
+    // Abort any in-flight request
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
 
     try {
       const response = await fetch("/api/platform-chat", {
@@ -50,8 +58,9 @@ export function PlatformChat({ tokenName, tokenSymbol, tokenMint }: PlatformChat
           tokenName,
           symbol: tokenSymbol,
           message: text,
-          history: messages,
+          history: historySnapshot,
         }),
+        signal: abortRef.current.signal,
       });
 
       if (!response.ok) {
@@ -112,7 +121,8 @@ export function PlatformChat({ tokenName, tokenSymbol, tokenMint }: PlatformChat
           }
         }
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
       setMessages((prev) => {
         const updated = [...prev];
         updated[updated.length - 1] = {
