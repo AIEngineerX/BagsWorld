@@ -20,6 +20,7 @@ import {
   generateCharacterPosition,
   transformFeeEarnerToCharacter,
   transformTokenToBuilding,
+  transformPlatformToken,
   generateGameEvent,
   buildWorldState,
   createMansionBuildings,
@@ -2280,5 +2281,338 @@ describe("buildWorldState — edge cases", () => {
     const state = buildWorldState([], [], prevState);
     // previousState.events.slice(0, 10) → max 10 carried forward
     expect(state.events.length).toBeLessThanOrEqual(10);
+  });
+});
+
+// ============================================================================
+// transformPlatformToken — Platform building creation from trending tokens
+// ============================================================================
+
+describe("transformPlatformToken", () => {
+  const SCALE = 1.6;
+
+  function makePlatformToken(overrides: Partial<TokenInfo> = {}): TokenInfo {
+    return {
+      mint: "PlatformMint111111111111111111111111111111111",
+      name: "Test Platform",
+      symbol: "TPLAT",
+      creator: "platform",
+      marketCap: 50000,
+      volume24h: 10000,
+      change24h: 15,
+      isPlatform: true,
+      platformTheme: "rocket",
+      platformRank: 1,
+      platformZone: "ascension",
+      platformSlotX: 440,
+      ...overrides,
+    };
+  }
+
+  describe("basic field mapping", () => {
+    it("should create a building with platform_ prefix id", () => {
+      const building = transformPlatformToken(makePlatformToken());
+      expect(building.id).toBe("platform_PlatformMint111111111111111111111111111111111");
+    });
+
+    it("should copy tokenMint from mint", () => {
+      const building = transformPlatformToken(makePlatformToken({ mint: "abc123" }));
+      expect(building.tokenMint).toBe("abc123");
+    });
+
+    it("should always set health to 100 (no decay)", () => {
+      const building = transformPlatformToken(makePlatformToken());
+      expect(building.health).toBe(100);
+    });
+
+    it("should always set status to active", () => {
+      const building = transformPlatformToken(makePlatformToken());
+      expect(building.status).toBe("active");
+    });
+
+    it("should set isPlatform to true", () => {
+      const building = transformPlatformToken(makePlatformToken());
+      expect(building.isPlatform).toBe(true);
+    });
+
+    it("should set ownerId to platform", () => {
+      const building = transformPlatformToken(makePlatformToken());
+      expect(building.ownerId).toBe("platform");
+    });
+
+    it("should copy market data fields", () => {
+      const building = transformPlatformToken(
+        makePlatformToken({ marketCap: 123456, volume24h: 7890, change24h: -5.5 })
+      );
+      expect(building.marketCap).toBe(123456);
+      expect(building.volume24h).toBe(7890);
+      expect(building.change24h).toBe(-5.5);
+    });
+
+    it("should copy platformTheme and platformRank", () => {
+      const building = transformPlatformToken(
+        makePlatformToken({ platformTheme: "volcano", platformRank: 7 })
+      );
+      expect(building.platformTheme).toBe("volcano");
+      expect(building.platformRank).toBe(7);
+    });
+  });
+
+  describe("position calculation", () => {
+    it("should calculate x from platformSlotX * SCALE", () => {
+      const building = transformPlatformToken(makePlatformToken({ platformSlotX: 250 }));
+      expect(building.x).toBe(Math.round(250 * SCALE));
+    });
+
+    it("should default to x=400*SCALE when platformSlotX is missing", () => {
+      const building = transformPlatformToken(makePlatformToken({ platformSlotX: undefined }));
+      expect(building.x).toBe(Math.round(400 * SCALE));
+    });
+
+    it("should use zone-specific Y positions", () => {
+      const ascension = transformPlatformToken(makePlatformToken({ platformZone: "ascension" }));
+      const trending = transformPlatformToken(makePlatformToken({ platformZone: "trending" }));
+      expect(ascension.y).toBe(Math.round(535 * SCALE));
+      expect(trending.y).toBe(Math.round(540 * SCALE));
+    });
+
+    it("should default to main_city Y when zone is unknown", () => {
+      const building = transformPlatformToken(
+        makePlatformToken({ platformZone: "nonexistent_zone" })
+      );
+      expect(building.y).toBe(Math.round(540 * SCALE)); // main_city default
+    });
+  });
+
+  describe("building level", () => {
+    it("should enforce minimum level 4 for platform buildings", () => {
+      // marketCap=0 would normally be level 1, but platform minimum is 4
+      const building = transformPlatformToken(makePlatformToken({ marketCap: 0 }));
+      expect(building.level).toBeGreaterThanOrEqual(4);
+    });
+
+    it("should allow level 5 for high market cap", () => {
+      const building = transformPlatformToken(makePlatformToken({ marketCap: 15_000_000 }));
+      expect(building.level).toBe(5);
+    });
+
+    it("should handle undefined marketCap", () => {
+      const building = transformPlatformToken(makePlatformToken({ marketCap: undefined }));
+      expect(building.level).toBe(4); // min level for platform
+    });
+  });
+
+  describe("glow behavior", () => {
+    it("should glow when change24h > 10%", () => {
+      const building = transformPlatformToken(makePlatformToken({ change24h: 15 }));
+      expect(building.glowing).toBe(true);
+    });
+
+    it("should not glow at exactly 10%", () => {
+      const building = transformPlatformToken(makePlatformToken({ change24h: 10 }));
+      expect(building.glowing).toBe(false);
+    });
+
+    it("should not glow when dumping", () => {
+      const building = transformPlatformToken(makePlatformToken({ change24h: -30 }));
+      expect(building.glowing).toBe(false);
+    });
+
+    it("should not glow when change24h is undefined", () => {
+      const building = transformPlatformToken(makePlatformToken({ change24h: undefined }));
+      expect(building.glowing).toBe(false);
+    });
+  });
+
+  describe("missing/default fields", () => {
+    it("should default name to Unknown when missing", () => {
+      const building = transformPlatformToken(makePlatformToken({ name: undefined }));
+      expect(building.name).toBe("Unknown");
+    });
+
+    it("should default symbol to ??? when missing", () => {
+      const building = transformPlatformToken(makePlatformToken({ symbol: undefined }));
+      expect(building.symbol).toBe("???");
+    });
+
+    it("should default zone to main_city when platformZone is missing", () => {
+      const building = transformPlatformToken(makePlatformToken({ platformZone: undefined }));
+      expect(building.zone).toBe("main_city");
+    });
+
+    it("should default rank to 15 when platformRank is missing", () => {
+      const building = transformPlatformToken(makePlatformToken({ platformRank: undefined }));
+      expect(building.platformRank).toBe(15);
+    });
+  });
+
+  describe("ascension zone scale multipliers", () => {
+    it("should apply 1.15 scale for ascension slot 0 (rank 1)", () => {
+      const building = transformPlatformToken(
+        makePlatformToken({ platformZone: "ascension", platformRank: 1 })
+      );
+      expect(building.platformScale).toBe(1.15);
+    });
+
+    it("should apply 1.15 scale for ascension slot 1 (rank 2)", () => {
+      const building = transformPlatformToken(
+        makePlatformToken({ platformZone: "ascension", platformRank: 2 })
+      );
+      expect(building.platformScale).toBe(1.15);
+    });
+
+    it("should apply 1.1 scale for ascension slot 2 (rank 3)", () => {
+      const building = transformPlatformToken(
+        makePlatformToken({ platformZone: "ascension", platformRank: 3 })
+      );
+      expect(building.platformScale).toBe(1.1);
+    });
+
+    it("should apply 1.0 scale for non-ascension zones", () => {
+      const building = transformPlatformToken(
+        makePlatformToken({ platformZone: "trending", platformRank: 5 })
+      );
+      expect(building.platformScale).toBe(1.0);
+    });
+  });
+});
+
+// ============================================================================
+// Platform buildings in buildWorldState — integration tests
+// ============================================================================
+
+describe("buildWorldState platform integration", () => {
+  function makePlatformTokenInfo(overrides: Partial<TokenInfo> = {}): TokenInfo {
+    return {
+      mint: "plat-" + Math.random().toString(36).slice(2, 10),
+      name: "Platform Token",
+      symbol: "PLAT",
+      creator: "platform",
+      marketCap: 50000,
+      volume24h: 5000,
+      change24h: 0,
+      isPlatform: true,
+      platformTheme: "crystal",
+      platformRank: 1,
+      platformZone: "trending",
+      platformSlotX: 300,
+      ...overrides,
+    };
+  }
+
+  it("should place all 15 platform buildings across 5 zones", () => {
+    const tokens: TokenInfo[] = [];
+    const zones = ["ascension", "ascension", "ascension", "ascension",
+      "trending", "trending", "trending",
+      "main_city", "main_city", "main_city",
+      "labs", "labs", "labs",
+      "moltbook", "moltbook"];
+    const slotXs = [440, 160, 720, 1000,
+      230, 420, 800,
+      150, 550, 850,
+      250, 530, 810,
+      220, 500];
+
+    for (let i = 0; i < 15; i++) {
+      tokens.push(
+        makePlatformTokenInfo({
+          mint: `plat-mint-${i}`,
+          symbol: `P${i}`,
+          platformRank: i + 1,
+          platformZone: zones[i],
+          platformSlotX: slotXs[i],
+        })
+      );
+    }
+
+    const state = buildWorldState([], tokens);
+    const platBuildings = state.buildings.filter((b) => b.isPlatform);
+    expect(platBuildings).toHaveLength(15);
+
+    // Verify no duplicate positions within a zone
+    const positionsByZone = new Map<string, number[]>();
+    platBuildings.forEach((b) => {
+      const existing = positionsByZone.get(b.zone) || [];
+      existing.push(b.x);
+      positionsByZone.set(b.zone, existing);
+    });
+
+    positionsByZone.forEach((positions, zone) => {
+      const uniquePositions = new Set(positions);
+      expect(uniquePositions.size).toBe(positions.length);
+    });
+  });
+
+  it("should not count platform buildings in MAX_BUILDINGS limit", () => {
+    // Create 15 platform tokens + 1 regular token
+    const regular: TokenInfo = {
+      mint: "regular-mint-1",
+      name: "Regular Token",
+      symbol: "REG",
+      creator: "user1",
+      marketCap: 100000,
+      volume24h: 500,
+      change24h: 5,
+    };
+
+    const platform = makePlatformTokenInfo();
+    const state = buildWorldState([], [regular, platform]);
+
+    // Both should appear — platform doesn't consume a regular slot
+    const regBuildings = state.buildings.filter((b) => !b.isPlatform);
+    const platBuildings = state.buildings.filter((b) => b.isPlatform);
+    expect(regBuildings.length).toBeGreaterThanOrEqual(1);
+    expect(platBuildings).toHaveLength(1);
+  });
+
+  it("should set platform buildings to health 100 always", () => {
+    const token = makePlatformTokenInfo({ change24h: -50 });
+    const state = buildWorldState([], [token]);
+    const platBuilding = state.buildings.find((b) => b.isPlatform);
+    expect(platBuilding?.health).toBe(100);
+  });
+
+  it("should handle platform tokens with missing optional fields", () => {
+    const minimal: TokenInfo = {
+      mint: "minimal-platform",
+      name: "Minimal",
+      symbol: "MIN",
+      creator: "platform",
+      isPlatform: true,
+      // No marketCap, volume24h, change24h, platformTheme, platformRank, etc.
+    };
+    const state = buildWorldState([], [minimal]);
+    const platBuilding = state.buildings.find((b) => b.isPlatform);
+    expect(platBuilding).toBeDefined();
+    expect(platBuilding!.level).toBeGreaterThanOrEqual(4);
+    expect(platBuilding!.health).toBe(100);
+    expect(platBuilding!.zone).toBe("main_city"); // default
+  });
+
+  it("should handle empty platform token array", () => {
+    const state = buildWorldState([], []);
+    const platBuildings = state.buildings.filter((b) => b.isPlatform);
+    expect(platBuildings).toHaveLength(0);
+  });
+
+  it("should mix platform and regular buildings correctly", () => {
+    const regular: TokenInfo = {
+      mint: "reg-1",
+      name: "Regular",
+      symbol: "REG",
+      creator: "user",
+      marketCap: 200000,
+      volume24h: 1000,
+      change24h: 0,
+    };
+    const platform = makePlatformTokenInfo({ mint: "plat-1" });
+
+    const state = buildWorldState([], [regular, platform]);
+    const reg = state.buildings.find((b) => b.id === "reg-1");
+    const plat = state.buildings.find((b) => b.id === "platform_plat-1");
+    expect(reg).toBeDefined();
+    expect(plat).toBeDefined();
+    expect(reg!.isPlatform).toBeFalsy();
+    expect(plat!.isPlatform).toBe(true);
   });
 });
