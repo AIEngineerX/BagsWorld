@@ -19,6 +19,7 @@ import type { TradeQuote } from "@/lib/types";
 import { getTokenDecimals } from "@/lib/token-balance";
 import { useMobileWallet } from "@/hooks/useMobileWallet";
 import { deserializeTransaction, preSimulateTransaction } from "@/lib/transaction-utils";
+import { PlatformChat } from "./PlatformChat";
 
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 
@@ -28,10 +29,13 @@ interface BuildingModalProps {
   tokenName: string;
   tokenUrl?: string;
   onClose: () => void;
+  isPlatform?: boolean;
+  platformTheme?: string;
 }
 
 type TradeDirection = "buy" | "sell";
 type IntervalType = "5m" | "15m" | "1h" | "4h" | "1d";
+type ModalTab = "chart" | "chat";
 
 interface OHLCVCandle {
   time: number;
@@ -63,6 +67,7 @@ export function BuildingModal({
   tokenName,
   tokenUrl,
   onClose,
+  isPlatform,
 }: BuildingModalProps) {
   const { publicKey, connected, mobileSignAndSend } = useMobileWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
@@ -77,6 +82,9 @@ export function BuildingModal({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [slippage, setSlippage] = useState(0.5);
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<ModalTab>("chart");
 
   // Chart state
   const [chartInterval, setChartInterval] = useState<IntervalType>("1h");
@@ -472,8 +480,41 @@ export function BuildingModal({
           </div>
         </div>
 
+        {/* Tab Bar — only show when platform building has chat */}
+        {isPlatform && (
+          <div className="flex border-b border-bags-green/30">
+            <button
+              onClick={() => setActiveTab("chart")}
+              className={`flex-1 py-2 font-pixel text-[10px] transition-colors ${
+                activeTab === "chart"
+                  ? "bg-bags-green/20 text-bags-green border-b-2 border-bags-green"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              CHART / TRADE
+            </button>
+            <button
+              onClick={() => setActiveTab("chat")}
+              className={`flex-1 py-2 font-pixel text-[10px] transition-colors ${
+                activeTab === "chat"
+                  ? "bg-purple-600/20 text-purple-400 border-b-2 border-purple-500"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              CHAT
+            </button>
+          </div>
+        )}
+
+        {/* Chat Tab */}
+        {activeTab === "chat" && isPlatform && (
+          <PlatformChat tokenName={tokenName} tokenSymbol={tokenSymbol} tokenMint={tokenMint} />
+        )}
+
         {/* Two-column layout on desktop, single column on mobile */}
-        <div className="flex flex-col sm:flex-row">
+        <div
+          className={`flex flex-col sm:flex-row ${activeTab === "chat" && isPlatform ? "hidden" : ""}`}
+        >
           {/* Left Column: Stats + Chart */}
           <div className="flex-1 min-w-0">
             {/* Stats Grid */}

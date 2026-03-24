@@ -895,6 +895,8 @@ export default function Home() {
           tokenName={tradeToken.name}
           tokenUrl={tradeToken.tokenUrl}
           onClose={() => setTradeToken(null)}
+          isPlatform={tradeToken.isPlatform}
+          platformTheme={tradeToken.platformTheme}
         />
       )}
 
