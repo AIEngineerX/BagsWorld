@@ -7,6 +7,7 @@ import type {
   FeeEarner,
   TokenInfo,
   BuildingStatus,
+  ZoneType,
 } from "./types";
 import { ECOSYSTEM_CONFIG } from "./config";
 
@@ -722,6 +723,32 @@ export function transformTokenToBuilding(
   };
 }
 
+export function transformPlatformToken(token: TokenInfo): GameBuilding {
+  const grassTop = Math.round(455 * SCALE);
+  const rank = token.platformRank || 15;
+
+  return {
+    id: `platform_${token.mint}`,
+    tokenMint: token.mint,
+    name: token.name || "Unknown",
+    symbol: token.symbol || "???",
+    x: Math.round((token.platformSlotX || 400) * SCALE),
+    y: grassTop,
+    level: calculateBuildingLevel(token.marketCap || 0),
+    health: 100,
+    status: "active",
+    glowing: (token.change24h || 0) > 10,
+    ownerId: "platform",
+    marketCap: token.marketCap,
+    volume24h: token.volume24h,
+    change24h: token.change24h,
+    zone: (token.platformZone as ZoneType) || "main_city",
+    isPlatform: true,
+    platformTheme: token.platformTheme,
+    platformRank: rank,
+  };
+}
+
 export function generateGameEvent(type: GameEvent["type"], data: GameEvent["data"]): GameEvent {
   const messages: Record<GameEvent["type"], (data: GameEvent["data"]) => string> = {
     token_launch: (d) => `🏗️ ${d?.username} launched ${d?.tokenName}!`,
@@ -912,7 +939,13 @@ export function buildWorldState(
   const mansionBuildings = bagsWorldHolders ? createMansionBuildings(bagsWorldHolders) : [];
 
   // Combine regular buildings with mansion buildings
-  const buildings = [...regularBuildings, ...mansionBuildings];
+  const buildings: GameBuilding[] = [...regularBuildings, ...mansionBuildings];
+
+  // Platform buildings: top 15 trending tokens from Bags.fm (appended after decay filter)
+  const platformTokens = tokens.filter((t) => t.isPlatform);
+  const platformBuildings = platformTokens.map((token) => transformPlatformToken(token));
+  // Platform buildings skip decay and MAX_BUILDINGS limit
+  buildings.push(...platformBuildings);
 
   // Generate events for significant changes
   const events: GameEvent[] = previousState?.events.slice(0, 10) ?? [];

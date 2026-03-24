@@ -263,11 +263,15 @@ async function discoverPlatformTokens(excludeMints: Set<string>): Promise<Regist
     }
 
     // Step 2: Enrich with DexScreener market data
-    const mints = migratedTokens.map((t) => t.tokenMint);
+    // Sort by most recent first, take 30 for DexScreener batch limit
+    const recentMigrated = migratedTokens
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+      .slice(0, 30);
+    const mints = recentMigrated.map((t) => t.tokenMint);
     const dexPairs = await getTokensByMints(mints);
 
     // Build mint→launch feed lookup for matching
-    const feedByMint = new Map(migratedTokens.map((t) => [t.tokenMint, t]));
+    const feedByMint = new Map(recentMigrated.map((t) => [t.tokenMint, t]));
 
     // Step 3: Match DexScreener pairs back to launch feed, sort by 24h volume
     const enrichedPairs = dexPairs
@@ -296,6 +300,12 @@ async function discoverPlatformTokens(excludeMints: Set<string>): Promise<Regist
         platformSlotX: slotX,
       };
     });
+
+    // Evict stale theme cache entries for tokens no longer in top 15
+    const currentMints = new Set(platformTokens.map((t) => t.mint));
+    for (const mint of platformThemeCache.keys()) {
+      if (!currentMints.has(mint)) platformThemeCache.delete(mint);
+    }
 
     platformDiscoveryCache = { tokens: platformTokens, timestamp: now };
     console.log(
@@ -860,6 +870,10 @@ async function enrichTokenWithSDK(
     healthOverride: token.healthOverride,
     createdAt: token.createdAt,
     isPlatform: token.isPlatform || false,
+    platformTheme: token.platformTheme,
+    platformRank: token.platformRank,
+    platformZone: token.platformZone,
+    platformSlotX: token.platformSlotX,
   };
 
   return { tokenInfo, creators, claimEvents, claimEvents24h };
@@ -1633,22 +1647,20 @@ export async function POST(request: NextRequest) {
 
     // Add token launch events for new tokens
     tokens.forEach((token) => {
+      if (token.isPlatform) return; // Platform buildings don't generate launch events
       const launchEventId = `launch-${token.mint}`;
       if (!worldState.events.some((e) => e.id === launchEventId)) {
         // Check if this is a "new" token (less than 24 hours old based on createdAt)
         const registeredToken = tokensToProcess.find((t) => t.mint === token.mint);
         if (registeredToken && Date.now() - registeredToken.createdAt < 86400000) {
-          const isPlatform = token.isPlatform || false;
           worldState.events.unshift({
             id: launchEventId,
-            type: isPlatform ? "platform_launch" : "token_launch",
-            message: isPlatform
-              ? `${token.symbol} is active on Bags.fm!`
-              : `${token.symbol} building constructed in BagsWorld!`,
+            type: "token_launch",
+            message: `${token.symbol} building constructed in BagsWorld!`,
             timestamp: registeredToken.createdAt,
             data: {
               tokenName: token.name,
-              username: isPlatform ? "Bags.fm" : "Builder",
+              username: "Builder",
               symbol: token.symbol,
               platform: "bags",
               mint: token.mint,
