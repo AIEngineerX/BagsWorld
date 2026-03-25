@@ -3407,7 +3407,7 @@ export class WorldScene extends Phaser.Scene {
     // Update sky gradient
     this.drawSkyGradient(timeState);
 
-    // Graduated star alpha per time state
+    // Graduated star alpha per time state — re-add twinkle after transition
     const starAlphaMap: Record<string, number> = { night: 0.6, dusk: 0.35, dawn: 0.15, day: 0 };
     const targetAlpha = starAlphaMap[timeState];
     this.stars.forEach((star) => {
@@ -3417,6 +3417,19 @@ export class WorldScene extends Phaser.Scene {
         alpha: targetAlpha,
         duration: 2000,
         ease: "Sine.easeInOut",
+        onComplete: () => {
+          if (targetAlpha > 0) {
+            // Restore twinkle animation (killed by the transition tween above)
+            this.tweens.add({
+              targets: star,
+              alpha: targetAlpha * 0.2,
+              duration: 1000 + Math.random() * 2000,
+              yoyo: true,
+              repeat: -1,
+              ease: "Sine.easeInOut",
+            });
+          }
+        },
       });
     });
 
