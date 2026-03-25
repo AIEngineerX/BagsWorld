@@ -1047,7 +1047,7 @@ export class WorldScene extends Phaser.Scene {
         this.arriveAtMoveTarget();
       } else {
         inputX = dx > 0 ? 1 : -1;
-        sprinting = Math.abs(dx) > 200;
+        sprinting = Math.abs(dx) > 80;
       }
     } else if (!this.isMobile) {
       // Desktop: read from keyboard
