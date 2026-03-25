@@ -88,6 +88,7 @@ export class WorldScene extends Phaser.Scene {
   private characterSprites: Map<string, Phaser.GameObjects.Sprite> = new Map();
   private characterVariants: Map<string, number> = new Map(); // Store which variant each character uses
   private buildingSprites: Map<string, Phaser.GameObjects.Container> = new Map();
+  private buildingById: Map<string, GameBuilding> = new Map(); // O(1) lookup for proximity checks
   private buildingInitialized: Set<string> = new Set(); // Track which buildings have been created
   private weatherEmitter: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private clouds: Phaser.GameObjects.Sprite[] = [];
@@ -1462,8 +1463,8 @@ export class WorldScene extends Phaser.Scene {
         // Skip if container is not visible (wrong zone)
         if (!container.visible) return;
 
-        // Find the building data
-        const building = this.worldState?.buildings.find((b) => b.id === id);
+        // Find the building data (O(1) map lookup instead of O(n) array scan)
+        const building = this.buildingById.get(id);
         if (!building) return;
 
         // Skip starter buildings (they're non-interactive)
@@ -6681,6 +6682,12 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private updateBuildings(buildings: GameBuilding[]): void {
+    // Rebuild O(1) lookup map for proximity checks
+    this.buildingById.clear();
+    for (const b of buildings) {
+      this.buildingById.set(b.id, b);
+    }
+
     // First, hide all buildings
     this.buildingSprites.forEach((container) => {
       container.setVisible(false);
