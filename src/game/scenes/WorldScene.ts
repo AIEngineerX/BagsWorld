@@ -901,38 +901,54 @@ export class WorldScene extends Phaser.Scene {
   private createVirtualJoystick(): void {
     if (!this.isMobile) return;
 
-    const cam = this.cameras.main;
-    const baseX = 80;
-    const baseY = cam.height - 90;
-
-    // Joystick base — semi-transparent dark circle
-    this.joystickBase = this.add.circle(baseX, baseY, this.JOYSTICK_BASE_RADIUS, 0x000000, 0.35);
+    // Create joystick graphics off-screen, hidden until touch
+    this.joystickBase = this.add.circle(0, 0, this.JOYSTICK_BASE_RADIUS, 0x000000, 0.35);
     this.joystickBase.setStrokeStyle(2, 0x4ade80, 0.4);
     this.joystickBase.setScrollFactor(0);
     this.joystickBase.setDepth(200);
     this.joystickBase.setVisible(false);
 
-    // Joystick thumb — green circle
-    this.joystickThumb = this.add.circle(baseX, baseY, this.JOYSTICK_THUMB_RADIUS, 0x4ade80, 0.5);
+    this.joystickThumb = this.add.circle(0, 0, this.JOYSTICK_THUMB_RADIUS, 0x4ade80, 0.5);
     this.joystickThumb.setStrokeStyle(2, 0x4ade80, 0.8);
     this.joystickThumb.setScrollFactor(0);
     this.joystickThumb.setDepth(201);
     this.joystickThumb.setVisible(false);
 
-    // Make the base interactive (large hit area for thumb-friendly touch)
-    const hitZone = this.add.circle(baseX, baseY, this.JOYSTICK_BASE_RADIUS + 20, 0x000000, 0);
-    hitZone.setScrollFactor(0);
-    hitZone.setDepth(202);
-    hitZone.setInteractive();
-    hitZone.setVisible(false);
-    (this.joystickBase as any)._hitZone = hitZone;
+    // Scene-level pointer events — zone detection replaces hit zone
+    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      if (!this.playerEnabled || this.joystickActive) return;
+      if (!this.isInMoveZone(pointer)) return;
 
-    hitZone.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      // Skip joystick activation during multi-touch (pinch-to-zoom)
+      const activePointers = this.input.manager.pointers.filter((p) => p.isDown);
+      if (activePointers.length >= 2) return;
+
+      // Spawn joystick at touch point, clamped to keep full circle visible
+      const cam = this.cameras.main;
+      const safeAreaBottom = this.getSafeAreaBottom();
+      const clampedX = Phaser.Math.Clamp(
+        pointer.x,
+        this.JOYSTICK_BASE_RADIUS,
+        cam.width * this.MOVE_ZONE_WIDTH_RATIO - this.JOYSTICK_BASE_RADIUS
+      );
+      const clampedY = Phaser.Math.Clamp(
+        pointer.y,
+        cam.height * (1 - this.MOVE_ZONE_HEIGHT_RATIO) + this.JOYSTICK_BASE_RADIUS,
+        cam.height - this.JOYSTICK_BASE_RADIUS - safeAreaBottom
+      );
+
+      if (this.joystickBase && this.joystickThumb) {
+        this.joystickBase.setPosition(clampedX, clampedY);
+        this.joystickBase.setVisible(true);
+        this.joystickBase.setAlpha(1).setFillStyle(0x000000, 0.5);
+        this.joystickThumb.setPosition(clampedX, clampedY);
+        this.joystickThumb.setVisible(true);
+        this.joystickThumb.setAlpha(1).setFillStyle(0x4ade80, 0.7);
+      }
+
       this.joystickActive = true;
       this.joystickPointerId = pointer.id;
       this.updateJoystickFromPointer(pointer);
-      if (this.joystickBase) this.joystickBase.setAlpha(1).setFillStyle(0x000000, 0.5);
-      if (this.joystickThumb) this.joystickThumb.setAlpha(1).setFillStyle(0x4ade80, 0.7);
     });
 
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
@@ -946,6 +962,23 @@ export class WorldScene extends Phaser.Scene {
         this.resetJoystick();
       }
     });
+  }
+
+  private isInMoveZone(pointer: Phaser.Input.Pointer): boolean {
+    const cam = this.cameras.main;
+    const moveZoneTop = cam.height * (1 - this.MOVE_ZONE_HEIGHT_RATIO);
+    const moveZoneRight = cam.width * this.MOVE_ZONE_WIDTH_RATIO;
+    return pointer.x <= moveZoneRight && pointer.y >= moveZoneTop;
+  }
+
+  /** Read iOS safe area bottom inset (home indicator). Returns 0 on non-iOS. */
+  private getSafeAreaBottom(): number {
+    try {
+      const value = getComputedStyle(document.documentElement).getPropertyValue("--sab");
+      return parseFloat(value) || 0;
+    } catch {
+      return 0;
+    }
   }
 
   private updateJoystickFromPointer(pointer: Phaser.Input.Pointer): void {
