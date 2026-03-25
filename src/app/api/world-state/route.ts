@@ -152,6 +152,7 @@ const TOKEN_CACHE_DURATION = 30 * 1000; // 30 seconds (faster refresh for launch
 const EARNER_CACHE_DURATION = 3 * 60 * 1000; // 3 minutes
 const WEATHER_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 const SDK_ENRICH_CACHE_TTL = 3 * 60 * 1000; // 3 minutes — reduces Bags API calls (4 calls/token saved per TTL window)
+const SDK_EMPTY_CACHE_TTL = 60 * 1000; // 1 minute — cache empty results to avoid re-querying dead tokens every cycle
 const PRICE_CACHE_DURATION = 60 * 1000; // 60 seconds for DexScreener rate limits
 const EVENT_EXPIRY_DURATION = 60 * 60 * 1000; // 1 hour - auto-expire old events
 
@@ -877,15 +878,14 @@ function enrichTokensInBackground(sdk: any, mints: string[]): void {
                     }))
                   : [];
 
-              if (lifetimeFees > 0 || creators.length > 0) {
-                sdkEnrichCache.set(mint, {
-                  lifetimeFees,
-                  creators,
-                  claimEvents,
-                  claimEvents24h,
-                  timestamp: Date.now(),
-                });
-              }
+              // Cache results (empty results get shorter TTL via SDK_EMPTY_CACHE_TTL)
+              sdkEnrichCache.set(mint, {
+                lifetimeFees,
+                creators,
+                claimEvents,
+                claimEvents24h,
+                timestamp: Date.now(),
+              });
             } catch {
               // Individual mint enrichment failed, continue
             }
@@ -923,7 +923,11 @@ async function enrichTokenWithSDK(
   if (sdk && !isPlaceholderMint && !isPlatformToken) {
     // Check per-token SDK cache first — avoids redundant API calls across concurrent users
     const cached = sdkEnrichCache.get(token.mint);
-    if (cached && Date.now() - cached.timestamp < SDK_ENRICH_CACHE_TTL) {
+    const cacheTTL =
+      cached?.lifetimeFees === 0 && cached?.creators.length === 0
+        ? SDK_EMPTY_CACHE_TTL
+        : SDK_ENRICH_CACHE_TTL;
+    if (cached && Date.now() - cached.timestamp < cacheTTL) {
       lifetimeFees = cached.lifetimeFees;
       creators = cached.creators;
       claimEvents = cached.claimEvents;
@@ -981,16 +985,14 @@ async function enrichTokenWithSDK(
           }));
         }
 
-        // Cache successful results
-        if (lifetimeFees > 0 || creators.length > 0) {
-          sdkEnrichCache.set(token.mint, {
-            lifetimeFees,
-            creators,
-            claimEvents,
-            claimEvents24h,
-            timestamp: Date.now(),
-          });
-        }
+        // Cache results (empty results get shorter TTL via SDK_EMPTY_CACHE_TTL)
+        sdkEnrichCache.set(token.mint, {
+          lifetimeFees,
+          creators,
+          claimEvents,
+          claimEvents24h,
+          timestamp: Date.now(),
+        });
       } catch {
         // SDK enrichment timed out or failed — continue with defaults
       }
