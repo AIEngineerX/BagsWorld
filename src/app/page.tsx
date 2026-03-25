@@ -390,14 +390,6 @@ export default function Home() {
     };
   }, []);
 
-  // Listen for customize character request from ImmersiveHUD
-  const [showCustomize, setShowCustomize] = useState(false);
-  useEffect(() => {
-    const onCustomize = () => setShowCustomize(true);
-    window.addEventListener("bagsworld-customize-character", onCustomize);
-    return () => window.removeEventListener("bagsworld-customize-character", onCustomize);
-  }, []);
-
   // Tutorial complete/skip handlers
   const handleTutorialComplete = useCallback(() => {
     localStorage.setItem("bagsworld_tutorial_done", "true");
