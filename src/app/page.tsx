@@ -377,7 +377,11 @@ export default function Home() {
 
   // Listen for player enter/exit to toggle immersive mode
   useEffect(() => {
-    const onEnter = () => setIsImmersive(true);
+    const onEnter = () => {
+      setIsImmersive(true);
+      setMobileMenuOpen(false);
+      setMobileSidebarOpen(false);
+    };
     const onExit = () => {
       setIsImmersive(false);
       setTutorialActive(false);
@@ -703,7 +707,7 @@ export default function Home() {
             {/* Chat windows - always rendered but can show/hide based on click events */}
             {/* On mobile, users use MobileCharacterMenu to trigger these */}
             <ErrorBoundary resetLabel="Close Chat">
-              <AIChat />
+              {!isImmersive && <AIChat />}
               <TolyChat />
               <AshChat />
               <FinnbagsChat />
@@ -728,11 +732,11 @@ export default function Home() {
               <TradingDiagnostics />
             </ErrorBoundary>
 
-            {/* Mobile character menu - floating button (hidden during tutorial) */}
-            {!tutorialActive && <MobileCharacterMenu />}
+            {/* Mobile character menu - floating button (hidden during tutorial and immersive mode) */}
+            {!tutorialActive && !isImmersive && <MobileCharacterMenu />}
 
-            {/* Mini Map - quick access to world features (hidden during tutorial) */}
-            {!tutorialActive && <MiniMap />}
+            {/* Mini Map - quick access to world features (hidden during tutorial and immersive mode) */}
+            {!tutorialActive && !isImmersive && <MiniMap />}
 
             {/* Spotlight Tutorial - guided first-time onboarding */}
             <SpotlightTutorial
