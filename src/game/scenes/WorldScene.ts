@@ -1023,13 +1023,9 @@ export class WorldScene extends Phaser.Scene {
     this.joystickInput = { x: 0, y: 0 };
     this.joystickSprinting = false;
 
-    // Return thumb to center
-    if (this.joystickBase && this.joystickThumb) {
-      this.joystickThumb.setPosition(this.joystickBase.x, this.joystickBase.y);
-      this.joystickBase.setAlpha(1).setFillStyle(0x000000, 0.35);
-      this.joystickBase.setStrokeStyle(2, 0x4ade80, 0.4);
-      this.joystickThumb.setAlpha(1).setFillStyle(0x4ade80, 0.5);
-    }
+    // Hide — floating joystick disappears on release
+    if (this.joystickBase) this.joystickBase.setVisible(false);
+    if (this.joystickThumb) this.joystickThumb.setVisible(false);
   }
 
   private showVirtualJoystick(): void {
