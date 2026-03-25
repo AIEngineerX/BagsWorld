@@ -886,14 +886,14 @@ function enrichTokensInBackground(sdk: any, mints: string[]): void {
                 claimEvents24h,
                 timestamp: Date.now(),
               });
-            } catch {
-              // Individual mint enrichment failed, continue
+            } catch (err) {
+              console.warn(`[WorldState] Background SDK enrichment failed for ${mint}:`, err);
             }
           })
         );
       }
-    } catch {
-      // Background enrichment batch failed
+    } catch (err) {
+      console.error("[WorldState] Background enrichment batch failed:", err);
     } finally {
       bgEnrichRunning = false;
     }
