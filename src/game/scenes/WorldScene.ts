@@ -1511,6 +1511,8 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private interactWithNPC(character: GameCharacter): void {
+    this.playInteractSfx();
+
     // Simulate the exact same click behavior as pointerdown handlers
     // This matches the logic in createCharacterSprite
 
@@ -1565,6 +1567,8 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private interactWithBuilding(building: GameBuilding): void {
+    this.playBuildingClickSfx();
+
     // Simulate the exact same click behavior as building pointerdown handlers
     const isPokeCenter = building.id.includes("PokeCenter");
     const isCasino = building.id.includes("Casino");
@@ -1781,6 +1785,8 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private transitionToZone(newZone: ZoneType): void {
+    this.playZoneTransitionSfx();
+
     // Mark transition in progress
     this.isTransitioning = true;
 
@@ -5380,6 +5386,90 @@ export class WorldScene extends Phaser.Scene {
     notes.forEach((freq, i) => {
       this.playNote(freq, t + i * 0.1, 0.12, 0.04, "square");
     });
+  }
+
+  // Short 2-note ascending blip for NPC/building interaction confirm
+  private playInteractSfx(): void {
+    if (!this.audioContext || !this.gainNode) return;
+    const t = this.audioContext.currentTime + 0.02;
+    // E5 → A5 — bright, friendly confirm
+    this.playNote(659.25, t, 0.06, 0.05, "square");
+    this.playNote(880.0, t + 0.07, 0.08, 0.05, "square");
+  }
+
+  // Filtered noise sweep for zone transitions — whoosh feel
+  private playZoneTransitionSfx(): void {
+    if (!this.audioContext || !this.gainNode) return;
+    const t = this.audioContext.currentTime + 0.02;
+
+    // White noise burst shaped by a bandpass filter sweep
+    const bufferSize = this.audioContext.sampleRate * 0.4;
+    const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    const noise = this.audioContext.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = this.audioContext.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(200, t);
+    filter.frequency.exponentialRampToValueAtTime(2000, t + 0.15);
+    filter.frequency.exponentialRampToValueAtTime(400, t + 0.35);
+    filter.Q.value = 1.5;
+
+    const noiseGain = this.audioContext.createGain();
+    noiseGain.gain.setValueAtTime(0, t);
+    noiseGain.gain.linearRampToValueAtTime(0.06, t + 0.05);
+    noiseGain.gain.linearRampToValueAtTime(0.04, t + 0.2);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(this.gainNode);
+    noise.start(t);
+    noise.stop(t + 0.4);
+  }
+
+  // Dramatic 3-note sting for wild creature encounters — tension chord
+  private playEncounterSfx(): void {
+    if (!this.audioContext || !this.gainNode) return;
+    const t = this.audioContext.currentTime + 0.02;
+    // C4 → Eb4 → G4 (minor triad, staccato, loud) — danger feel
+    this.playNote(261.63, t, 0.08, 0.06, "square");
+    this.playNote(311.13, t + 0.09, 0.08, 0.06, "square");
+    this.playNote(392.0, t + 0.18, 0.15, 0.07, "square");
+    // Low bass hit underneath
+    this.playNote(130.81, t, 0.25, 0.04, "triangle");
+  }
+
+  // Soft confirmation tone for building modal open
+  private playBuildingClickSfx(): void {
+    if (!this.audioContext || !this.gainNode) return;
+    const t = this.audioContext.currentTime + 0.02;
+    // Single warm note with slight vibrato — C5 sine
+    const osc = this.audioContext.createOscillator();
+    const oscGain = this.audioContext.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(523.25, t);
+    // Gentle vibrato
+    const lfo = this.audioContext.createOscillator();
+    const lfoGain = this.audioContext.createGain();
+    lfo.frequency.value = 6;
+    lfoGain.gain.value = 3;
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+    lfo.start(t);
+    lfo.stop(t + 0.25);
+
+    oscGain.gain.setValueAtTime(0, t);
+    oscGain.gain.linearRampToValueAtTime(0.04, t + 0.02);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    osc.connect(oscGain);
+    oscGain.connect(this.gainNode);
+    osc.start(t);
+    osc.stop(t + 0.25);
   }
 
   private playNote(
@@ -9794,6 +9884,7 @@ export class WorldScene extends Phaser.Scene {
       }
 
       // Encounter triggered!
+      this.playEncounterSfx();
       this.encounterCooldowns.set(target.id, now);
       this.lastGlobalEncounter = now;
       this.encounterActive = true;
