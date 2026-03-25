@@ -6853,6 +6853,12 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
+    // Platform buildings use zone-specific showcase textures — skip generic texture swap
+    if (building.isPlatform) {
+      this.applyDecayVisuals(building, container.getAt(1) as Phaser.GameObjects.Sprite, container);
+      return;
+    }
+
     // Agent buildings: update decay visuals and check for level/texture changes (admin override)
     if (isAgentBuilding) {
       const agentSprite = container.getAt(1) as Phaser.GameObjects.Sprite;
