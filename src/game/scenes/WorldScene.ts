@@ -1030,20 +1030,13 @@ export class WorldScene extends Phaser.Scene {
 
   private showVirtualJoystick(): void {
     if (!this.isMobile) return;
-    if (this.joystickBase) this.joystickBase.setVisible(true);
-    if (this.joystickThumb) this.joystickThumb.setVisible(true);
-    const hitZone = (this.joystickBase as any)?._hitZone as Phaser.GameObjects.Arc | undefined;
-    if (hitZone) hitZone.setVisible(true);
-    if (this.interactButton) this.interactButton.setVisible(false);
+    // Floating joystick is invisible until touched — nothing to show.
+    // Zone detection is gated by playerEnabled, which is already true.
     this.mobileDragPanEnabled = false;
   }
 
   private hideVirtualJoystick(): void {
-    if (this.joystickBase) this.joystickBase.setVisible(false);
-    if (this.joystickThumb) this.joystickThumb.setVisible(false);
-    const hitZone = (this.joystickBase as any)?._hitZone as Phaser.GameObjects.Arc | undefined;
-    if (hitZone) hitZone.setVisible(false);
-    if (this.interactButton) this.interactButton.setVisible(false);
+    if (!this.isMobile) return;
     this.resetJoystick();
     this.mobileDragPanEnabled = true;
   }
