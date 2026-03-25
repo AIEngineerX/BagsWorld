@@ -1031,9 +1031,62 @@ export class WorldScene extends Phaser.Scene {
 
   private showVirtualJoystick(): void {
     if (!this.isMobile) return;
-    // Floating joystick is invisible until touched — nothing to show.
-    // Zone detection is gated by playerEnabled, which is already true.
     this.mobileDragPanEnabled = false;
+    this.showMoveZoneHint();
+  }
+
+  // Brief visual hint showing where to touch for movement — fades out after 2s
+  private showMoveZoneHint(): void {
+    const cam = this.cameras.main;
+    const zoneW = cam.width * this.MOVE_ZONE_WIDTH_RATIO;
+    const zoneTop = cam.height * (1 - this.MOVE_ZONE_HEIGHT_RATIO);
+    const zoneH = cam.height - zoneTop;
+
+    // Semi-transparent zone overlay
+    const hint = this.add.graphics();
+    hint.setScrollFactor(0);
+    hint.setDepth(199);
+
+    // Zone boundary
+    hint.fillStyle(0x4ade80, 0.08);
+    hint.fillRect(0, zoneTop, zoneW, zoneH);
+    hint.lineStyle(1, 0x4ade80, 0.3);
+    hint.strokeRect(0, zoneTop, zoneW, zoneH);
+
+    // Joystick icon in center of zone
+    const cx = zoneW / 2;
+    const cy = zoneTop + zoneH / 2;
+    hint.fillStyle(0x4ade80, 0.15);
+    hint.fillCircle(cx, cy, this.JOYSTICK_BASE_RADIUS);
+    hint.lineStyle(2, 0x4ade80, 0.25);
+    hint.strokeCircle(cx, cy, this.JOYSTICK_BASE_RADIUS);
+    hint.fillStyle(0x4ade80, 0.25);
+    hint.fillCircle(cx, cy, this.JOYSTICK_THUMB_RADIUS);
+
+    // "MOVE" label
+    const label = this.add.text(cx, zoneTop + 14, "TOUCH TO MOVE", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#4ade80",
+      align: "center",
+    });
+    label.setOrigin(0.5, 0);
+    label.setScrollFactor(0);
+    label.setDepth(199);
+    label.setAlpha(0.5);
+
+    // Fade out after 2s
+    this.tweens.add({
+      targets: [hint, label],
+      alpha: 0,
+      duration: 1000,
+      delay: 2000,
+      ease: "Sine.easeIn",
+      onComplete: () => {
+        hint.destroy();
+        label.destroy();
+      },
+    });
   }
 
   private hideVirtualJoystick(): void {
