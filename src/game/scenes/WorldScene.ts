@@ -301,24 +301,11 @@ export class WorldScene extends Phaser.Scene {
   private wasDragGesture = false;
   private static readonly TAP_DISTANCE_THRESHOLD = 12; // pixels
 
-  // Virtual joystick (mobile only)
-  private joystickBase: Phaser.GameObjects.Arc | null = null;
-  private joystickThumb: Phaser.GameObjects.Arc | null = null;
-  private joystickActive = false;
-  private joystickInput = { x: 0, y: 0 }; // -1 to 1 normalized
-  private joystickSprinting = false;
-  private readonly JOYSTICK_BASE_RADIUS = 70;
-  private readonly JOYSTICK_THUMB_RADIUS = 28;
-  private readonly JOYSTICK_SPRINT_THRESHOLD = 0.6;
-  private joystickPointerId = -1; // track which pointer owns the joystick drag
-
-  // Move zone: bottom 45% of screen height, left 40% of width
-  private readonly MOVE_ZONE_HEIGHT_RATIO = 0.45;
-  private readonly MOVE_ZONE_WIDTH_RATIO = 0.4;
-
-  // Mobile interact button
-  private interactButton: Phaser.GameObjects.Container | null = null;
-  private interactButtonVisible = false;
+  // Tap-to-move (mobile only)
+  private moveTarget: { x: number } | null = null;
+  private moveTargetBuilding: GameBuilding | null = null;
+  private moveTargetNPC: GameCharacter | null = null;
+  private tapMoveSuppressed = false;
 
   // Mobile drag-to-pan disabled when player is in world
   private mobileDragPanEnabled = true;
@@ -437,9 +424,8 @@ export class WorldScene extends Phaser.Scene {
     // Setup mobile camera controls (drag to pan, pinch to zoom)
     this.setupMobileCameraControls();
 
-    // Create virtual joystick and interact button (mobile only, hidden until Enter World)
-    this.createVirtualJoystick();
-    this.createMobileInteractButton();
+    // Set up tap-to-move input handler (mobile only)
+    this.setupTapToMove();
 
     // Listen for tutorial step changes from React
     this.initTutorialListener();
@@ -621,8 +607,8 @@ export class WorldScene extends Phaser.Scene {
       this.cameraFollowing = true;
     }
 
-    // Show virtual joystick on mobile
-    this.showVirtualJoystick();
+    // Enable tap-to-move on mobile
+    this.enableTapToMove();
 
     window.dispatchEvent(new CustomEvent("bagsworld-player-entered"));
   }
@@ -659,8 +645,8 @@ export class WorldScene extends Phaser.Scene {
     this.cameras.main.zoomTo(1.3, 800, "Sine.easeInOut");
     this.cameraFollowing = true;
 
-    // Show virtual joystick on mobile
-    this.showVirtualJoystick();
+    // Enable tap-to-move on mobile
+    this.enableTapToMove();
 
     // Notify React that player entered
     window.dispatchEvent(new CustomEvent("bagsworld-player-entered"));
@@ -788,8 +774,8 @@ export class WorldScene extends Phaser.Scene {
 
     this.playerEnabled = false;
 
-    // Hide virtual joystick on mobile
-    this.hideVirtualJoystick();
+    // Disable tap-to-move on mobile
+    this.disableTapToMove();
 
     // Play exit sound
     this.playExitSfx();
@@ -899,263 +885,140 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  // === VIRTUAL JOYSTICK (mobile) ===
-  private createVirtualJoystick(): void {
+  // === TAP-TO-MOVE (mobile) ===
+
+  private setupTapToMove(): void {
     if (!this.isMobile) return;
-
-    // Create joystick graphics off-screen, hidden until touch
-    this.joystickBase = this.add.circle(0, 0, this.JOYSTICK_BASE_RADIUS, 0x000000, 0.35);
-    this.joystickBase.setStrokeStyle(2, 0x4ade80, 0.4);
-    this.joystickBase.setScrollFactor(0);
-    this.joystickBase.setDepth(200);
-    this.joystickBase.setVisible(false);
-
-    this.joystickThumb = this.add.circle(0, 0, this.JOYSTICK_THUMB_RADIUS, 0x4ade80, 0.5);
-    this.joystickThumb.setStrokeStyle(2, 0x4ade80, 0.8);
-    this.joystickThumb.setScrollFactor(0);
-    this.joystickThumb.setDepth(201);
-    this.joystickThumb.setVisible(false);
-
-    // Scene-level pointer events — zone detection replaces hit zone
-    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-      if (!this.playerEnabled || this.joystickActive) return;
-      if (!this.isInMoveZone(pointer)) return;
-
-      // Skip joystick activation during multi-touch (pinch-to-zoom)
-      const activePointers = this.input.manager.pointers.filter((p) => p.isDown);
-      if (activePointers.length >= 2) return;
-
-      // Spawn joystick at touch point, clamped to keep full circle visible
-      const cam = this.cameras.main;
-      const safeAreaBottom = this.getSafeAreaBottom();
-      const clampedX = Phaser.Math.Clamp(
-        pointer.x,
-        this.JOYSTICK_BASE_RADIUS,
-        cam.width * this.MOVE_ZONE_WIDTH_RATIO - this.JOYSTICK_BASE_RADIUS
-      );
-      const clampedY = Phaser.Math.Clamp(
-        pointer.y,
-        cam.height * (1 - this.MOVE_ZONE_HEIGHT_RATIO) + this.JOYSTICK_BASE_RADIUS,
-        cam.height - this.JOYSTICK_BASE_RADIUS - safeAreaBottom
-      );
-
-      if (this.joystickBase && this.joystickThumb) {
-        this.joystickBase.setPosition(clampedX, clampedY);
-        this.joystickBase.setVisible(true);
-        this.joystickBase.setAlpha(1).setFillStyle(0x000000, 0.5);
-        this.joystickThumb.setPosition(clampedX, clampedY);
-        this.joystickThumb.setVisible(true);
-        this.joystickThumb.setAlpha(1).setFillStyle(0x4ade80, 0.7);
-        this.joystickActive = true;
-        this.joystickPointerId = pointer.id;
-        this.updateJoystickFromPointer(pointer);
-      }
-    });
-
-    this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
-      if (this.joystickActive && pointer.id === this.joystickPointerId && pointer.isDown) {
-        this.updateJoystickFromPointer(pointer);
-      }
-    });
 
     this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
-      if (pointer.id === this.joystickPointerId) {
-        this.resetJoystick();
+      if (!this.playerEnabled) return;
+      if (this.wasDragGesture) return;
+      if ((window as any).__bagsworld_modal_open) return;
+      if (this.isTransitioning) return;
+      if (this.encounterActive) return;
+      if (this.tapMoveSuppressed) return;
+
+      const hitObjects = this.input.hitTestPointer(pointer);
+
+      // Check if tap hit a building
+      for (const obj of hitObjects) {
+        const buildingId = (obj as any)._buildingId as string | undefined;
+        if (buildingId) {
+          const building = this.buildingById.get(buildingId);
+          const container = obj as Phaser.GameObjects.Container;
+          if (building && this.localPlayer) {
+            const dx = Math.abs(this.localPlayer.x - container.x);
+            if (dx > 150) {
+              // Far — walk there, interact on arrival
+              this.moveTarget = { x: container.x };
+              this.moveTargetBuilding = building;
+              this.moveTargetNPC = null;
+              this.showTapMarker(container.x);
+              this.kickStartMovement(container.x);
+            }
+            // Close — the building's own pointerup handler opens the modal
+          }
+          return;
+        }
       }
+
+      // Check if tap hit an NPC
+      for (const obj of hitObjects) {
+        const characterId = (obj as any)._characterId as string | undefined;
+        if (characterId) {
+          const sprite = this.characterSprites.get(characterId);
+          if (sprite && this.localPlayer) {
+            const dx = Math.abs(this.localPlayer.x - sprite.x);
+            if (dx > 150) {
+              this.moveTarget = { x: sprite.x };
+              this.moveTargetNPC =
+                this.worldState?.population?.find((c: GameCharacter) => c.id === characterId) ||
+                null;
+              this.moveTargetBuilding = null;
+              this.showTapMarker(sprite.x);
+              this.kickStartMovement(sprite.x);
+            }
+          }
+          return;
+        }
+      }
+
+      // Check if tap hit the player sprite — stop
+      if (this.localPlayer && hitObjects.includes(this.localPlayer)) {
+        this.moveTarget = null;
+        this.moveTargetBuilding = null;
+        this.moveTargetNPC = null;
+        return;
+      }
+
+      // Tap on empty ground — walk to world X position
+      const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+      const targetX = Phaser.Math.Clamp(worldPoint.x, 40, GAME_WIDTH - 40);
+      this.moveTarget = { x: targetX };
+      this.moveTargetBuilding = null;
+      this.moveTargetNPC = null;
+      this.showTapMarker(targetX);
+      this.kickStartMovement(targetX);
     });
   }
 
-  private isInMoveZone(pointer: Phaser.Input.Pointer): boolean {
-    const cam = this.cameras.main;
-    const moveZoneTop = cam.height * (1 - this.MOVE_ZONE_HEIGHT_RATIO);
-    const moveZoneRight = cam.width * this.MOVE_ZONE_WIDTH_RATIO;
-    return pointer.x <= moveZoneRight && pointer.y >= moveZoneTop;
+  // Velocity kick for responsive tap feel — start at 50% walk speed
+  private kickStartMovement(targetX: number): void {
+    if (!this.localPlayer) return;
+    const dx = targetX - this.localPlayer.x;
+    this.playerVelocity.x = Math.sign(dx) * this.PLAYER_WALK_SPEED * 0.5;
   }
 
-  /** Read iOS safe area bottom inset (home indicator). Returns 0 on non-iOS. */
-  private getSafeAreaBottom(): number {
-    try {
-      const value = getComputedStyle(document.documentElement).getPropertyValue("--sab");
-      return parseFloat(value) || 0;
-    } catch {
-      return 0;
+  // Brief directional marker at tap destination
+  private showTapMarker(worldX: number): void {
+    if (!this.localPlayer) return;
+    const dx = worldX - this.localPlayer.x;
+    if (Math.abs(dx) < 100) return;
+
+    const marker = this.add.text(worldX, Y.PATH_LEVEL - 20, dx > 0 ? "\u25b8" : "\u25c2", {
+      fontFamily: "monospace",
+      fontSize: "16px",
+      color: "#4ade80",
+    });
+    marker.setOrigin(0.5, 0.5);
+    marker.setDepth(15);
+    marker.setAlpha(0.6);
+    this.tweens.add({
+      targets: marker,
+      alpha: 0,
+      duration: 500,
+      ease: "Sine.easeOut",
+      onComplete: () => marker.destroy(),
+    });
+  }
+
+  private arriveAtMoveTarget(): void {
+    if (this.moveTargetBuilding) {
+      this.interactWithBuilding(this.moveTargetBuilding);
+    } else if (this.moveTargetNPC) {
+      this.interactWithNPC(this.moveTargetNPC);
     }
+    this.moveTarget = null;
+    this.moveTargetBuilding = null;
+    this.moveTargetNPC = null;
   }
 
-  private updateJoystickFromPointer(pointer: Phaser.Input.Pointer): void {
-    if (!this.joystickBase || !this.joystickThumb) return;
-
-    const baseX = this.joystickBase.x;
-    const baseY = this.joystickBase.y;
-    const maxDist = this.JOYSTICK_BASE_RADIUS;
-
-    // Pointer position in screen space (scrollFactor 0 elements use screen coords)
-    const dx = pointer.x - baseX;
-    const dy = pointer.y - baseY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-
-    // Clamp thumb to base radius
-    const clampedDist = Math.min(dist, maxDist);
-    const angle = Math.atan2(dy, dx);
-    const thumbX = baseX + Math.cos(angle) * clampedDist;
-    const thumbY = baseY + Math.sin(angle) * clampedDist;
-
-    this.joystickThumb.setPosition(thumbX, thumbY);
-
-    // Normalize to -1..1
-    const normalized = clampedDist / maxDist;
-    this.joystickInput.x = Math.cos(angle) * normalized;
-    this.joystickInput.y = Math.sin(angle) * normalized;
-
-    // Sprint if thumb pushed past threshold
-    this.joystickSprinting = normalized > this.JOYSTICK_SPRINT_THRESHOLD;
-
-    // Visual sprint feedback — base ring turns brighter green
-    if (this.joystickSprinting) {
-      this.joystickBase.setStrokeStyle(2, 0x4ade80, 0.9);
-    } else {
-      this.joystickBase.setStrokeStyle(2, 0x4ade80, 0.4);
-    }
-  }
-
-  private resetJoystick(): void {
-    this.joystickActive = false;
-    this.joystickPointerId = -1;
-    this.joystickInput = { x: 0, y: 0 };
-    this.joystickSprinting = false;
-
-    // Hide — floating joystick disappears on release
-    if (this.joystickBase) this.joystickBase.setVisible(false);
-    if (this.joystickThumb) this.joystickThumb.setVisible(false);
-  }
-
-  private showVirtualJoystick(): void {
+  private enableTapToMove(): void {
     if (!this.isMobile) return;
     this.mobileDragPanEnabled = false;
-    this.showMoveZoneHint();
-  }
-
-  // Brief visual hint showing where to touch for movement — fades out after 2s
-  private showMoveZoneHint(): void {
-    const cam = this.cameras.main;
-    const zoneW = cam.width * this.MOVE_ZONE_WIDTH_RATIO;
-    const zoneTop = cam.height * (1 - this.MOVE_ZONE_HEIGHT_RATIO);
-    const zoneH = cam.height - zoneTop;
-
-    // Semi-transparent zone overlay
-    const hint = this.add.graphics();
-    hint.setScrollFactor(0);
-    hint.setDepth(199);
-
-    // Zone boundary
-    hint.fillStyle(0x4ade80, 0.08);
-    hint.fillRect(0, zoneTop, zoneW, zoneH);
-    hint.lineStyle(1, 0x4ade80, 0.3);
-    hint.strokeRect(0, zoneTop, zoneW, zoneH);
-
-    // Joystick icon in center of zone
-    const cx = zoneW / 2;
-    const cy = zoneTop + zoneH / 2;
-    hint.fillStyle(0x4ade80, 0.15);
-    hint.fillCircle(cx, cy, this.JOYSTICK_BASE_RADIUS);
-    hint.lineStyle(2, 0x4ade80, 0.25);
-    hint.strokeCircle(cx, cy, this.JOYSTICK_BASE_RADIUS);
-    hint.fillStyle(0x4ade80, 0.25);
-    hint.fillCircle(cx, cy, this.JOYSTICK_THUMB_RADIUS);
-
-    // "MOVE" label
-    const label = this.add.text(cx, zoneTop + 14, "TOUCH TO MOVE", {
-      fontFamily: "monospace",
-      fontSize: "9px",
-      color: "#4ade80",
-      align: "center",
-    });
-    label.setOrigin(0.5, 0);
-    label.setScrollFactor(0);
-    label.setDepth(199);
-    label.setAlpha(0.5);
-
-    // Fade out after 2s
-    this.tweens.add({
-      targets: [hint, label],
-      alpha: 0,
-      duration: 1000,
-      delay: 2000,
-      ease: "Sine.easeIn",
-      onComplete: () => {
-        hint.destroy();
-        label.destroy();
-      },
+    // Suppress taps for 800ms while zoom animation plays
+    this.tapMoveSuppressed = true;
+    this.time.delayedCall(800, () => {
+      this.tapMoveSuppressed = false;
     });
   }
 
-  private hideVirtualJoystick(): void {
+  private disableTapToMove(): void {
     if (!this.isMobile) return;
-    this.resetJoystick();
+    this.moveTarget = null;
+    this.moveTargetBuilding = null;
+    this.moveTargetNPC = null;
     this.mobileDragPanEnabled = true;
-  }
-
-  // === MOBILE INTERACT BUTTON ===
-  private createMobileInteractButton(): void {
-    if (!this.isMobile) return;
-
-    const cam = this.cameras.main;
-    const btnX = cam.width - 70;
-    const btnY = cam.height * 0.6;
-
-    this.interactButton = this.add.container(btnX, btnY);
-    this.interactButton.setScrollFactor(0);
-    this.interactButton.setDepth(200);
-    this.interactButton.setVisible(false);
-
-    // Button circle background
-    const bg = this.add.circle(0, 0, 30, 0x4ade80, 0.6);
-    bg.setStrokeStyle(2, 0x4ade80, 0.9);
-    this.interactButton.add(bg);
-
-    // "!" icon
-    const icon = this.add.text(0, -1, "!", {
-      fontFamily: "monospace",
-      fontSize: "24px",
-      color: "#ffffff",
-      fontStyle: "bold",
-    });
-    icon.setOrigin(0.5, 0.5);
-    this.interactButton.add(icon);
-
-    // Hit area (larger than visual for easy tapping)
-    const hitArea = this.add.circle(0, 0, 40, 0x000000, 0);
-    hitArea.setInteractive({ useHandCursor: true });
-    hitArea.on("pointerup", () => {
-      if (this.wasDragGesture) return;
-      if (this.nearbyNPC) {
-        this.interactWithNPC(this.nearbyNPC);
-      } else if (this.nearbyBuilding) {
-        this.interactWithBuilding(this.nearbyBuilding);
-      }
-    });
-    this.interactButton.add(hitArea);
-
-    // Pulse tween (runs when visible)
-    this.tweens.add({
-      targets: bg,
-      scaleX: 1.15,
-      scaleY: 1.15,
-      duration: 800,
-      yoyo: true,
-      repeat: -1,
-      ease: "Sine.easeInOut",
-    });
-  }
-
-  private updateMobileInteractButton(): void {
-    if (!this.isMobile || !this.interactButton || !this.playerEnabled) return;
-
-    const shouldShow = this.nearbyNPC !== null || this.nearbyBuilding !== null;
-    if (shouldShow !== this.interactButtonVisible) {
-      this.interactButtonVisible = shouldShow;
-      this.interactButton.setVisible(shouldShow);
-    }
   }
 
   private updateLocalPlayer(): void {
@@ -1177,12 +1040,16 @@ export class WorldScene extends Phaser.Scene {
     let sprinting = false;
     let interact = false;
 
-    if (this.isMobile && this.joystickActive) {
-      // Mobile: read from virtual joystick
-      inputX = this.joystickInput.x;
-      inputY = this.joystickInput.y;
-      sprinting = this.joystickSprinting;
-    } else {
+    if (this.isMobile && this.moveTarget && this.localPlayer) {
+      // Mobile: derive input from tap-to-move target
+      const dx = this.moveTarget.x - this.localPlayer.x;
+      if (Math.abs(dx) < 20) {
+        this.arriveAtMoveTarget();
+      } else {
+        inputX = dx > 0 ? 1 : -1;
+        sprinting = Math.abs(dx) > 200;
+      }
+    } else if (!this.isMobile) {
       // Desktop: read from keyboard
       const left = this.cursors?.left.isDown || (!isTyping && this.wasdKeys?.A.isDown) || false;
       const right = this.cursors?.right.isDown || (!isTyping && this.wasdKeys?.D.isDown) || false;
@@ -1772,16 +1639,18 @@ export class WorldScene extends Phaser.Scene {
       );
     });
 
-    // Handle pointer up - stop drag
+    // Handle pointer up - stop drag + reset wasDragGesture to prevent stale-true
     this.input.on("pointerup", () => {
       isDragging = false;
+      this.wasDragGesture = false;
     });
 
-    // Handle pinch to zoom (two-finger gesture)
+    // Handle pinch to zoom (two-finger gesture) — disabled in-world
     let initialPinchDistance = 0;
     let initialZoom = 1;
 
-    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+    this.input.on("pointerdown", () => {
+      if (this.playerEnabled) return;
       const pointers = this.input.manager.pointers.filter((p) => p.isDown);
       if (pointers.length === 2) {
         initialPinchDistance = Phaser.Math.Distance.Between(
@@ -1791,11 +1660,12 @@ export class WorldScene extends Phaser.Scene {
           pointers[1].y
         );
         initialZoom = camera.zoom;
-        isDragging = false; // Cancel drag when pinching
+        isDragging = false;
       }
     });
 
     this.input.on("pointermove", () => {
+      if (this.playerEnabled) return;
       const pointers = this.input.manager.pointers.filter((p) => p.isDown);
       if (pointers.length === 2 && initialPinchDistance > 0) {
         const currentDistance = Phaser.Math.Distance.Between(
@@ -1810,23 +1680,34 @@ export class WorldScene extends Phaser.Scene {
     });
 
     this.input.on("pointerup", () => {
+      if (this.playerEnabled) return;
       const pointers = this.input.manager.pointers.filter((p) => p.isDown);
       if (pointers.length < 2) {
         initialPinchDistance = 0;
       }
     });
 
-    // Double-tap to reset zoom
+    // Double-tap to reset zoom — disabled in-world
     let lastTapTime = 0;
-    this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
+    this.input.on("pointerup", () => {
+      if (this.playerEnabled) return;
       const currentTime = Date.now();
       if (currentTime - lastTapTime < 300) {
-        // Double tap - reset camera
         camera.setZoom(1);
         camera.scrollX = 0;
         camera.scrollY = 0;
       }
       lastTapTime = currentTime;
+    });
+
+    // Reset all touch state on system interrupts (incoming call, app switch)
+    this.input.on("pointercancel", () => {
+      this.moveTarget = null;
+      this.moveTargetBuilding = null;
+      this.moveTargetNPC = null;
+      this.wasDragGesture = false;
+      isDragging = false;
+      initialPinchDistance = 0;
     });
   }
 
@@ -1841,8 +1722,11 @@ export class WorldScene extends Phaser.Scene {
   private transitionToZone(newZone: ZoneType): void {
     this.playZoneTransitionSfx();
 
-    // Mark transition in progress
+    // Mark transition in progress and cancel any active tap-to-move
     this.isTransitioning = true;
+    this.moveTarget = null;
+    this.moveTargetBuilding = null;
+    this.moveTargetNPC = null;
 
     // Pause camera follow during transition
     if (this.cameraFollowing) {
@@ -5602,9 +5486,6 @@ export class WorldScene extends Phaser.Scene {
     // Update local player movement (WASD/arrow keys + joystick on mobile)
     this.updateLocalPlayer();
 
-    // Update mobile interact button visibility
-    this.updateMobileInteractButton();
-
     // Update speech bubbles for autonomous dialogue
     this.updateDialogueBubbles();
 
@@ -6527,6 +6408,7 @@ export class WorldScene extends Phaser.Scene {
     } else {
       sprite.setInteractive();
     }
+    (sprite as any)._characterId = character.id;
     sprite.setScale(isSpecial ? 1.3 : 1.2); // Special characters slightly larger
 
     // Visitor sparkle indicator
@@ -6639,8 +6521,12 @@ export class WorldScene extends Phaser.Scene {
       this.input.setDefaultCursor("default");
     });
     sprite.on("pointerup", () => {
-      // Skip if this was a drag/scroll gesture (prevents accidental taps on mobile)
       if (this.wasDragGesture) return;
+      // On mobile, skip if player is too far — tap-to-move walks there
+      if (this.isMobile && this.playerEnabled && this.localPlayer) {
+        const dist = Math.abs(this.localPlayer.x - sprite.x);
+        if (dist > 150) return;
+      }
 
       if (isOpenClaw) {
         // Show tooltip with "Visit Profile" button instead of navigating directly
@@ -7388,6 +7274,7 @@ export class WorldScene extends Phaser.Scene {
       new Phaser.Geom.Rectangle(-hitboxSize.w / 2, -hitboxSize.h, hitboxSize.w, hitboxSize.h),
       Phaser.Geom.Rectangle.Contains
     );
+    (container as any)._buildingId = building.id;
 
     container.on("pointerover", () => {
       container?.setScale(1.1);
@@ -7400,8 +7287,12 @@ export class WorldScene extends Phaser.Scene {
       this.input.setDefaultCursor("default");
     });
     container.on("pointerup", () => {
-      // Skip if this was a drag/scroll gesture (prevents accidental taps on mobile)
       if (this.wasDragGesture) return;
+      // On mobile, skip if player is too far — tap-to-move walks there
+      if (this.isMobile && this.playerEnabled && this.localPlayer) {
+        const dist = Math.abs(this.localPlayer.x - container.x);
+        if (dist > 150) return;
+      }
 
       // If a zone decoration (MoltBook HQ, Agent Hut, Molt Bar, Bounty Board)
       // already handled this click, skip the building handler to avoid

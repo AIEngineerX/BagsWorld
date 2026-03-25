@@ -684,7 +684,10 @@ export default function Home() {
             <ZoneNav />
           </div>
           {/* Game area */}
-          <div className="flex-1 relative" style={{ touchAction: "pan-x pan-y" }}>
+          <div
+            className="flex-1 relative"
+            style={{ touchAction: isImmersive ? "none" : "pan-x pan-y" }}
+          >
             <Suspense fallback={<div className="w-full h-full bg-bags-dark" />}>
               <GameCanvas worldState={worldState} />
             </Suspense>
