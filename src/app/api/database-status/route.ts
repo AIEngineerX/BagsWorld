@@ -17,7 +17,8 @@ export async function GET() {
       message: "Neon PostgreSQL connected",
       tokenCount: tokens.length,
     });
-  } catch {
+  } catch (err) {
+    console.warn("[DatabaseStatus] Connection failed:", err);
     return NextResponse.json({
       status: "error",
       message: "Database connection failed",

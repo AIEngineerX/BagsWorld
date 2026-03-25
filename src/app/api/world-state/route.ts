@@ -2056,7 +2056,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(worldState);
-  } catch {
+  } catch (err) {
+    console.error("[WorldState] POST handler failed:", err);
     return NextResponse.json({ error: "Failed to build world state" }, { status: 500 });
   }
 }
@@ -2152,7 +2153,8 @@ export async function GET() {
     }
 
     return NextResponse.json(worldState);
-  } catch {
+  } catch (err) {
+    console.error("[WorldState] GET handler failed:", err);
     return NextResponse.json({ error: "Failed to fetch world state" }, { status: 500 });
   }
 }
