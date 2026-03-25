@@ -1047,7 +1047,7 @@ export class WorldScene extends Phaser.Scene {
 
     const cam = this.cameras.main;
     const btnX = cam.width - 70;
-    const btnY = cam.height - 90;
+    const btnY = cam.height * 0.6;
 
     this.interactButton = this.add.container(btnX, btnY);
     this.interactButton.setScrollFactor(0);
