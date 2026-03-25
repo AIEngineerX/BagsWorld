@@ -8,6 +8,7 @@
   --bags-green: #4ade80;
   --bags-red: #f87171;
   --bags-gold: #fbbf24;
+  --sab: env(safe-area-inset-bottom, 0px);
 }
 
 html {

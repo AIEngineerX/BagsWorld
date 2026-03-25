@@ -306,10 +306,14 @@ export class WorldScene extends Phaser.Scene {
   private joystickActive = false;
   private joystickInput = { x: 0, y: 0 }; // -1 to 1 normalized
   private joystickSprinting = false;
-  private readonly JOYSTICK_BASE_RADIUS = 54;
-  private readonly JOYSTICK_THUMB_RADIUS = 22;
+  private readonly JOYSTICK_BASE_RADIUS = 70;
+  private readonly JOYSTICK_THUMB_RADIUS = 28;
   private readonly JOYSTICK_SPRINT_THRESHOLD = 0.6;
   private joystickPointerId = -1; // track which pointer owns the joystick drag
+
+  // Move zone: bottom 45% of screen height, left 40% of width
+  private readonly MOVE_ZONE_HEIGHT_RATIO = 0.45;
+  private readonly MOVE_ZONE_WIDTH_RATIO = 0.4;
 
   // Mobile interact button
   private interactButton: Phaser.GameObjects.Container | null = null;
