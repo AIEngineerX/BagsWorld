@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 
 interface EnterWorldButtonProps {
   className?: string;
@@ -367,266 +368,268 @@ export function EnterWorldButton({ className = "" }: EnterWorldButtonProps) {
     <>
       {mainButton}
 
-      {/* Meme Sprite Selector Modal — renders even when in-world for customize access */}
-      {showSelector && (
-        <div
-          className="fixed inset-0 bg-black/95 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 visible"
-          onClick={(e) => e.target === e.currentTarget && setShowSelector(false)}
-        >
-          {/* Scanline overlay */}
+      {/* Meme Sprite Selector Modal — portaled to body so it escapes display:none ancestors (mobile nav) */}
+      {showSelector &&
+        createPortal(
           <div
-            className="fixed inset-0 pointer-events-none opacity-[0.03]"
-            style={{
-              backgroundImage:
-                "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px)",
-            }}
-          />
+            className="fixed inset-0 bg-black/95 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 visible"
+            onClick={(e) => e.target === e.currentTarget && setShowSelector(false)}
+          >
+            {/* Scanline overlay */}
+            <div
+              className="fixed inset-0 pointer-events-none opacity-[0.03]"
+              style={{
+                backgroundImage:
+                  "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px)",
+              }}
+            />
 
-          <div className="relative bg-gradient-to-b from-gray-900 via-gray-900 to-black border-2 border-green-500/80 rounded-t-xl sm:rounded-lg p-6 max-w-lg w-full max-h-[80vh] sm:max-h-[90vh] overflow-y-auto shadow-[0_0_40px_rgba(74,222,128,0.15),inset_0_1px_0_rgba(74,222,128,0.1)]">
-            {/* Mobile drag handle */}
-            <div className="sm:hidden flex justify-center -mt-4 mb-2">
-              <div className="w-10 h-1 rounded-full bg-white/30" />
-            </div>
-            {/* Floating pixels background */}
-            <FloatingPixels />
-
-            {/* Corner decorations */}
-            <div className="absolute top-2 left-2 w-3 h-3 border-l-2 border-t-2 border-green-500/50" />
-            <div className="absolute top-2 right-2 w-3 h-3 border-r-2 border-t-2 border-green-500/50" />
-            <div className="absolute bottom-2 left-2 w-3 h-3 border-l-2 border-b-2 border-green-500/50" />
-            <div className="absolute bottom-2 right-2 w-3 h-3 border-r-2 border-b-2 border-green-500/50" />
-
-            {/* Header */}
-            <div className="relative text-center mb-6">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <span className="text-2xl">🎮</span>
-                <h2 className="font-pixel text-green-400 text-lg tracking-wide">
-                  CREATE YOUR MEME AVATAR
-                </h2>
-                <span className="text-2xl">🎮</span>
+            <div className="relative bg-gradient-to-b from-gray-900 via-gray-900 to-black border-2 border-green-500/80 rounded-t-xl sm:rounded-lg p-6 max-w-lg w-full max-h-[80vh] sm:max-h-[90vh] overflow-y-auto shadow-[0_0_40px_rgba(74,222,128,0.15),inset_0_1px_0_rgba(74,222,128,0.1)]">
+              {/* Mobile drag handle */}
+              <div className="sm:hidden flex justify-center -mt-4 mb-2">
+                <div className="w-10 h-1 rounded-full bg-white/30" />
               </div>
-              <p className="font-pixel text-gray-400 text-[10px]">
-                Type any meme character and AI will generate your sprite
-              </p>
-              <div className="mt-2 h-[2px] bg-gradient-to-r from-transparent via-green-500/50 to-transparent" />
-            </div>
+              {/* Floating pixels background */}
+              <FloatingPixels />
 
-            {/* Toggle between AI and Default */}
-            <div className="flex gap-2 mb-4">
-              <button
-                onClick={() => setUseDefaultSprite(false)}
-                className={`flex-1 font-pixel text-[10px] py-2 rounded border-2 transition-all ${
-                  !useDefaultSprite
-                    ? "bg-green-600 border-green-400 text-white"
-                    : "bg-gray-800 border-gray-600 text-gray-400"
-                }`}
-              >
-                AI GENERATE
-              </button>
-              <button
-                onClick={() => setUseDefaultSprite(true)}
-                className={`flex-1 font-pixel text-[10px] py-2 rounded border-2 transition-all ${
-                  useDefaultSprite
-                    ? "bg-green-600 border-green-400 text-white"
-                    : "bg-gray-800 border-gray-600 text-gray-400"
-                }`}
-              >
-                DEFAULT SPRITES
-              </button>
-            </div>
+              {/* Corner decorations */}
+              <div className="absolute top-2 left-2 w-3 h-3 border-l-2 border-t-2 border-green-500/50" />
+              <div className="absolute top-2 right-2 w-3 h-3 border-r-2 border-t-2 border-green-500/50" />
+              <div className="absolute bottom-2 left-2 w-3 h-3 border-l-2 border-b-2 border-green-500/50" />
+              <div className="absolute bottom-2 right-2 w-3 h-3 border-r-2 border-b-2 border-green-500/50" />
 
-            {!useDefaultSprite ? (
-              <>
-                {/* Meme Prompt Input */}
-                <div className="mb-4">
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={memePrompt}
-                    onChange={(e) => setMemePrompt(e.target.value)}
-                    placeholder="e.g., Pepe the Frog, Doge, Wojak..."
-                    className="w-full bg-gray-800 border-2 border-gray-600 rounded px-4 py-3 font-pixel text-sm text-white placeholder-gray-500 focus:border-green-500 focus:outline-none"
-                    onKeyDown={(e) => {
-                      stopPropagation(e);
-                      if (e.key === "Enter" && !isGenerating) generateMemeSprite();
-                    }}
-                    onKeyUp={stopPropagation}
-                    autoFocus
-                  />
+              {/* Header */}
+              <div className="relative text-center mb-6">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <span className="text-2xl">🎮</span>
+                  <h2 className="font-pixel text-green-400 text-lg tracking-wide">
+                    CREATE YOUR MEME AVATAR
+                  </h2>
+                  <span className="text-2xl">🎮</span>
                 </div>
+                <p className="font-pixel text-gray-400 text-[10px]">
+                  Type any meme character and AI will generate your sprite
+                </p>
+                <div className="mt-2 h-[2px] bg-gradient-to-r from-transparent via-green-500/50 to-transparent" />
+              </div>
 
-                {/* Quick Suggestions */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {MEME_SUGGESTIONS.slice(0, 4).map((meme) => (
-                    <button
-                      key={meme}
-                      onClick={() => setMemePrompt(meme)}
-                      className="font-pixel text-[8px] px-2 py-1 bg-gray-800 border border-gray-600 rounded text-gray-300 hover:border-green-500 hover:text-green-400 transition-colors"
-                    >
-                      {meme}
-                    </button>
-                  ))}
-                </div>
+              {/* Toggle between AI and Default */}
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => setUseDefaultSprite(false)}
+                  className={`flex-1 font-pixel text-[10px] py-2 rounded border-2 transition-all ${
+                    !useDefaultSprite
+                      ? "bg-green-600 border-green-400 text-white"
+                      : "bg-gray-800 border-gray-600 text-gray-400"
+                  }`}
+                >
+                  AI GENERATE
+                </button>
+                <button
+                  onClick={() => setUseDefaultSprite(true)}
+                  className={`flex-1 font-pixel text-[10px] py-2 rounded border-2 transition-all ${
+                    useDefaultSprite
+                      ? "bg-green-600 border-green-400 text-white"
+                      : "bg-gray-800 border-gray-600 text-gray-400"
+                  }`}
+                >
+                  DEFAULT SPRITES
+                </button>
+              </div>
 
-                {/* Generation In Progress UI */}
-                {isGenerating ? (
-                  <div className="mb-4 p-4 bg-gray-800/50 rounded-lg border border-green-500/30">
-                    {/* Animated character preview */}
-                    <GeneratingAnimation stage={currentStage} />
+              {!useDefaultSprite ? (
+                <>
+                  {/* Meme Prompt Input */}
+                  <div className="mb-4">
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={memePrompt}
+                      onChange={(e) => setMemePrompt(e.target.value)}
+                      placeholder="e.g., Pepe the Frog, Doge, Wojak..."
+                      className="w-full bg-gray-800 border-2 border-gray-600 rounded px-4 py-3 font-pixel text-sm text-white placeholder-gray-500 focus:border-green-500 focus:outline-none"
+                      onKeyDown={(e) => {
+                        stopPropagation(e);
+                        if (e.key === "Enter" && !isGenerating) generateMemeSprite();
+                      }}
+                      onKeyUp={stopPropagation}
+                      autoFocus
+                    />
+                  </div>
 
-                    {/* Progress stages */}
-                    <div className="flex justify-center gap-2 mb-4">
-                      {GENERATION_STAGES.map((stage) => (
-                        <div
-                          key={stage.id}
-                          className={`flex flex-col items-center transition-all duration-300 ${
-                            currentStage >= stage.id
-                              ? "opacity-100 scale-100"
-                              : "opacity-30 scale-90"
-                          }`}
-                        >
+                  {/* Quick Suggestions */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {MEME_SUGGESTIONS.slice(0, 4).map((meme) => (
+                      <button
+                        key={meme}
+                        onClick={() => setMemePrompt(meme)}
+                        className="font-pixel text-[8px] px-2 py-1 bg-gray-800 border border-gray-600 rounded text-gray-300 hover:border-green-500 hover:text-green-400 transition-colors"
+                      >
+                        {meme}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Generation In Progress UI */}
+                  {isGenerating ? (
+                    <div className="mb-4 p-4 bg-gray-800/50 rounded-lg border border-green-500/30">
+                      {/* Animated character preview */}
+                      <GeneratingAnimation stage={currentStage} />
+
+                      {/* Progress stages */}
+                      <div className="flex justify-center gap-2 mb-4">
+                        {GENERATION_STAGES.map((stage) => (
                           <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm mb-1 transition-all ${
-                              currentStage === stage.id
-                                ? "bg-green-500 shadow-[0_0_12px_rgba(74,222,128,0.6)] animate-pulse"
-                                : currentStage > stage.id
-                                  ? "bg-green-600"
-                                  : "bg-gray-700"
+                            key={stage.id}
+                            className={`flex flex-col items-center transition-all duration-300 ${
+                              currentStage >= stage.id
+                                ? "opacity-100 scale-100"
+                                : "opacity-30 scale-90"
                             }`}
                           >
-                            {stage.icon}
+                            <div
+                              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm mb-1 transition-all ${
+                                currentStage === stage.id
+                                  ? "bg-green-500 shadow-[0_0_12px_rgba(74,222,128,0.6)] animate-pulse"
+                                  : currentStage > stage.id
+                                    ? "bg-green-600"
+                                    : "bg-gray-700"
+                              }`}
+                            >
+                              {stage.icon}
+                            </div>
+                            <span className="font-pixel text-[6px] text-gray-400 text-center w-12">
+                              {stage.label.split(" ")[0]}
+                            </span>
                           </div>
-                          <span className="font-pixel text-[6px] text-gray-400 text-center w-12">
-                            {stage.label.split(" ")[0]}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Current step text */}
-                    <p className="font-pixel text-xs text-green-400 text-center animate-pulse">
-                      {generationStep || "Preparing..."}
-                    </p>
-                    <p className="font-pixel text-[8px] text-gray-500 text-center mt-1">
-                      This may take 10-20 seconds
-                    </p>
-                  </div>
-                ) : (
-                  /* Generate Button */
-                  <button
-                    onClick={generateMemeSprite}
-                    disabled={!memePrompt.trim()}
-                    className="group relative w-full font-pixel text-sm py-3 rounded border-2 mb-4 transition-all bg-gradient-to-b from-purple-600 to-purple-800 border-purple-400 text-white hover:from-purple-500 hover:to-purple-700 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
-                  >
-                    <span className="relative z-10 flex items-center justify-center gap-2">
-                      <span>✨</span>
-                      GENERATE SPRITE
-                      <span>✨</span>
-                    </span>
-                  </button>
-                )}
-
-                {/* Error Message */}
-                {error && (
-                  <div className="mb-4 p-3 bg-red-900/30 border border-red-500/50 rounded-lg">
-                    <p className="font-pixel text-[10px] text-red-400 flex items-center gap-2">
-                      <span>⚠️</span> {error}
-                    </p>
-                  </div>
-                )}
-
-                {/* Generated Preview */}
-                {generatedSpriteUrl && !isGenerating && (
-                  <div className="mb-4 p-4 bg-gradient-to-b from-gray-800 to-gray-900 rounded-lg border border-green-500 shadow-[0_0_20px_rgba(74,222,128,0.15)]">
-                    <div className="flex items-center justify-center gap-2 mb-3">
-                      <span className="text-lg">🎉</span>
-                      <p className="font-pixel text-xs text-green-400">YOUR MEME SPRITE</p>
-                      <span className="text-lg">🎉</span>
-                    </div>
-                    <div className="flex justify-center gap-4">
-                      <div className="text-center">
-                        <div className="relative">
-                          <div className="absolute inset-0 bg-green-500/20 blur-md rounded" />
-                          <img
-                            src={generatedSpriteUrl}
-                            alt="Generated meme sprite"
-                            className="relative w-24 h-24 object-contain rounded border-2 border-green-500/50 bg-gray-900"
-                            style={{ imageRendering: "pixelated" }}
-                          />
-                        </div>
-                        <p className="font-pixel text-[8px] text-green-400 mt-2">CHARACTER</p>
+                        ))}
                       </div>
-                      {walkSpriteSheetUrl && (
+
+                      {/* Current step text */}
+                      <p className="font-pixel text-xs text-green-400 text-center animate-pulse">
+                        {generationStep || "Preparing..."}
+                      </p>
+                      <p className="font-pixel text-[8px] text-gray-500 text-center mt-1">
+                        This may take 10-20 seconds
+                      </p>
+                    </div>
+                  ) : (
+                    /* Generate Button */
+                    <button
+                      onClick={generateMemeSprite}
+                      disabled={!memePrompt.trim()}
+                      className="group relative w-full font-pixel text-sm py-3 rounded border-2 mb-4 transition-all bg-gradient-to-b from-purple-600 to-purple-800 border-purple-400 text-white hover:from-purple-500 hover:to-purple-700 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
+                    >
+                      <span className="relative z-10 flex items-center justify-center gap-2">
+                        <span>✨</span>
+                        GENERATE SPRITE
+                        <span>✨</span>
+                      </span>
+                    </button>
+                  )}
+
+                  {/* Error Message */}
+                  {error && (
+                    <div className="mb-4 p-3 bg-red-900/30 border border-red-500/50 rounded-lg">
+                      <p className="font-pixel text-[10px] text-red-400 flex items-center gap-2">
+                        <span>⚠️</span> {error}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Generated Preview */}
+                  {generatedSpriteUrl && !isGenerating && (
+                    <div className="mb-4 p-4 bg-gradient-to-b from-gray-800 to-gray-900 rounded-lg border border-green-500 shadow-[0_0_20px_rgba(74,222,128,0.15)]">
+                      <div className="flex items-center justify-center gap-2 mb-3">
+                        <span className="text-lg">🎉</span>
+                        <p className="font-pixel text-xs text-green-400">YOUR MEME SPRITE</p>
+                        <span className="text-lg">🎉</span>
+                      </div>
+                      <div className="flex justify-center gap-4">
                         <div className="text-center">
                           <div className="relative">
-                            <div className="absolute inset-0 bg-purple-500/20 blur-md rounded" />
+                            <div className="absolute inset-0 bg-green-500/20 blur-md rounded" />
                             <img
-                              src={walkSpriteSheetUrl}
-                              alt="Walk animation sprite sheet"
-                              className="relative w-24 h-24 object-contain rounded border-2 border-purple-500/50 bg-gray-900"
+                              src={generatedSpriteUrl}
+                              alt="Generated meme sprite"
+                              className="relative w-24 h-24 object-contain rounded border-2 border-green-500/50 bg-gray-900"
                               style={{ imageRendering: "pixelated" }}
                             />
                           </div>
-                          <p className="font-pixel text-[8px] text-purple-400 mt-2">WALK CYCLE</p>
+                          <p className="font-pixel text-[8px] text-green-400 mt-2">CHARACTER</p>
                         </div>
-                      )}
+                        {walkSpriteSheetUrl && (
+                          <div className="text-center">
+                            <div className="relative">
+                              <div className="absolute inset-0 bg-purple-500/20 blur-md rounded" />
+                              <img
+                                src={walkSpriteSheetUrl}
+                                alt="Walk animation sprite sheet"
+                                className="relative w-24 h-24 object-contain rounded border-2 border-purple-500/50 bg-gray-900"
+                                style={{ imageRendering: "pixelated" }}
+                              />
+                            </div>
+                            <p className="font-pixel text-[8px] text-purple-400 mt-2">WALK CYCLE</p>
+                          </div>
+                        )}
+                      </div>
+                      <p className="font-pixel text-[10px] text-gray-300 text-center mt-3 px-4 py-2 bg-gray-800/50 rounded">
+                        &quot;{memePrompt}&quot;
+                      </p>
                     </div>
-                    <p className="font-pixel text-[10px] text-gray-300 text-center mt-3 px-4 py-2 bg-gray-800/50 rounded">
-                      &quot;{memePrompt}&quot;
-                    </p>
-                  </div>
-                )}
-              </>
-            ) : (
-              /* Default Sprite Selection */
-              <div className="grid grid-cols-5 gap-2 mb-4">
-                {DEFAULT_SPRITES.map((sprite) => (
-                  <button
-                    key={sprite.id}
-                    onClick={() => setSelectedDefault(sprite.id)}
-                    className={`p-2 rounded border-2 transition-all ${
-                      selectedDefault === sprite.id
-                        ? "border-green-400 bg-green-400/20"
-                        : "border-gray-600 bg-gray-800 hover:border-gray-400"
-                    }`}
-                  >
-                    <div className="w-10 h-10 mx-auto bg-gradient-to-b from-gray-600 to-gray-800 rounded flex items-center justify-center text-2xl">
-                      {["🌿", "💙", "⚔️", "👑", "🔮"][sprite.id]}
-                    </div>
-                    <p className="font-pixel text-[6px] text-gray-400 text-center mt-1 truncate">
-                      {sprite.name}
-                    </p>
-                  </button>
-                ))}
+                  )}
+                </>
+              ) : (
+                /* Default Sprite Selection */
+                <div className="grid grid-cols-5 gap-2 mb-4">
+                  {DEFAULT_SPRITES.map((sprite) => (
+                    <button
+                      key={sprite.id}
+                      onClick={() => setSelectedDefault(sprite.id)}
+                      className={`p-2 rounded border-2 transition-all ${
+                        selectedDefault === sprite.id
+                          ? "border-green-400 bg-green-400/20"
+                          : "border-gray-600 bg-gray-800 hover:border-gray-400"
+                      }`}
+                    >
+                      <div className="w-10 h-10 mx-auto bg-gradient-to-b from-gray-600 to-gray-800 rounded flex items-center justify-center text-2xl">
+                        {["🌿", "💙", "⚔️", "👑", "🔮"][sprite.id]}
+                      </div>
+                      <p className="font-pixel text-[6px] text-gray-400 text-center mt-1 truncate">
+                        {sprite.name}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowSelector(false)}
+                  className="flex-1 font-pixel text-xs py-3 bg-gray-700 border-2 border-gray-500 text-gray-300 rounded hover:bg-gray-600 transition-colors"
+                >
+                  CANCEL
+                </button>
+                <button
+                  onClick={handleEnterWorld}
+                  disabled={!useDefaultSprite && !generatedSpriteUrl}
+                  className="flex-1 font-pixel text-xs py-3 bg-gradient-to-b from-green-500 to-green-700 border-2 border-green-300 text-white rounded hover:from-green-400 hover:to-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  ENTER PARK
+                </button>
               </div>
-            )}
 
-            {/* Action Buttons */}
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowSelector(false)}
-                className="flex-1 font-pixel text-xs py-3 bg-gray-700 border-2 border-gray-500 text-gray-300 rounded hover:bg-gray-600 transition-colors"
-              >
-                CANCEL
-              </button>
-              <button
-                onClick={handleEnterWorld}
-                disabled={!useDefaultSprite && !generatedSpriteUrl}
-                className="flex-1 font-pixel text-xs py-3 bg-gradient-to-b from-green-500 to-green-700 border-2 border-green-300 text-white rounded hover:from-green-400 hover:to-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                ENTER PARK
-              </button>
+              {/* Instructions */}
+              <div className="mt-4 p-3 bg-gray-800/50 rounded border border-gray-700">
+                <p className="font-pixel text-[8px] text-gray-500 text-center">
+                  WASD or Arrow keys to move • E to interact
+                </p>
+              </div>
             </div>
-
-            {/* Instructions */}
-            <div className="mt-4 p-3 bg-gray-800/50 rounded border border-gray-700">
-              <p className="font-pixel text-[8px] text-gray-500 text-center">
-                WASD or Arrow keys to move • E to interact
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </>
   );
 }
