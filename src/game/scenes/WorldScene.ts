@@ -1159,10 +1159,16 @@ export class WorldScene extends Phaser.Scene {
       this.playerVelocity.y *= this.PLAYER_FRICTION;
     }
 
-    // Clamp velocity to walk/sprint speed
+    // Clamp velocity by vector magnitude (prevents diagonal sprint being ~41% faster)
     const maxSpeed = sprinting ? this.PLAYER_SPRINT_SPEED : this.PLAYER_WALK_SPEED;
-    this.playerVelocity.x = Phaser.Math.Clamp(this.playerVelocity.x, -maxSpeed, maxSpeed);
-    this.playerVelocity.y = Phaser.Math.Clamp(this.playerVelocity.y, -maxSpeed, maxSpeed);
+    const mag = Math.sqrt(
+      this.playerVelocity.x * this.playerVelocity.x + this.playerVelocity.y * this.playerVelocity.y
+    );
+    if (mag > maxSpeed) {
+      const scale = maxSpeed / mag;
+      this.playerVelocity.x *= scale;
+      this.playerVelocity.y *= scale;
+    }
 
     // Stop completely if velocity is very small
     if (Math.abs(this.playerVelocity.x) < 0.1) this.playerVelocity.x = 0;
