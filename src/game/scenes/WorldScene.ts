@@ -944,11 +944,10 @@ export class WorldScene extends Phaser.Scene {
         this.joystickThumb.setPosition(clampedX, clampedY);
         this.joystickThumb.setVisible(true);
         this.joystickThumb.setAlpha(1).setFillStyle(0x4ade80, 0.7);
+        this.joystickActive = true;
+        this.joystickPointerId = pointer.id;
+        this.updateJoystickFromPointer(pointer);
       }
-
-      this.joystickActive = true;
-      this.joystickPointerId = pointer.id;
-      this.updateJoystickFromPointer(pointer);
     });
 
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
