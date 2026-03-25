@@ -1293,23 +1293,29 @@ export async function POST(request: NextRequest) {
       ...registeredTokens.map((t) => t.mint),
     ]);
 
-    // Fire ALL independent network calls in parallel:
-    // 1. Global tokens from DB (admin overrides)
-    // 2. Platform token discovery (Bags.fm trending)
-    // 3. DexScreener prices (for registered mints — known upfront)
-    // 4. Holder data (Solana RPC)
-    const knownMints = registeredTokens
-      .filter((t) => !t.mint.startsWith("Treasury") && !t.mint.startsWith("Starter"))
-      .map((t) => t.mint);
+    // Discover platform tokens first (5min cache — instant on warm hits)
+    // so their mints are included in the DexScreener price fetch
+    const platformTokens = await discoverPlatformTokens(registeredMints);
 
-    const [globalTokensResult, platformTokens, priceData, bagsWorldHolders] = await Promise.all([
+    // Merge registered + platform mints for DexScreener
+    const knownMints = [
+      ...registeredTokens
+        .filter((t) => !t.mint.startsWith("Treasury") && !t.mint.startsWith("Starter"))
+        .map((t) => t.mint),
+      ...platformTokens.map((t) => t.mint),
+    ];
+
+    // Fire remaining independent network calls in parallel:
+    // 1. Global tokens from DB (admin overrides)
+    // 2. DexScreener prices (for all real mints — registered + platform)
+    // 3. Holder data (Solana RPC)
+    const [globalTokensResult, priceData, bagsWorldHolders] = await Promise.all([
       isNeonConfigured()
         ? getGlobalTokens().catch((err) => {
             console.warn("[WorldState] Failed to fetch global tokens:", err);
             return [] as Awaited<ReturnType<typeof getGlobalTokens>>;
           })
         : Promise.resolve([] as Awaited<ReturnType<typeof getGlobalTokens>>),
-      discoverPlatformTokens(registeredMints),
       fetchTokenPrices(knownMints),
       Promise.race([
         fetchBagsWorldHolders(),
