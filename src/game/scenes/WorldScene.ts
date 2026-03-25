@@ -616,6 +616,7 @@ export class WorldScene extends Phaser.Scene {
     if (this.localPlayer) {
       this.cameras.main.setBounds(0, 0, GAME_WIDTH, GAME_HEIGHT);
       this.cameras.main.startFollow(this.localPlayer, true, 0.08, 0.08);
+      this.cameras.main.setDeadzone(30, 15);
       this.cameras.main.zoomTo(1.3, 800, "Sine.easeInOut");
       this.cameraFollowing = true;
     }
@@ -2169,6 +2170,7 @@ export class WorldScene extends Phaser.Scene {
       // Resume camera follow after transition
       if (this.cameraFollowing && this.localPlayer) {
         this.cameras.main.startFollow(this.localPlayer, true, 0.08, 0.08);
+        this.cameras.main.setDeadzone(30, 15);
       }
 
       // Flush any pending player spawn that was queued during this transition
